@@ -158,7 +158,42 @@
     atk: 12, def: 6, spd: 10, luck: 5, gold: 150, id: userId
   };
 
+  // ── Тема факультета: меняет фон и акценты под герб игрока ──────────────
+  function applyHouseTheme(emoji) {
+    // Палитры: [фон-градиент, цвет акцента (рамки/имя), цвет свечения герба]
+    const themes = {
+      "🦁": { // Гриффиндор — багрово-золотой
+        bg: "linear-gradient(160deg, #3a0d0d 0%, #5c1414 35%, #2e0a0a 70%, #1a0505 100%)",
+        accent: "#ffd86b", glow: "#ffd86b"
+      },
+      "🐍": { // Слизерин — изумрудно-серебряный
+        bg: "linear-gradient(160deg, #0a2e1a 0%, #0f4429 35%, #082514 70%, #04140a 100%)",
+        accent: "#9be8c0", glow: "#5fd89b"
+      },
+      "🦅": { // Когтевран — сине-бронзовый
+        bg: "linear-gradient(160deg, #0d1a3a 0%, #14275c 35%, #0a1530 70%, #050b1a 100%)",
+        accent: "#9bc0e8", glow: "#5f9bd8"
+      },
+      "🦡": { // Пуффендуй — жёлто-чёрный
+        bg: "linear-gradient(160deg, #3a300d 0%, #5c4914 35%, #2e2509 70%, #1a1505 100%)",
+        accent: "#ffe06b", glow: "#ffd233"
+      },
+    };
+    const th = themes[emoji];
+    if (!th) return; // неизвестный факультет — оставляем фиолетовый по умолчанию
+    document.body.style.background = th.bg;
+    document.documentElement.style.setProperty("--accent", th.accent);
+    document.documentElement.style.setProperty("--glow", th.glow);
+    // Применяем акцент к ключевым элементам
+    document.getElementById("name").style.color = th.accent;
+    document.getElementById("rank").style.color = th.accent;
+    const crest = document.getElementById("crest");
+    crest.style.borderColor = th.accent + "88";
+    crest.style.boxShadow = "0 0 30px " + th.glow + "44";
+  }
+
   function render(data) {
+    applyHouseTheme(data.houseEmoji);
     document.getElementById("name").textContent  = data.name;
     document.getElementById("house").textContent = data.house;
     document.getElementById("crest").textContent = data.houseEmoji;
