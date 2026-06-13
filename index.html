@@ -14,7 +14,12 @@
     overflow-x: hidden;
   }
   body {
-    background: linear-gradient(160deg, #1a1033 0%, #2d1b4e 35%, #1f1238 70%, #0d0820 100%);
+    background:
+      linear-gradient(160deg, rgba(26,16,51,0.82) 0%, rgba(45,27,78,0.78) 35%, rgba(31,18,56,0.85) 70%, rgba(13,8,32,0.92) 100%),
+      url("https://i.postimg.cc/vTtRfjZf/IMG-20260613-235834-538.png");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -163,25 +168,30 @@
     // Палитры: [фон-градиент, цвет акцента (рамки/имя), цвет свечения герба]
     const themes = {
       "🦁": { // Гриффиндор — багрово-золотой
-        bg: "linear-gradient(160deg, #3a0d0d 0%, #5c1414 35%, #2e0a0a 70%, #1a0505 100%)",
+        bgOverlay: "linear-gradient(160deg, rgba(58,13,13,0.80), rgba(92,20,20,0.74) 35%, rgba(46,10,10,0.84) 70%, rgba(26,5,5,0.90))",
         accent: "#ffd86b", glow: "#ffd86b"
       },
       "🐍": { // Слизерин — изумрудно-серебряный
-        bg: "linear-gradient(160deg, #0a2e1a 0%, #0f4429 35%, #082514 70%, #04140a 100%)",
+        bgOverlay: "linear-gradient(160deg, rgba(10,46,26,0.80), rgba(15,68,41,0.74) 35%, rgba(8,37,20,0.84) 70%, rgba(4,20,10,0.90))",
         accent: "#9be8c0", glow: "#5fd89b"
       },
       "🦅": { // Когтевран — сине-бронзовый
-        bg: "linear-gradient(160deg, #0d1a3a 0%, #14275c 35%, #0a1530 70%, #050b1a 100%)",
+        bgOverlay: "linear-gradient(160deg, rgba(13,26,58,0.80), rgba(20,39,92,0.74) 35%, rgba(10,21,48,0.84) 70%, rgba(5,11,26,0.90))",
         accent: "#9bc0e8", glow: "#5f9bd8"
       },
       "🦡": { // Пуффендуй — жёлто-чёрный
-        bg: "linear-gradient(160deg, #3a300d 0%, #5c4914 35%, #2e2509 70%, #1a1505 100%)",
+        bgOverlay: "linear-gradient(160deg, rgba(58,48,13,0.80), rgba(92,73,20,0.74) 35%, rgba(46,37,9,0.84) 70%, rgba(26,21,5,0.90))",
         accent: "#ffe06b", glow: "#ffd233"
       },
     };
+    const BG_IMG = 'url("https://i.postimg.cc/vTtRfjZf/IMG-20260613-235834-538.png")';
     const th = themes[emoji];
-    if (!th) return; // неизвестный факультет — оставляем фиолетовый по умолчанию
-    document.body.style.background = th.bg;
+    if (!th) return; // неизвестный факультет — оставляем фон по умолчанию
+    // Градиент факультета поверх фоновой картинки
+    document.body.style.background = th.bgOverlay + ", " + BG_IMG;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+    document.body.style.backgroundAttachment = "fixed";
     document.documentElement.style.setProperty("--accent", th.accent);
     document.documentElement.style.setProperty("--glow", th.glow);
     // Применяем акцент к ключевым элементам
