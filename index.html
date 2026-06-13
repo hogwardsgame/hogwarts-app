@@ -96,11 +96,46 @@
   .footer { text-align: center; margin-top: 22px; font-size: 12px; color: #8678a8; z-index: 1; }
   .id-chip { display:inline-block; margin-top:8px; font-size:11px; color:#9d8fc0;
              background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:8px; }
+
+  /* Экраны */
+  .screen { width: 100%; max-width: 420px; z-index: 1; padding-bottom: 80px; }
+
+  /* Нижние вкладки */
+  .tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: center; gap: 8px;
+    background: rgba(15, 10, 28, 0.92);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255,216,107,0.25);
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .tab {
+    flex: 1; max-width: 160px; text-align: center; padding: 6px 4px;
+    border-radius: 12px; cursor: pointer; transition: background 0.2s;
+    color: #9d8fc0;
+  }
+  .tab.active { background: rgba(255,216,107,0.14); color: #ffe9a8; }
+  .tab-ico { font-size: 21px; }
+  .tab-label { font-size: 11px; margin-top: 2px; }
+
+  /* Рейтинг */
+  .lb-title { text-align:center; font-size:20px; font-weight:700; color:#ffe9a8; }
+  .lb-empty { text-align:center; color:#9d8fc0; padding:20px 0; font-size:14px; }
+  .lb-row {
+    display:flex; align-items:center; gap:12px; padding:11px 12px;
+    border-radius:12px; margin-bottom:7px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+  }
+  .lb-place { font-size:16px; font-weight:700; width:34px; text-align:center; color:#ffd86b; }
+  .lb-name { flex:1; font-size:15px; color:#f4f0e6; }
+  .lb-lvl { font-size:13px; color:#b0a3d0; }
+  .lb-row.me { border-color: rgba(255,216,107,0.5); background: rgba(255,216,107,0.10); }
 </style>
 </head>
 <body>
 <div class="stars" id="stars"></div>
 
+<div id="screen-profile" class="screen">
 <div class="card">
   <div class="crest" id="crest">🦁</div>
   <div class="name" id="name">Волшебник</div>
@@ -135,6 +170,26 @@
 <div class="footer">
   Hogwarts Legacy RPG
   <div class="id-chip" id="idchip">ID: —</div>
+</div>
+</div><!-- /screen-profile -->
+
+<div id="screen-rating" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏆 Рейтинг волшебников</div>
+    <div class="divider"></div>
+    <div id="lb-list">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-rating -->
+
+<div class="tabbar">
+  <div class="tab active" id="tab-profile" onclick="switchTab('profile')">
+    <div class="tab-ico">🧙</div><div class="tab-label">Профиль</div>
+  </div>
+  <div class="tab" id="tab-rating" onclick="switchTab('rating')">
+    <div class="tab-ico">🏆</div><div class="tab-label">Рейтинг</div>
+  </div>
 </div>
 
 <script>
@@ -204,6 +259,7 @@
 
   function render(data) {
     applyHouseTheme(data.houseEmoji);
+    myName = data.name;
     document.getElementById("name").textContent  = data.name;
     document.getElementById("house").textContent = data.house;
     document.getElementById("crest").textContent = data.houseEmoji;
@@ -255,6 +311,48 @@
   }
 
   loadProfile();
+
+  // ── Вкладки ────────────────────────────────────────────────────────────
+  let ratingLoaded = false;
+  let myName = fallbackName;
+  function switchTab(tab) {
+    document.getElementById("screen-profile").style.display = (tab === "profile") ? "block" : "none";
+    document.getElementById("screen-rating").style.display  = (tab === "rating")  ? "block" : "none";
+    document.getElementById("tab-profile").classList.toggle("active", tab === "profile");
+    document.getElementById("tab-rating").classList.toggle("active", tab === "rating");
+    if (tab === "rating" && !ratingLoaded) {
+      ratingLoaded = true;
+      loadLeaderboard();
+    }
+  }
+
+  async function loadLeaderboard() {
+    const box = document.getElementById("lb-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      box.innerHTML = '<div class="lb-empty">Рейтинг недоступен</div>';
+      return;
+    }
+    try {
+      const resp = await fetch(API_URL + "/api/leaderboard");
+      const data = await resp.json();
+      if (!data.top || data.top.length === 0) {
+        box.innerHTML = '<div class="lb-empty">Пока нет игроков в рейтинге</div>';
+        return;
+      }
+      const medals = {1:"🥇", 2:"🥈", 3:"🥉"};
+      box.innerHTML = data.top.map(function(p) {
+        const place = medals[p.place] || ("#" + p.place);
+        const isMe = (p.name === myName) ? " me" : "";
+        return '<div class="lb-row' + isMe + '">' +
+                 '<div class="lb-place">' + place + '</div>' +
+                 '<div class="lb-name">' + p.house + ' ' + p.name + '</div>' +
+                 '<div class="lb-lvl">ур. ' + p.level + '</div>' +
+               '</div>';
+      }).join("");
+    } catch (e) {
+      box.innerHTML = '<div class="lb-empty">Не удалось загрузить рейтинг</div>';
+    }
+  }
 
   // Генерация звёзд на фоне
   const starsBox = document.getElementById("stars");
