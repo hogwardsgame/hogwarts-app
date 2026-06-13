@@ -130,6 +130,16 @@
   .lb-name { flex:1; font-size:15px; color:#f4f0e6; }
   .lb-lvl { font-size:13px; color:#b0a3d0; }
   .lb-row.me { border-color: rgba(255,216,107,0.5); background: rgba(255,216,107,0.10); }
+
+  /* Инвентарь */
+  .inv-row {
+    display:flex; align-items:center; gap:12px; padding:11px 12px;
+    border-radius:12px; margin-bottom:7px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+  }
+  .inv-emoji { font-size:22px; width:30px; text-align:center; }
+  .inv-name { flex:1; font-size:15px; color:#f4f0e6; }
+  .inv-qty { font-size:13px; color:#ffd86b; font-weight:600; }
 </style>
 </head>
 <body>
@@ -183,12 +193,25 @@
   </div>
 </div><!-- /screen-rating -->
 
+<div id="screen-inventory" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🎒 Инвентарь</div>
+    <div class="divider"></div>
+    <div id="inv-list">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-inventory -->
+
 <div class="tabbar">
   <div class="tab active" id="tab-profile" onclick="switchTab('profile')">
     <div class="tab-ico">🧙</div><div class="tab-label">Профиль</div>
   </div>
   <div class="tab" id="tab-rating" onclick="switchTab('rating')">
     <div class="tab-ico">🏆</div><div class="tab-label">Рейтинг</div>
+  </div>
+  <div class="tab" id="tab-inventory" onclick="switchTab('inventory')">
+    <div class="tab-ico">🎒</div><div class="tab-label">Сумка</div>
   </div>
 </div>
 
@@ -314,15 +337,52 @@
 
   // ── Вкладки ────────────────────────────────────────────────────────────
   let ratingLoaded = false;
+  let inventoryLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    document.getElementById("screen-profile").style.display = (tab === "profile") ? "block" : "none";
-    document.getElementById("screen-rating").style.display  = (tab === "rating")  ? "block" : "none";
-    document.getElementById("tab-profile").classList.toggle("active", tab === "profile");
-    document.getElementById("tab-rating").classList.toggle("active", tab === "rating");
+    document.getElementById("screen-profile").style.display   = (tab === "profile")   ? "block" : "none";
+    document.getElementById("screen-rating").style.display    = (tab === "rating")    ? "block" : "none";
+    document.getElementById("screen-inventory").style.display = (tab === "inventory") ? "block" : "none";
+    document.getElementById("tab-profile").classList.toggle("active",   tab === "profile");
+    document.getElementById("tab-rating").classList.toggle("active",    tab === "rating");
+    document.getElementById("tab-inventory").classList.toggle("active", tab === "inventory");
     if (tab === "rating" && !ratingLoaded) {
       ratingLoaded = true;
       loadLeaderboard();
+    }
+    if (tab === "inventory" && !inventoryLoaded) {
+      inventoryLoaded = true;
+      loadInventory();
+    }
+  }
+
+  async function loadInventory() {
+    const box = document.getElementById("inv-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      box.innerHTML = '<div class="lb-empty">Инвентарь недоступен</div>';
+      return;
+    }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const data = await resp.json();
+      if (!data.items || data.items.length === 0) {
+        box.innerHTML = '<div class="lb-empty">Инвентарь пуст. Покупай предметы в магазине!</div>';
+        return;
+      }
+      box.innerHTML = data.items.map(function(it) {
+        return '<div class="inv-row">' +
+                 '<div class="inv-emoji">' + it.emoji + '</div>' +
+                 '<div class="inv-name">' + it.rarity + ' ' + it.name + '</div>' +
+                 '<div class="inv-qty">×' + it.qty + '</div>' +
+               '</div>';
+      }).join("");
+    } catch (e) {
+      box.innerHTML = '<div class="lb-empty">Не удалось загрузить инвентарь</div>';
     }
   }
 
