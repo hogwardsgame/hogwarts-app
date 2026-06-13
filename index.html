@@ -137,50 +137,79 @@
   const tg = window.Telegram ? window.Telegram.WebApp : null;
   if (tg) { tg.ready(); tg.expand(); }
 
-  // Получаем имя игрока от Telegram (на первом этапе — только имя)
-  let playerName = "Волшебник";
+  // ⚙️ АДРЕС API — публичный URL с Railway
+  const API_URL = "https://hogwards-production.up.railway.app";
+
+  // Имя по умолчанию (если API недоступен — покажем хотя бы имя от Telegram)
+  let fallbackName = "Волшебник";
   let userId = "—";
   if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     const u = tg.initDataUnsafe.user;
-    playerName = u.first_name || u.username || "Волшебник";
+    fallbackName = u.first_name || u.username || "Волшебник";
     userId = u.id || "—";
   }
 
-  // ── ДЕМО-ДАННЫЕ (на 2-м этапе заменим реальными из базы) ──────────────
-  const data = {
-    name: playerName,
-    house: "Гриффиндор",
-    houseEmoji: "🦁",
+  // Демо-данные на случай если API не настроен / недоступен
+  const demoData = {
+    registered: true,
+    name: fallbackName, house: "Хогвартс", houseEmoji: "🏰",
     rank: "🐣 Первокурсник",
-    hp: 100, maxHp: 100,
-    mana: 50, maxMana: 50,
-    xp: 40, maxXp: 150,
-    atk: 12, def: 6, spd: 10, luck: 5,
-    gold: 150,
-    id: userId
+    hp: 100, maxHp: 100, mana: 50, maxMana: 50, xp: 40, maxXp: 150,
+    atk: 12, def: 6, spd: 10, luck: 5, gold: 150, id: userId
   };
 
-  // ── Рендер ─────────────────────────────────────────────────────────────
-  document.getElementById("name").textContent  = data.name;
-  document.getElementById("house").textContent = data.house;
-  document.getElementById("crest").textContent = data.houseEmoji;
-  document.getElementById("rank").textContent  = data.rank;
-  document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
-  document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
-  document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
-  document.getElementById("atk").textContent  = data.atk;
-  document.getElementById("def").textContent  = data.def;
-  document.getElementById("spd").textContent  = data.spd;
-  document.getElementById("luck").textContent = data.luck;
-  document.getElementById("gold").textContent = data.gold;
-  document.getElementById("idchip").textContent = "ID: " + data.id;
+  function render(data) {
+    document.getElementById("name").textContent  = data.name;
+    document.getElementById("house").textContent = data.house;
+    document.getElementById("crest").textContent = data.houseEmoji;
+    document.getElementById("rank").textContent  = data.rank;
+    document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
+    document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
+    document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
+    document.getElementById("atk").textContent  = data.atk;
+    document.getElementById("def").textContent  = data.def;
+    document.getElementById("spd").textContent  = data.spd;
+    document.getElementById("luck").textContent = data.luck;
+    document.getElementById("gold").textContent = data.gold;
+    document.getElementById("idchip").textContent = "ID: " + data.id;
+    setTimeout(() => {
+      document.getElementById("hp-bar").style.width   = (data.hp/data.maxHp*100) + "%";
+      document.getElementById("mana-bar").style.width = (data.mana/data.maxMana*100) + "%";
+      document.getElementById("xp-bar").style.width   = (data.xp/data.maxXp*100) + "%";
+    }, 250);
+  }
 
-  // Анимация заполнения баров (после небольшой паузы)
-  setTimeout(() => {
-    document.getElementById("hp-bar").style.width   = (data.hp/data.maxHp*100) + "%";
-    document.getElementById("mana-bar").style.width = (data.mana/data.maxMana*100) + "%";
-    document.getElementById("xp-bar").style.width   = (data.xp/data.maxXp*100) + "%";
-  }, 250);
+  // ── Запрашиваем РЕАЛЬНЫЕ данные у API ──────────────────────────────────
+  async function loadProfile() {
+    // Если адрес API ещё не вставлен — показываем демо
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      render(demoData);
+      return;
+    }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      if (!resp.ok) throw new Error("api " + resp.status);
+      const data = await resp.json();
+      if (data.registered === false) {
+        // Игрок не зарегистрирован в боте
+        demoData.name = fallbackName;
+        demoData.house = "Сначала зарегистрируйся в боте";
+        render(demoData);
+        return;
+      }
+      render(data);
+    } catch (e) {
+      // API недоступен — показываем демо, чтобы экран не был пустым
+      render(demoData);
+    }
+  }
+
+  loadProfile();
 
   // Генерация звёзд на фоне
   const starsBox = document.getElementById("stars");
