@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Паспорт волшебника</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #f4f0e6;
+    overflow-x: hidden;
+  }
+  body {
+    background: linear-gradient(160deg, #1a1033 0%, #2d1b4e 35%, #1f1238 70%, #0d0820 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 18px 40px;
+    position: relative;
+  }
+  /* Звёздная пыль на фоне */
+  .stars { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  .star {
+    position: absolute; width: 3px; height: 3px; border-radius: 50%;
+    background: #ffd86b; opacity: 0; animation: twinkle 3s infinite ease-in-out;
+  }
+  @keyframes twinkle { 0%,100% { opacity: 0; transform: scale(0.5);} 50% { opacity: 0.9; transform: scale(1);} }
+
+  .card {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 420px;
+    background: rgba(28, 18, 52, 0.72);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 216, 107, 0.35);
+    border-radius: 22px;
+    padding: 28px 22px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(30px);} to { opacity: 1; transform: translateY(0);} }
+
+  .crest {
+    width: 92px; height: 92px; margin: 0 auto 14px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 46px;
+    background: radial-gradient(circle at 30% 30%, #ffd86b33, #ffd86b11);
+    border: 2px solid rgba(255, 216, 107, 0.5);
+    box-shadow: 0 0 30px rgba(255, 216, 107, 0.25);
+    animation: glow 3s infinite ease-in-out;
+  }
+  @keyframes glow { 0%,100% { box-shadow: 0 0 20px rgba(255,216,107,0.2);} 50% { box-shadow: 0 0 36px rgba(255,216,107,0.45);} }
+
+  .name { text-align: center; font-size: 25px; font-weight: 700; letter-spacing: 0.5px;
+          color: #ffe9a8; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  .house { text-align: center; font-size: 15px; color: #c9b8e8; margin-top: 4px; margin-bottom: 4px; }
+  .rank  { text-align: center; font-size: 14px; color: #ffd86b; margin-bottom: 20px; font-weight: 600; }
+
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,216,107,0.4), transparent); margin: 16px 0; }
+
+  .bar-row { margin-bottom: 14px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; color: #d8cdf0; }
+  .bar-track { height: 11px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; transition: width 1.1s cubic-bezier(0.2,0.8,0.2,1); width: 0; }
+  .hp   .bar-fill { background: linear-gradient(90deg, #ff5c5c, #ff8a5c); }
+  .mana .bar-fill { background: linear-gradient(90deg, #5c9dff, #5cd8ff); }
+  .xp   .bar-fill { background: linear-gradient(90deg, #ffd86b, #ffb347); }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .stat {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .stat .ico { font-size: 22px; }
+  .stat .val { font-size: 18px; font-weight: 700; color: #fff; }
+  .stat .cap { font-size: 11px; color: #b0a3d0; }
+
+  .gold-banner {
+    margin-top: 18px; text-align: center;
+    background: linear-gradient(90deg, rgba(255,216,107,0.15), rgba(255,179,71,0.15));
+    border: 1px solid rgba(255,216,107,0.3); border-radius: 14px;
+    padding: 12px; font-size: 19px; font-weight: 700; color: #ffe9a8;
+  }
+
+  .footer { text-align: center; margin-top: 22px; font-size: 12px; color: #8678a8; z-index: 1; }
+  .id-chip { display:inline-block; margin-top:8px; font-size:11px; color:#9d8fc0;
+             background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:8px; }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+
+<div class="card">
+  <div class="crest" id="crest">🦁</div>
+  <div class="name" id="name">Волшебник</div>
+  <div class="house" id="house">Хогвартс</div>
+  <div class="rank" id="rank">🐣 Первокурсник</div>
+
+  <div class="divider"></div>
+
+  <div class="bar-row hp">
+    <div class="bar-label"><span>❤️ Здоровье</span><span id="hp-txt">100 / 100</span></div>
+    <div class="bar-track"><div class="bar-fill" id="hp-bar"></div></div>
+  </div>
+  <div class="bar-row mana">
+    <div class="bar-label"><span>💧 Мана</span><span id="mana-txt">50 / 50</span></div>
+    <div class="bar-track"><div class="bar-fill" id="mana-bar"></div></div>
+  </div>
+  <div class="bar-row xp">
+    <div class="bar-label"><span>✨ Опыт</span><span id="xp-txt">0 / 150</span></div>
+    <div class="bar-track"><div class="bar-fill" id="xp-bar"></div></div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat"><span class="ico">⚔️</span><div><div class="val" id="atk">10</div><div class="cap">Атака</div></div></div>
+    <div class="stat"><span class="ico">🛡️</span><div><div class="val" id="def">5</div><div class="cap">Защита</div></div></div>
+    <div class="stat"><span class="ico">⚡</span><div><div class="val" id="spd">10</div><div class="cap">Скорость</div></div></div>
+    <div class="stat"><span class="ico">🍀</span><div><div class="val" id="luck">5</div><div class="cap">Удача</div></div></div>
+  </div>
+
+  <div class="gold-banner">💰 <span id="gold">150</span> галлеонов</div>
+</div>
+
+<div class="footer">
+  Hogwarts Legacy RPG
+  <div class="id-chip" id="idchip">ID: —</div>
+</div>
+
+<script>
+  // ── Telegram Web App init ──────────────────────────────────────────────
+  const tg = window.Telegram ? window.Telegram.WebApp : null;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  // Получаем имя игрока от Telegram (на первом этапе — только имя)
+  let playerName = "Волшебник";
+  let userId = "—";
+  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    const u = tg.initDataUnsafe.user;
+    playerName = u.first_name || u.username || "Волшебник";
+    userId = u.id || "—";
+  }
+
+  // ── ДЕМО-ДАННЫЕ (на 2-м этапе заменим реальными из базы) ──────────────
+  const data = {
+    name: playerName,
+    house: "Гриффиндор",
+    houseEmoji: "🦁",
+    rank: "🐣 Первокурсник",
+    hp: 100, maxHp: 100,
+    mana: 50, maxMana: 50,
+    xp: 40, maxXp: 150,
+    atk: 12, def: 6, spd: 10, luck: 5,
+    gold: 150,
+    id: userId
+  };
+
+  // ── Рендер ─────────────────────────────────────────────────────────────
+  document.getElementById("name").textContent  = data.name;
+  document.getElementById("house").textContent = data.house;
+  document.getElementById("crest").textContent = data.houseEmoji;
+  document.getElementById("rank").textContent  = data.rank;
+  document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
+  document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
+  document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
+  document.getElementById("atk").textContent  = data.atk;
+  document.getElementById("def").textContent  = data.def;
+  document.getElementById("spd").textContent  = data.spd;
+  document.getElementById("luck").textContent = data.luck;
+  document.getElementById("gold").textContent = data.gold;
+  document.getElementById("idchip").textContent = "ID: " + data.id;
+
+  // Анимация заполнения баров (после небольшой паузы)
+  setTimeout(() => {
+    document.getElementById("hp-bar").style.width   = (data.hp/data.maxHp*100) + "%";
+    document.getElementById("mana-bar").style.width = (data.mana/data.maxMana*100) + "%";
+    document.getElementById("xp-bar").style.width   = (data.xp/data.maxXp*100) + "%";
+  }, 250);
+
+  // Генерация звёзд на фоне
+  const starsBox = document.getElementById("stars");
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement("div");
+    s.className = "star";
+    s.style.left = Math.random()*100 + "%";
+    s.style.top = Math.random()*100 + "%";
+    s.style.animationDelay = (Math.random()*3) + "s";
+    starsBox.appendChild(s);
+  }
+</script>
+</body>
+</html>
