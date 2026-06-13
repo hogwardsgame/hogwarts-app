@@ -229,9 +229,9 @@
   </div>
 
   <div class="actions">
-    <div class="act-btn" id="act-feed" onclick="feedPet()">🍖 Покормить питомца</div>
-    <div class="act-btn" onclick="openBot('daily')">🎁 Забрать бонус дня</div>
-    <div class="act-btn" onclick="openBot('inventory')">⚡ Снаряжение</div>
+    <div class="act-btn" id="act-feed" onclick="doAction('feedpet', this)">🍖 Покормить питомца</div>
+    <div class="act-btn" id="act-daily" onclick="doAction('claimdaily', this)">🎁 Забрать бонус дня</div>
+    <div class="act-btn" id="act-equip" onclick="doAction('equipbest', this)">⚡ Надеть лучшее снаряжение</div>
     <div class="act-msg" id="act-msg"></div>
   </div>
 </div>
@@ -440,24 +440,21 @@
     if (tab === "cup" && !cupLoaded) { cupLoaded = true; loadHouseCup(); }
   }
 
-  // Открыть бота (закрыть Mini App) — для действий, которые делаются в боте
-  function openBot(what) {
-    if (tg) {
-      try { tg.close(); } catch (e) {}
-    }
-  }
-
-  // Покормить питомца через API
-  async function feedPet() {
+  // Универсальное действие: feedpet / claimdaily / equipbest
+  let actionBusy = false;
+  async function doAction(endpoint, btn) {
+    if (actionBusy) return;
     const msg = document.getElementById("act-msg");
-    msg.style.color = "#9be8c0";
-    msg.textContent = "Кормлю...";
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
-      msg.textContent = "Недоступно"; return;
+      msg.style.color = "#ffb0b0"; msg.textContent = "Недоступно"; return;
     }
+    actionBusy = true;
+    if (btn) btn.style.opacity = "0.5";
+    msg.style.color = "#c9b8e8";
+    msg.textContent = "⏳ Выполняю...";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await fetch(API_URL + "/api/feedpet", {
+      const resp = await fetch(API_URL + "/api/" + endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ initData: initData })
@@ -465,12 +462,19 @@
       const data = await resp.json();
       msg.style.color = data.ok ? "#9be8c0" : "#ffb0b0";
       msg.textContent = data.msg || "";
-      if (data.ok && tg && tg.HapticFeedback) {
-        try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){}
+      if (data.ok) {
+        if (tg && tg.HapticFeedback) {
+          try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){}
+        }
+        // Обновляем профиль, чтобы цифры (золото/опыт/снаряжение) подтянулись
+        setTimeout(loadProfile, 600);
       }
     } catch (e) {
       msg.style.color = "#ffb0b0";
       msg.textContent = "Ошибка соединения";
+    } finally {
+      actionBusy = false;
+      if (btn) btn.style.opacity = "1";
     }
   }
 
