@@ -140,6 +140,28 @@
   .inv-emoji { font-size:22px; width:30px; text-align:center; }
   .inv-name { flex:1; font-size:15px; color:#f4f0e6; }
   .inv-qty { font-size:13px; color:#ffd86b; font-weight:600; }
+
+  /* Титул */
+  .title-badge {
+    text-align:center; font-size:13px; color:#ffe9a8; margin-top:6px;
+    background:rgba(255,216,107,0.12); border:1px solid rgba(255,216,107,0.3);
+    border-radius:10px; padding:4px 12px; display:inline-block;
+  }
+  /* Доп. характеристики профиля */
+  .extra-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .extra {
+    display:flex; flex-direction:column; gap:3px; padding:10px 12px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:12px;
+  }
+  .ex-cap { font-size:11px; color:#b0a3d0; }
+  .ex-val { font-size:15px; font-weight:600; color:#f4f0e6; }
+  /* Переключатель категорий рейтинга */
+  .lb-cats { display:flex; gap:6px; margin-top:12px; }
+  .lb-cat {
+    flex:1; text-align:center; font-size:12px; padding:7px 4px; border-radius:10px;
+    background:rgba(255,255,255,0.05); color:#b0a3d0; cursor:pointer; transition:background 0.2s;
+  }
+  .lb-cat.active { background:rgba(255,216,107,0.16); color:#ffe9a8; }
 </style>
 </head>
 <body>
@@ -151,6 +173,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
+  <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
 
@@ -175,6 +198,13 @@
   </div>
 
   <div class="gold-banner">💰 <span id="gold">150</span> галлеонов</div>
+
+  <div class="extra-grid" id="extra-grid">
+    <div class="extra"><span class="ex-cap">🎖️ Лига</span><span class="ex-val" id="ex-league">—</span></div>
+    <div class="extra"><span class="ex-cap">⚔️ Винрейт</span><span class="ex-val" id="ex-winrate">—</span></div>
+    <div class="extra"><span class="ex-cap">🏆 Дуэли</span><span class="ex-val" id="ex-duels">—</span></div>
+    <div class="extra"><span class="ex-cap">🐾 Питомец</span><span class="ex-val" id="ex-pet">нет</span></div>
+  </div>
 </div>
 
 <div class="footer">
@@ -186,6 +216,11 @@
 <div id="screen-rating" class="screen" style="display:none;">
   <div class="card">
     <div class="lb-title">🏆 Рейтинг волшебников</div>
+    <div class="lb-cats">
+      <div class="lb-cat active" id="cat-level" onclick="loadLeaderboard('level')">⭐ Уровень</div>
+      <div class="lb-cat" id="cat-gold" onclick="loadLeaderboard('gold')">💰 Золото</div>
+      <div class="lb-cat" id="cat-pvp" onclick="loadLeaderboard('pvp')">⚔️ Дуэли</div>
+    </div>
     <div class="divider"></div>
     <div id="lb-list">
       <div class="lb-empty">Загрузка...</div>
@@ -296,6 +331,19 @@
     document.getElementById("luck").textContent = data.luck;
     document.getElementById("gold").textContent = data.gold;
     document.getElementById("idchip").textContent = "ID: " + data.id;
+
+    // Титул
+    const tb = document.getElementById("title-badge");
+    if (data.title) { tb.textContent = "« " + data.title + " »"; tb.style.display = "inline-block"; }
+    else { tb.style.display = "none"; }
+
+    // Доп. характеристики
+    document.getElementById("ex-league").textContent  = data.division || "—";
+    document.getElementById("ex-winrate").textContent = data.winrate || "—";
+    document.getElementById("ex-duels").textContent   = (data.pvpWins != null)
+        ? (data.pvpWins + "П / " + data.pvpLosses + "О") : "—";
+    document.getElementById("ex-pet").textContent     = data.pet
+        ? (data.pet.emoji + " " + data.pet.name + " ур." + data.pet.level) : "нет";
     setTimeout(() => {
       document.getElementById("hp-bar").style.width   = (data.hp/data.maxHp*100) + "%";
       document.getElementById("mana-bar").style.width = (data.mana/data.maxMana*100) + "%";
@@ -386,14 +434,20 @@
     }
   }
 
-  async function loadLeaderboard() {
+  async function loadLeaderboard(cat) {
+    cat = cat || "level";
+    // Подсветка активной категории
+    ["level","gold","pvp"].forEach(function(c) {
+      document.getElementById("cat-" + c).classList.toggle("active", c === cat);
+    });
     const box = document.getElementById("lb-list");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
       box.innerHTML = '<div class="lb-empty">Рейтинг недоступен</div>';
       return;
     }
     try {
-      const resp = await fetch(API_URL + "/api/leaderboard");
+      const resp = await fetch(API_URL + "/api/leaderboard?cat=" + cat);
       const data = await resp.json();
       if (!data.top || data.top.length === 0) {
         box.innerHTML = '<div class="lb-empty">Пока нет игроков в рейтинге</div>';
@@ -406,7 +460,7 @@
         return '<div class="lb-row' + isMe + '">' +
                  '<div class="lb-place">' + place + '</div>' +
                  '<div class="lb-name">' + p.house + ' ' + p.name + '</div>' +
-                 '<div class="lb-lvl">ур. ' + p.level + '</div>' +
+                 '<div class="lb-lvl">' + p.metric + '</div>' +
                '</div>';
       }).join("");
     } catch (e) {
