@@ -162,6 +162,28 @@
     background:rgba(255,255,255,0.05); color:#b0a3d0; cursor:pointer; transition:background 0.2s;
   }
   .lb-cat.active { background:rgba(255,216,107,0.16); color:#ffe9a8; }
+
+  /* Кнопки действий */
+  .actions { margin-top:16px; display:flex; flex-direction:column; gap:8px; }
+  .act-btn {
+    text-align:center; padding:12px; border-radius:12px; cursor:pointer;
+    font-size:14px; font-weight:600; color:#ffe9a8;
+    background:rgba(255,216,107,0.12); border:1px solid rgba(255,216,107,0.3);
+    transition:background 0.15s;
+  }
+  .act-btn:active { background:rgba(255,216,107,0.25); }
+  .act-msg { text-align:center; font-size:13px; color:#9be8c0; min-height:16px; margin-top:2px; }
+
+  /* Кубок факультетов */
+  .cup-row {
+    display:flex; align-items:center; gap:14px; padding:14px 14px;
+    border-radius:14px; margin-bottom:9px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .cup-emoji { font-size:30px; }
+  .cup-name { flex:1; font-size:16px; font-weight:600; color:#f4f0e6; }
+  .cup-pts { font-size:18px; font-weight:700; color:#ffd86b; }
+  .cup-row.first { border-color:rgba(255,216,107,0.5); background:rgba(255,216,107,0.10); }
 </style>
 </head>
 <body>
@@ -205,6 +227,13 @@
     <div class="extra"><span class="ex-cap">🏆 Дуэли</span><span class="ex-val" id="ex-duels">—</span></div>
     <div class="extra"><span class="ex-cap">🐾 Питомец</span><span class="ex-val" id="ex-pet">нет</span></div>
   </div>
+
+  <div class="actions">
+    <div class="act-btn" id="act-feed" onclick="feedPet()">🍖 Покормить питомца</div>
+    <div class="act-btn" onclick="openBot('daily')">🎁 Забрать бонус дня</div>
+    <div class="act-btn" onclick="openBot('inventory')">⚡ Снаряжение</div>
+    <div class="act-msg" id="act-msg"></div>
+  </div>
 </div>
 
 <div class="footer">
@@ -238,6 +267,16 @@
   </div>
 </div><!-- /screen-inventory -->
 
+<div id="screen-cup" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏰 Кубок факультетов</div>
+    <div class="divider"></div>
+    <div id="cup-list">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-cup -->
+
 <div class="tabbar">
   <div class="tab active" id="tab-profile" onclick="switchTab('profile')">
     <div class="tab-ico">🧙</div><div class="tab-label">Профиль</div>
@@ -247,6 +286,9 @@
   </div>
   <div class="tab" id="tab-inventory" onclick="switchTab('inventory')">
     <div class="tab-ico">🎒</div><div class="tab-label">Сумка</div>
+  </div>
+  <div class="tab" id="tab-cup" onclick="switchTab('cup')">
+    <div class="tab-ico">🏰</div><div class="tab-label">Кубок</div>
   </div>
 </div>
 
@@ -386,21 +428,73 @@
   // ── Вкладки ────────────────────────────────────────────────────────────
   let ratingLoaded = false;
   let inventoryLoaded = false;
+  let cupLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    document.getElementById("screen-profile").style.display   = (tab === "profile")   ? "block" : "none";
-    document.getElementById("screen-rating").style.display    = (tab === "rating")    ? "block" : "none";
-    document.getElementById("screen-inventory").style.display = (tab === "inventory") ? "block" : "none";
-    document.getElementById("tab-profile").classList.toggle("active",   tab === "profile");
-    document.getElementById("tab-rating").classList.toggle("active",    tab === "rating");
-    document.getElementById("tab-inventory").classList.toggle("active", tab === "inventory");
-    if (tab === "rating" && !ratingLoaded) {
-      ratingLoaded = true;
-      loadLeaderboard();
+    ["profile","rating","inventory","cup"].forEach(function(t) {
+      document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
+      document.getElementById("tab-" + t).classList.toggle("active", t === tab);
+    });
+    if (tab === "rating" && !ratingLoaded) { ratingLoaded = true; loadLeaderboard("level"); }
+    if (tab === "inventory" && !inventoryLoaded) { inventoryLoaded = true; loadInventory(); }
+    if (tab === "cup" && !cupLoaded) { cupLoaded = true; loadHouseCup(); }
+  }
+
+  // Открыть бота (закрыть Mini App) — для действий, которые делаются в боте
+  function openBot(what) {
+    if (tg) {
+      try { tg.close(); } catch (e) {}
     }
-    if (tab === "inventory" && !inventoryLoaded) {
-      inventoryLoaded = true;
-      loadInventory();
+  }
+
+  // Покормить питомца через API
+  async function feedPet() {
+    const msg = document.getElementById("act-msg");
+    msg.style.color = "#9be8c0";
+    msg.textContent = "Кормлю...";
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      msg.textContent = "Недоступно"; return;
+    }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/feedpet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const data = await resp.json();
+      msg.style.color = data.ok ? "#9be8c0" : "#ffb0b0";
+      msg.textContent = data.msg || "";
+      if (data.ok && tg && tg.HapticFeedback) {
+        try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){}
+      }
+    } catch (e) {
+      msg.style.color = "#ffb0b0";
+      msg.textContent = "Ошибка соединения";
+    }
+  }
+
+  async function loadHouseCup() {
+    const box = document.getElementById("cup-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      box.innerHTML = '<div class="lb-empty">Недоступно</div>'; return;
+    }
+    try {
+      const resp = await fetch(API_URL + "/api/housecup");
+      const data = await resp.json();
+      if (!data.houses || data.houses.length === 0) {
+        box.innerHTML = '<div class="lb-empty">Нет данных</div>'; return;
+      }
+      box.innerHTML = data.houses.map(function(h, i) {
+        const first = (i === 0) ? " first" : "";
+        return '<div class="cup-row' + first + '">' +
+                 '<div class="cup-emoji">' + h.emoji + '</div>' +
+                 '<div class="cup-name">' + h.name + '</div>' +
+                 '<div class="cup-pts">' + h.points + '</div>' +
+               '</div>';
+      }).join("");
+    } catch (e) {
+      box.innerHTML = '<div class="lb-empty">Не удалось загрузить</div>';
     }
   }
 
