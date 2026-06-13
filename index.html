@@ -184,6 +184,52 @@
   .cup-name { flex:1; font-size:16px; font-weight:600; color:#f4f0e6; }
   .cup-pts { font-size:18px; font-weight:700; color:#ffd86b; }
   .cup-row.first { border-color:rgba(255,216,107,0.5); background:rgba(255,216,107,0.10); }
+
+  /* Кнопка В бой */
+  .battle-btn { background:linear-gradient(90deg,#ff5c5c33,#ff8a5c33); border-color:rgba(255,140,92,0.5); color:#ffcfa8; font-size:16px; }
+
+  /* Боевой оверлей */
+  .battle-overlay {
+    position:fixed; inset:0; z-index:50;
+    background:linear-gradient(160deg,#1a0820 0%,#2a0f30 50%,#10060f 100%);
+    display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  .battle-box { width:100%; max-width:420px; }
+  .bt-enemy { text-align:center; margin-bottom:10px; }
+  .bt-enemy-emoji { font-size:64px; filter:drop-shadow(0 0 16px rgba(255,80,80,0.4)); transition:transform 0.2s; }
+  .bt-enemy-emoji.hit { animation:shake 0.4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-10px) rotate(-5deg);} 75%{transform:translateX(10px) rotate(5deg);} }
+  .bt-enemy-name { font-size:18px; font-weight:700; color:#ffd0d0; margin:4px 0; }
+  .bt-hp { max-width:240px; margin:0 auto; height:13px; }
+  .bt-hp-txt { font-size:12px; color:#e0b0b0; margin-top:3px; }
+
+  .bt-flash { text-align:center; font-size:22px; font-weight:800; min-height:30px; color:#ffd86b; margin:6px 0; }
+  .bt-flash.show { animation:pop 0.5s; }
+  @keyframes pop { 0%{transform:scale(0.3);opacity:0;} 50%{transform:scale(1.2);opacity:1;} 100%{transform:scale(1);} }
+
+  .bt-log {
+    background:rgba(0,0,0,0.35); border-radius:12px; padding:10px 12px;
+    font-size:13px; color:#d8cdf0; min-height:70px; margin-bottom:12px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .bt-log div { margin-bottom:3px; }
+
+  .bt-player-bars { margin-bottom:12px; }
+
+  .bt-spells { display:flex; flex-direction:column; gap:7px; }
+  .bt-spell {
+    padding:11px; border-radius:11px; text-align:center; cursor:pointer;
+    background:rgba(92,157,255,0.14); border:1px solid rgba(92,157,255,0.3);
+    color:#cfe0ff; font-size:14px; font-weight:600;
+  }
+  .bt-spell:active { background:rgba(92,157,255,0.3); }
+  .bt-spell.disabled { opacity:0.4; pointer-events:none; }
+
+  .bt-result { text-align:center; font-size:22px; font-weight:800; padding:16px; }
+  .bt-flee {
+    text-align:center; padding:11px; margin-top:10px; border-radius:11px;
+    background:rgba(255,255,255,0.06); color:#b0a3d0; cursor:pointer; font-size:14px;
+  }
 </style>
 </head>
 <body>
@@ -229,6 +275,7 @@
   </div>
 
   <div class="actions">
+    <div class="act-btn battle-btn" onclick="openBattle()">⚔️ В БОЙ!</div>
     <div class="act-btn" id="act-feed" onclick="doAction('feedpet', this)">🍖 Покормить питомца</div>
     <div class="act-btn" id="act-daily" onclick="doAction('claimdaily', this)">🎁 Забрать бонус дня</div>
     <div class="act-btn" id="act-equip" onclick="doAction('equipbest', this)">⚡ Надеть лучшее снаряжение</div>
@@ -276,6 +323,32 @@
     </div>
   </div>
 </div><!-- /screen-cup -->
+
+<div id="battle-overlay" class="battle-overlay" style="display:none;">
+  <div class="battle-box">
+    <div class="bt-enemy">
+      <div class="bt-enemy-emoji" id="bt-enemy-emoji">👹</div>
+      <div class="bt-enemy-name" id="bt-enemy-name">Монстр</div>
+      <div class="bar-track bt-hp"><div class="bar-fill" id="bt-enemy-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+      <div class="bt-hp-txt" id="bt-enemy-hp-txt">100/100</div>
+    </div>
+
+    <div class="bt-flash" id="bt-flash"></div>
+
+    <div class="bt-log" id="bt-log"></div>
+
+    <div class="bt-player-bars">
+      <div class="bar-label"><span>❤️ Здоровье</span><span id="bt-player-hp-txt">100/100</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bt-player-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+      <div class="bar-label" style="margin-top:6px;"><span>💧 Мана</span><span id="bt-player-mana-txt">50/50</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bt-player-mana" style="background:linear-gradient(90deg,#5c9dff,#5cd8ff)"></div></div>
+    </div>
+
+    <div class="bt-spells" id="bt-spells"></div>
+    <div class="bt-result" id="bt-result" style="display:none;"></div>
+    <div class="bt-flee" id="bt-flee" onclick="fleeBattle()">🏃 Сбежать</div>
+  </div>
+</div>
 
 <div class="tabbar">
   <div class="tab active" id="tab-profile" onclick="switchTab('profile')">
@@ -564,6 +637,103 @@
     } catch (e) {
       box.innerHTML = '<div class="lb-empty">Не удалось загрузить рейтинг</div>';
     }
+  }
+
+  // ── PvE-БОЙ ────────────────────────────────────────────────────────────
+  let battleBusy = false;
+
+  async function battleReq(action, spell) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/battle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, spell: spell || "" })
+    });
+    return await resp.json();
+  }
+
+  async function openBattle() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) return;
+    document.getElementById("battle-overlay").style.display = "flex";
+    document.getElementById("bt-result").style.display = "none";
+    document.getElementById("bt-flash").textContent = "";
+    try {
+      const st = await battleReq("start");
+      renderBattle(st, true);
+    } catch (e) {
+      document.getElementById("bt-log").innerHTML = "<div>Не удалось начать бой</div>";
+    }
+  }
+
+  function renderBattle(st, full) {
+    if (!st || !st.active) {
+      document.getElementById("battle-overlay").style.display = "none";
+      loadProfile();
+      return;
+    }
+    const m = st.monster, p = st.player;
+    if (full) {
+      document.getElementById("bt-enemy-emoji").textContent = m.emoji;
+      document.getElementById("bt-enemy-name").textContent  = m.name;
+    }
+    document.getElementById("bt-enemy-hp").style.width = (m.hp/m.maxHp*100) + "%";
+    document.getElementById("bt-enemy-hp-txt").textContent = m.hp + "/" + m.maxHp;
+    document.getElementById("bt-player-hp").style.width = (p.hp/p.maxHp*100) + "%";
+    document.getElementById("bt-player-hp-txt").textContent = p.hp + "/" + p.maxHp;
+    document.getElementById("bt-player-mana").style.width = (p.mana/p.maxMana*100) + "%";
+    document.getElementById("bt-player-mana-txt").textContent = p.mana + "/" + p.maxMana;
+
+    // Лог
+    document.getElementById("bt-log").innerHTML = st.log.map(function(l){ return "<div>" + l + "</div>"; }).join("");
+
+    // Заклинания
+    const sbox = document.getElementById("bt-spells");
+    if (st.over) {
+      sbox.innerHTML = "";
+      const r = document.getElementById("bt-result");
+      r.style.display = "block";
+      if (st.result === "win") {
+        r.style.color = "#9be8c0";
+        r.innerHTML = "🏆 ПОБЕДА!<br><span style='font-size:15px;'>+" +
+                      (st.reward ? st.reward.xp : 0) + " XP, +" +
+                      (st.reward ? st.reward.gold : 0) + " 💰</span>";
+      } else {
+        r.style.color = "#ffb0b0";
+        r.innerHTML = "💀 Поражение";
+      }
+      document.getElementById("bt-flee").textContent = "✖️ Закрыть";
+    } else {
+      sbox.innerHTML = st.spells.map(function(s){
+        const dis = (s.mana > p.mana) ? " disabled" : "";
+        const info = (s.damage ? "⚔️"+s.damage+" " : "") + (s.heal ? "💚"+s.heal+" " : "") + "💧"+s.mana;
+        return '<div class="bt-spell' + dis + '" onclick="castSpell(\'' + s.id + '\')">' +
+               s.element + s.emoji + " " + s.name + " (" + info + ")</div>";
+      }).join("");
+    }
+  }
+
+  async function castSpell(spellId) {
+    if (battleBusy) return;
+    battleBusy = true;
+    const enemyEmoji = document.getElementById("bt-enemy-emoji");
+    const flash = document.getElementById("bt-flash");
+    try {
+      const st = await battleReq("cast", spellId);
+      // Анимация удара
+      flash.textContent = "✨💥";
+      flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show");
+      enemyEmoji.classList.remove("hit"); void enemyEmoji.offsetWidth; enemyEmoji.classList.add("hit");
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("medium"); } catch(e){} }
+      setTimeout(function(){ flash.textContent = ""; renderBattle(st, false); battleBusy = false; }, 450);
+    } catch (e) {
+      battleBusy = false;
+    }
+  }
+
+  async function fleeBattle() {
+    try { await battleReq("flee"); } catch (e) {}
+    document.getElementById("battle-overlay").style.display = "none";
+    loadProfile();
   }
 
   // Генерация звёзд на фоне
