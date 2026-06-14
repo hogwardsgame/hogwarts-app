@@ -291,6 +291,12 @@
     padding:8px 12px; border-radius:10px; cursor:pointer; font-size:13px;
     background:rgba(255,90,90,0.16); border:1px solid rgba(255,90,90,0.35); color:#ffb0b0;
   }
+  .live-turn {
+    text-align:center; font-size:15px; font-weight:700; padding:8px; margin-bottom:8px;
+    border-radius:10px;
+  }
+  .live-turn.you { color:#9be8c0; background:rgba(107,232,155,0.12); }
+  .live-turn.wait { color:#ffcf8a; background:rgba(255,200,100,0.1); }
 
   /* Боевой оверлей */
   .battle-overlay {
@@ -750,6 +756,33 @@
       <div class="bt-result" id="pvp-result" style="display:none;"></div>
       <div class="bt-flee" id="pvp-close" onclick="closePvP()" style="display:none;">✖️ Закрыть</div>
     </div>
+  </div>
+</div>
+
+<div id="live-overlay" class="battle-overlay" style="display:none;">
+  <div class="battle-box">
+    <div class="pvp-fighters">
+      <div class="pvp-side">
+        <div class="pvp-crest" id="live-you-crest">🧙</div>
+        <div class="pvp-name" id="live-you-name">Ты</div>
+        <div class="bar-track"><div class="bar-fill" id="live-you-hp" style="background:linear-gradient(90deg,#5cd87a,#8ae85c)"></div></div>
+        <div class="pvp-hp-txt" id="live-you-hp-txt"></div>
+        <div class="bar-track" style="margin-top:4px;"><div class="bar-fill" id="live-you-mana" style="background:linear-gradient(90deg,#5c9dff,#5cd8ff)"></div></div>
+      </div>
+      <div class="pvp-vs">⚔️</div>
+      <div class="pvp-side">
+        <div class="pvp-crest" id="live-foe-crest">🧙</div>
+        <div class="pvp-name" id="live-foe-name">Соперник</div>
+        <div class="bar-track"><div class="bar-fill" id="live-foe-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+        <div class="pvp-hp-txt" id="live-foe-hp-txt"></div>
+      </div>
+    </div>
+    <div class="live-turn" id="live-turn">—</div>
+    <div class="bt-flash" id="live-bt-flash"></div>
+    <div class="bt-log" id="live-bt-log"></div>
+    <div class="bt-spells" id="live-spells"></div>
+    <div class="bt-result" id="live-bt-result" style="display:none;"></div>
+    <div class="bt-flee" id="live-flee" onclick="liveFlee()">🏳️ Сдаться</div>
   </div>
 </div>
 
@@ -1767,8 +1800,8 @@
         if (d.status === "accepted") {
           clearInterval(acceptPoll); acceptPoll = null;
           document.getElementById("live-msg").style.color = "#9be8c0";
-          document.getElementById("live-msg").textContent = "✅ Соперник принял! Бой скоро (Шаг 3).";
-          // На Шаге 2-3 здесь будет запуск живого боя
+          document.getElementById("live-msg").textContent = "✅ Соперник принял! Бой начинается...";
+          if (d.roomId) startLiveBattle(d.roomId);
         } else if (d.status === "declined") {
           clearInterval(acceptPoll); acceptPoll = null;
           document.getElementById("live-msg").style.color = "#ffb0b0";
@@ -1814,7 +1847,134 @@
       msg.style.color = d.accepted ? "#9be8c0" : "#b0a3d0";
       msg.textContent = d.msg || "";
       loadIncoming();
+      if (d.accepted && d.roomId) startLiveBattle(d.roomId);
     } catch (e) {}
+  }
+
+  // ── Живой бой: Шаг 2-3 (опрос + ходы) ──────────────────────────────────
+  let liveRoomId = null;
+  let livePoll = null;
+  let liveOver = false;
+
+  function startLiveBattle(roomId) {
+    liveRoomId = roomId;
+    liveOver = false;
+    stopIncomingPoll();
+    document.getElementById("pvp-overlay").style.display = "none";
+    document.getElementById("live-overlay").style.display = "flex";
+    document.getElementById("live-bt-result").style.display = "none";
+    document.getElementById("live-flee").style.display = "block";
+    document.getElementById("live-bt-log").innerHTML = '<div>Загрузка боя...</div>';
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); } catch(e){} }
+    pollLiveState();
+    livePoll = setInterval(pollLiveState, 1500);
+  }
+
+  async function liveStateReq(action, spell) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/liveduel", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, roomId: liveRoomId, spell: spell || "" })
+    });
+    return await resp.json();
+  }
+
+  async function pollLiveState() {
+    if (!liveRoomId || liveOver) return;
+    try {
+      const st = await liveStateReq("battle_state");
+      renderLiveBattle(st);
+    } catch (e) {}
+  }
+
+  let liveLastLogLen = 0;
+  function renderLiveBattle(st) {
+    if (!st || !st.active) {
+      if (st && st.error === "no_room") {
+        document.getElementById("live-bt-log").innerHTML = '<div>Бой не найден или завершён</div>';
+      }
+      return;
+    }
+    document.getElementById("live-you-crest").textContent = st.me.house || "🧙";
+    document.getElementById("live-you-name").textContent = st.me.name;
+    document.getElementById("live-foe-crest").textContent = st.foe.house || "🧙";
+    document.getElementById("live-foe-name").textContent = st.foe.name;
+    document.getElementById("live-you-hp").style.width = (st.me.hp/st.me.maxHp*100) + "%";
+    document.getElementById("live-you-hp-txt").textContent = st.me.hp + "/" + st.me.maxHp;
+    document.getElementById("live-you-mana").style.width = (st.me.mana/st.me.maxMana*100) + "%";
+    document.getElementById("live-foe-hp").style.width = (st.foe.hp/st.foe.maxHp*100) + "%";
+    document.getElementById("live-foe-hp-txt").textContent = st.foe.hp + "/" + st.foe.maxHp;
+
+    document.getElementById("live-bt-log").innerHTML = (st.log||[]).map(function(l){ return "<div>"+l+"</div>"; }).join("");
+
+    // Анимация удара по сопернику при новом событии в логе
+    if (st.lastTurn && st.log && st.log.length !== liveLastLogLen) {
+      liveLastLogLen = st.log.length;
+      const youId = st.me.name;
+      const targetCrest = (st.lastTurn.by && st.yourTurn === false) ? document.getElementById("live-foe-crest") : null;
+      const flash = document.getElementById("live-bt-flash");
+      if (st.lastTurn.crit) { flash.textContent = "💥 КРИТ!"; flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show"); }
+      else flash.textContent = "";
+      if (tg && tg.HapticFeedback && st.lastTurn.dmg > 0) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+    }
+
+    const turnEl = document.getElementById("live-turn");
+    const spellsBox = document.getElementById("live-spells");
+    if (st.over) {
+      liveOver = true;
+      if (livePoll) { clearInterval(livePoll); livePoll = null; }
+      turnEl.textContent = ""; turnEl.className = "live-turn";
+      spellsBox.innerHTML = "";
+      const r = document.getElementById("live-bt-result");
+      r.style.display = "block";
+      if (st.youWon) { r.style.color = "#9be8c0"; r.innerHTML = "🏆 ПОБЕДА!<br><span style='font-size:14px;'>+90 XP, +60 💰</span>"; }
+      else { r.style.color = "#ffb0b0"; r.innerHTML = "💀 Поражение"; }
+      document.getElementById("live-flee").textContent = "✖️ Закрыть";
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(st.youWon ? "success" : "error"); } catch(e){} }
+      return;
+    }
+
+    if (st.yourTurn) {
+      turnEl.textContent = "🟢 Твой ход! (" + st.timeLeft + "с)";
+      turnEl.className = "live-turn you";
+      spellsBox.innerHTML = st.spells.map(function(s){
+        const dis = (s.mana > st.me.mana) ? " disabled" : "";
+        const info = (s.damage ? "⚔️"+s.damage+" " : "") + (s.heal ? "💚"+s.heal+" " : "") + "💧"+s.mana;
+        return '<div class="bt-spell'+dis+'" onclick="liveCast(\''+s.id+'\')">'+s.element+s.emoji+" "+s.name+" ("+info+")</div>";
+      }).join("");
+    } else {
+      turnEl.textContent = "⏳ Ход соперника... (" + st.timeLeft + "с)";
+      turnEl.className = "live-turn wait";
+      spellsBox.innerHTML = '<div class="lb-empty">Ждём ход соперника...</div>';
+    }
+  }
+
+  let liveCastBusy = false;
+  async function liveCast(spellId) {
+    if (liveCastBusy || liveOver) return;
+    liveCastBusy = true;
+    document.querySelectorAll("#live-spells .bt-spell").forEach(function(b){ b.classList.add("disabled"); });
+    try {
+      const st = await liveStateReq("battle_cast", spellId);
+      renderLiveBattle(st);
+    } catch (e) {} finally { liveCastBusy = false; }
+  }
+
+  async function liveFlee() {
+    if (liveOver) {
+      // кнопка стала "Закрыть"
+      document.getElementById("live-overlay").style.display = "none";
+      if (livePoll) { clearInterval(livePoll); livePoll = null; }
+      liveRoomId = null;
+      loadProfile();
+      return;
+    }
+    try { await liveStateReq("battle_flee"); } catch (e) {}
+    if (livePoll) { clearInterval(livePoll); livePoll = null; }
+    liveOver = true;
+    document.getElementById("live-overlay").style.display = "none";
+    liveRoomId = null;
+    loadProfile();
   }
 
   function closePvP() {
