@@ -379,6 +379,22 @@
   /* Победа/поражение — появление */
   .bt-result { animation:resultPop 0.5s cubic-bezier(0.2,0.9,0.3,1); }
   @keyframes resultPop { 0%{opacity:0; transform:scale(0.5);} 60%{transform:scale(1.1);} 100%{opacity:1; transform:scale(1);} }
+
+  /* Выбор зоны */
+  .zone-card {
+    display:flex; align-items:center; gap:12px; padding:13px;
+    border-radius:13px; margin-bottom:8px; cursor:pointer;
+    background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+    transition:background 0.15s;
+  }
+  .zone-card:active { background:rgba(255,216,107,0.14); }
+  .zone-card.locked { opacity:0.5; pointer-events:none; }
+  .zone-emoji { font-size:30px; }
+  .zone-info { flex:1; }
+  .zone-name { font-size:15px; font-weight:600; color:#f4f0e6; }
+  .zone-sub { font-size:12px; color:#b0a3d0; }
+  .zone-lock { font-size:12px; color:#ff9b9b; }
+  .zone-go { font-size:20px; }
 </style>
 </head>
 <body>
@@ -497,6 +513,12 @@
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
   <div class="battle-box">
+    <div id="bt-zone-select" style="display:none;">
+      <div class="lb-title" style="margin-bottom:4px;">⚔️ Выбери место боя</div>
+      <div id="bt-zone-list"><div class="lb-empty">Загрузка...</div></div>
+      <div class="bt-flee" onclick="closeBattle()">✖️ Отмена</div>
+    </div>
+    <div id="bt-scene">
     <div class="bt-enemy">
       <div class="bt-enemy-emoji" id="bt-enemy-emoji">👹</div>
       <div class="bt-enemy-name" id="bt-enemy-name">Монстр</div>
@@ -518,6 +540,7 @@
     <div class="bt-spells" id="bt-spells"></div>
     <div class="bt-result" id="bt-result" style="display:none;"></div>
     <div class="bt-flee" id="bt-flee" onclick="fleeBattle()">🏃 Сбежать</div>
+    </div><!-- /bt-scene -->
   </div>
 </div>
 
@@ -1004,14 +1027,55 @@
   async function openBattle() {
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) return;
     document.getElementById("battle-overlay").style.display = "flex";
+    document.getElementById("bt-zone-select").style.display = "block";
+    document.getElementById("bt-scene").style.display = "none";
+    loadZones();
+  }
+
+  async function loadZones() {
+    const box = document.getElementById("bt-zone-list");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const d = await battleReq("zones");
+      if (!d.zones || !d.zones.length) { box.innerHTML = '<div class="lb-empty">Нет зон</div>'; return; }
+      box.innerHTML = d.zones.map(function(z){
+        if (z.locked) {
+          return '<div class="zone-card locked">' +
+                   '<span class="zone-emoji">' + z.emoji + '</span>' +
+                   '<div class="zone-info"><div class="zone-name">' + z.name + '</div>' +
+                   '<div class="zone-lock">🔒 С ' + z.minLevel + ' уровня</div></div></div>';
+        }
+        return '<div class="zone-card" onclick="startInZone(\'' + z.id + '\')">' +
+                 '<span class="zone-emoji">' + z.emoji + '</span>' +
+                 '<div class="zone-info"><div class="zone-name">' + z.name + '</div>' +
+                 '<div class="zone-sub">' + z.monsters + ' видов врагов • ур. ' + z.minLevel + '+</div></div>' +
+                 '<span class="zone-go">⚔️</span></div>';
+      }).join("");
+    } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки зон</div>'; }
+  }
+
+  async function startInZone(zoneId) {
+    document.getElementById("bt-zone-select").style.display = "none";
+    document.getElementById("bt-scene").style.display = "block";
     document.getElementById("bt-result").style.display = "none";
     document.getElementById("bt-flash").textContent = "";
+    document.getElementById("bt-enemy-emoji").classList.remove("dying");
     try {
-      const st = await battleReq("start");
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/battle", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData, action: "start", zone: zoneId })
+      });
+      const st = await resp.json();
       renderBattle(st, true);
     } catch (e) {
       document.getElementById("bt-log").innerHTML = "<div>Не удалось начать бой</div>";
     }
+  }
+
+  function closeBattle() {
+    document.getElementById("battle-overlay").style.display = "none";
+    loadProfile();
   }
 
   function renderBattle(st, full) {
