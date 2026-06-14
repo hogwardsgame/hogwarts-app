@@ -232,18 +232,19 @@
   .pvp-btn { background:linear-gradient(90deg,#9b5fd833,#5c9dff33); border-color:rgba(140,120,255,0.5); color:#cfc0ff; font-size:16px; }
 
   /* PvP арена */
-  .pvp-fighters { display:flex; align-items:flex-start; gap:8px; margin-bottom:14px; }
+  .pvp-fighters { display:flex; align-items:flex-start; gap:8px; margin:8px 0 14px; }
   .pvp-side { flex:1; text-align:center; }
-  .pvp-vs { font-size:26px; padding-top:30px; }
+  .pvp-vs { font-size:24px; padding-top:24px; opacity:0.8; }
   .pvp-crest {
-    width:70px; height:70px; margin:0 auto 6px; border-radius:50%; font-size:36px;
+    width:78px; height:78px; margin:0 auto 8px; border-radius:50%; font-size:42px;
     display:flex; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 30% 30%, #ffffff22, #ffffff08);
-    border:2px solid rgba(255,255,255,0.2);
+    background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.18), rgba(255,255,255,0.04));
+    border:2px solid rgba(255,216,107,0.45); box-shadow:0 0 18px rgba(255,216,107,0.18);
   }
   .pvp-crest.hit { animation:hitReact 0.4s; }
-  .pvp-name { font-size:14px; font-weight:600; color:#f4f0e6; margin-bottom:6px; }
-  .pvp-hp-txt { font-size:11px; color:#b0a3d0; margin-top:3px; }
+  .pvp-name { font-size:15px; font-weight:700; color:#f4f0e6; margin-bottom:8px; line-height:1.25; }
+  .pvp-house { font-size:11px; font-weight:500; color:#c9b8e8; margin-top:1px; }
+  .pvp-hp-txt { font-size:12px; color:#e0d0d0; margin-top:4px; }
   .pvp-fighters .bar-fill { transition:width 0.45s cubic-bezier(0.3,0.7,0.3,1); }
 
   /* Живой бой UI */
@@ -777,6 +778,7 @@
         <div class="pvp-name" id="live-foe-name">Соперник</div>
         <div class="bar-track"><div class="bar-fill" id="live-foe-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
         <div class="pvp-hp-txt" id="live-foe-hp-txt"></div>
+        <div class="bar-track" style="margin-top:4px;"><div class="bar-fill" id="live-foe-mana" style="background:linear-gradient(90deg,#5c9dff,#5cd8ff)"></div></div>
       </div>
     </div>
     <div class="live-turn" id="live-turn">—</div>
@@ -1898,14 +1900,18 @@
       return;
     }
     document.getElementById("live-you-crest").textContent = st.me.house || "🧙";
-    document.getElementById("live-you-name").textContent = st.me.name;
+    document.getElementById("live-you-name").innerHTML = st.me.name +
+      (st.me.houseName ? '<div class="pvp-house">' + st.me.houseName + '</div>' : '');
     document.getElementById("live-foe-crest").textContent = st.foe.house || "🧙";
-    document.getElementById("live-foe-name").textContent = st.foe.name;
+    document.getElementById("live-foe-name").innerHTML = st.foe.name +
+      (st.foe.houseName ? '<div class="pvp-house">' + st.foe.houseName + '</div>' : '');
     document.getElementById("live-you-hp").style.width = (st.me.hp/st.me.maxHp*100) + "%";
-    document.getElementById("live-you-hp-txt").textContent = st.me.hp + "/" + st.me.maxHp;
+    document.getElementById("live-you-hp-txt").textContent = "❤️ " + st.me.hp + "/" + st.me.maxHp;
     document.getElementById("live-you-mana").style.width = (st.me.mana/st.me.maxMana*100) + "%";
     document.getElementById("live-foe-hp").style.width = (st.foe.hp/st.foe.maxHp*100) + "%";
-    document.getElementById("live-foe-hp-txt").textContent = st.foe.hp + "/" + st.foe.maxHp;
+    document.getElementById("live-foe-hp-txt").textContent = "❤️ " + st.foe.hp + "/" + st.foe.maxHp;
+    var foeManaEl = document.getElementById("live-foe-mana");
+    if (foeManaEl) foeManaEl.style.width = (st.foe.mana/st.foe.maxMana*100) + "%";
 
     document.getElementById("live-bt-log").innerHTML = (st.log||[]).map(function(l){ return "<div>"+l+"</div>"; }).join("");
 
