@@ -395,6 +395,45 @@
   .zone-sub { font-size:12px; color:#b0a3d0; }
   .zone-lock { font-size:12px; color:#ff9b9b; }
   .zone-go { font-size:20px; }
+  .zone-card-wrap { margin-bottom:8px; }
+  .zone-card-wrap .zone-card { margin-bottom:0; }
+  .zone-boss {
+    margin-top:3px; text-align:center; padding:9px; border-radius:0 0 12px 12px;
+    font-size:12px; font-weight:600; cursor:pointer; color:#ffcf8a;
+    background:rgba(255,90,90,0.14); border:1px solid rgba(255,120,90,0.35); border-top:none;
+  }
+  .zone-boss:active { background:rgba(255,90,90,0.28); }
+
+  /* Магазин */
+  .shop-gold { text-align:center; font-size:16px; font-weight:700; color:#ffe9a8; margin-top:6px; }
+  .shop-row {
+    display:flex; align-items:center; gap:11px; padding:11px 12px; margin-bottom:8px;
+    border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .shop-emoji { font-size:24px; }
+  .shop-info { flex:1; }
+  .shop-name { font-size:14px; color:#f4f0e6; }
+  .shop-stock { font-size:11px; color:#b0a3d0; }
+  .shop-buy {
+    padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+    background:rgba(255,216,107,0.16); border:1px solid rgba(255,216,107,0.35); color:#ffe9a8;
+  }
+  .shop-buy.cant { opacity:0.4; pointer-events:none; }
+
+  /* Достижения */
+  .ach-row {
+    display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px;
+    border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .ach-row.done { border-color:rgba(107,232,155,0.45); background:rgba(107,232,155,0.08); }
+  .ach-emoji { font-size:26px; }
+  .ach-info { flex:1; }
+  .ach-name { font-size:14px; font-weight:600; color:#f4f0e6; }
+  .ach-desc { font-size:12px; color:#b0a3d0; margin:2px 0 5px; }
+  .ach-bar-track { height:7px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; }
+  .ach-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#ffd86b,#ffb347); }
+  .ach-prog { font-size:11px; color:#9d8fc0; margin-top:3px; }
+  .ach-check { font-size:22px; }
 </style>
 </head>
 <body>
@@ -509,6 +548,24 @@
   </div>
 </div><!-- /screen-potions -->
 
+<div id="screen-shop" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏪 Магазин</div>
+    <div class="shop-gold" id="shop-gold">💰 —</div>
+    <div class="divider"></div>
+    <div id="shop-list"><div class="lb-empty">Загрузка...</div></div>
+    <div class="pet-msg" id="shop-msg"></div>
+  </div>
+</div><!-- /screen-shop -->
+
+<div id="screen-ach" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏅 Достижения</div>
+    <div class="divider"></div>
+    <div id="ach-list"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-ach -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -562,6 +619,12 @@
   </div>
   <div class="tab" id="tab-potions" onclick="switchTab('potions')">
     <div class="tab-ico">⚗️</div><div class="tab-label">Зелья</div>
+  </div>
+  <div class="tab" id="tab-shop" onclick="switchTab('shop')">
+    <div class="tab-ico">🏪</div><div class="tab-label">Магазин</div>
+  </div>
+  <div class="tab" id="tab-ach" onclick="switchTab('ach')">
+    <div class="tab-ico">🏅</div><div class="tab-label">Награды</div>
   </div>
 </div>
 
@@ -708,9 +771,11 @@
   let cupLoaded = false;
   let petLoaded = false;
   let potionsLoaded = false;
+  let shopLoaded = false;
+  let achLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -719,6 +784,78 @@
     if (tab === "cup" && !cupLoaded) { cupLoaded = true; loadHouseCup(); }
     if (tab === "pet" && !petLoaded) { petLoaded = true; loadPet(); }
     if (tab === "potions" && !potionsLoaded) { potionsLoaded = true; loadPotions(); }
+    if (tab === "shop" && !shopLoaded) { shopLoaded = true; loadShop(); }
+    if (tab === "ach" && !achLoaded) { achLoaded = true; loadAchievements(); }
+  }
+
+  // ── Магазин ────────────────────────────────────────────────────────────
+  let shopBusy = false;
+  async function shopReq(action, rowId) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/shop", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, rowId: rowId || 0 })
+    });
+    return await resp.json();
+  }
+  function renderShop(d) {
+    document.getElementById("shop-gold").textContent = "💰 " + (d.gold != null ? d.gold : "—") + " галлеонов";
+    const box = document.getElementById("shop-list");
+    if (!d.items || !d.items.length) { box.innerHTML = '<div class="lb-empty">Магазин пуст</div>'; return; }
+    box.innerHTML = d.items.map(function(it){
+      const stock = (it.stock < 0) ? "∞" : it.stock;
+      const btn = (it.afford && it.stock !== 0)
+        ? '<div class="shop-buy" onclick="buyItem(' + it.rowId + ')">' + it.price + ' 💰</div>'
+        : '<div class="shop-buy cant">' + it.price + ' 💰</div>';
+      return '<div class="shop-row"><span class="shop-emoji">' + it.emoji + '</span>' +
+             '<div class="shop-info"><div class="shop-name">' + it.rarity + ' ' + it.name + '</div>' +
+             '<div class="shop-stock">В наличии: ' + stock + '</div></div>' + btn + '</div>';
+    }).join("");
+  }
+  async function loadShop() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("shop-list").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderShop(await shopReq("list")); }
+    catch (e) { document.getElementById("shop-list").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function buyItem(rowId) {
+    if (shopBusy) return; shopBusy = true;
+    const msg = document.getElementById("shop-msg");
+    msg.style.color = "#c9b8e8"; msg.textContent = "⏳...";
+    try {
+      const d = await shopReq("buy", rowId);
+      renderShop(d);
+      msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { shopBusy = false; }
+  }
+
+  // ── Достижения ─────────────────────────────────────────────────────────
+  async function loadAchievements() {
+    const box = document.getElementById("ach-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/achievements", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const d = await resp.json();
+      if (!d.achievements || !d.achievements.length) { box.innerHTML='<div class="lb-empty">Нет данных</div>'; return; }
+      box.innerHTML = d.achievements.map(function(a){
+        const pct = Math.min(100, a.cur / a.goal * 100);
+        const tierTxt = a.maxTier > 1 ? (" • " + a.tier + "/" + a.maxTier + " ⭐") : "";
+        return '<div class="ach-row' + (a.done ? ' done' : '') + '">' +
+                 '<span class="ach-emoji">' + a.emoji + '</span>' +
+                 '<div class="ach-info"><div class="ach-name">' + a.name + tierTxt + '</div>' +
+                 '<div class="ach-desc">' + a.desc + '</div>' +
+                 (a.done ? '' :
+                   '<div class="ach-bar-track"><div class="ach-bar-fill" style="width:' + pct + '%"></div></div>' +
+                   '<div class="ach-prog">' + a.cur + ' / ' + a.goal + '</div>') +
+                 '</div>' +
+                 (a.done ? '<span class="ach-check">✅</span>' : '') +
+               '</div>';
+      }).join("");
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
   }
 
   // ── Зелья ──────────────────────────────────────────────────────────────
@@ -1045,11 +1182,15 @@
                    '<div class="zone-info"><div class="zone-name">' + z.name + '</div>' +
                    '<div class="zone-lock">🔒 С ' + z.minLevel + ' уровня</div></div></div>';
         }
-        return '<div class="zone-card" onclick="startInZone(\'' + z.id + '\')">' +
-                 '<span class="zone-emoji">' + z.emoji + '</span>' +
-                 '<div class="zone-info"><div class="zone-name">' + z.name + '</div>' +
-                 '<div class="zone-sub">' + z.monsters + ' видов врагов • ур. ' + z.minLevel + '+</div></div>' +
-                 '<span class="zone-go">⚔️</span></div>';
+        return '<div class="zone-card-wrap">' +
+                 '<div class="zone-card" onclick="startInZone(\'' + z.id + '\')">' +
+                   '<span class="zone-emoji">' + z.emoji + '</span>' +
+                   '<div class="zone-info"><div class="zone-name">' + z.name + '</div>' +
+                   '<div class="zone-sub">' + z.monsters + ' видов врагов • ур. ' + z.minLevel + '+</div></div>' +
+                   '<span class="zone-go">⚔️</span></div>' +
+                 (z.boss ? '<div class="zone-boss" onclick="startBoss(\'' + z.id + '\')">' +
+                   (z.bossEmoji || '👑') + ' БОСС: ' + z.boss + ' (×2.5 награда)</div>' : '') +
+               '</div>';
       }).join("");
     } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки зон</div>'; }
   }
@@ -1073,6 +1214,30 @@
     }
   }
 
+  async function startBoss(zoneId) {
+    document.getElementById("bt-zone-select").style.display = "none";
+    document.getElementById("bt-scene").style.display = "block";
+    document.getElementById("bt-result").style.display = "none";
+    document.getElementById("bt-flash").textContent = "";
+    document.getElementById("bt-enemy-emoji").classList.remove("dying");
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/battle", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData, action: "start", zone: zoneId, boss: true })
+      });
+      const st = await resp.json();
+      if (st.error === "zone_locked") {
+        document.getElementById("bt-zone-select").style.display = "block";
+        document.getElementById("bt-scene").style.display = "none";
+        return;
+      }
+      renderBattle(st, true);
+    } catch (e) {
+      document.getElementById("bt-log").innerHTML = "<div>Не удалось начать бой с боссом</div>";
+    }
+  }
+
   function closeBattle() {
     document.getElementById("battle-overlay").style.display = "none";
     loadProfile();
@@ -1087,7 +1252,7 @@
     const m = st.monster, p = st.player;
     if (full) {
       document.getElementById("bt-enemy-emoji").textContent = m.emoji;
-      document.getElementById("bt-enemy-name").textContent  = m.name;
+      document.getElementById("bt-enemy-name").textContent  = (st.isBoss ? "👑 " : "") + m.name + (st.isBoss ? " 👑" : "");
     }
     document.getElementById("bt-enemy-hp").style.width = (m.hp/m.maxHp*100) + "%";
     document.getElementById("bt-enemy-hp-txt").textContent = m.hp + "/" + m.maxHp;
