@@ -659,6 +659,34 @@
   .ev-desc { font-size:13px; color:#c9b8e8; }
   .ev-time { font-size:13px; color:#ff9b5c; margin-top:6px; }
   .ev-hint { font-size:12px; color:#b0a3d0; text-align:center; margin:12px 0; padding:10px; border-radius:10px; background:rgba(255,255,255,0.04); }
+
+  /* Отряд / Перевод / Палочка / Банк — общие */
+  .big-num { text-align:center; font-size:24px; font-weight:800; color:#ffe9a8; margin:8px 0; }
+  .input-row { display:flex; gap:8px; margin:10px 0; }
+  .gold-input {
+    flex:1; padding:12px; border-radius:10px; font-size:15px;
+    background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.15); color:#fff; outline:none;
+  }
+  .action-btn {
+    text-align:center; padding:13px; border-radius:12px; cursor:pointer; font-weight:700; font-size:15px;
+    background:rgba(255,216,107,0.16); border:1px solid rgba(255,216,107,0.4); color:#ffe9a8;
+  }
+  .action-btn.disabled { opacity:0.45; pointer-events:none; }
+  .action-btn.purple { background:rgba(140,120,255,0.16); border-color:rgba(140,120,255,0.4); color:#e0d8ff; }
+  .action-btn.green { background:rgba(107,232,155,0.16); border-color:rgba(107,232,155,0.4); color:#9be8c0; }
+  .action-btn.red { background:rgba(255,90,90,0.14); border-color:rgba(255,90,90,0.35); color:#ffb0b0; }
+  .bank-card {
+    text-align:center; padding:16px; border-radius:14px; margin-bottom:14px;
+    background:linear-gradient(160deg, rgba(255,216,107,0.12), rgba(255,216,107,0.04));
+    border:1px solid rgba(255,216,107,0.3);
+  }
+  .core-card {
+    display:flex; align-items:center; gap:10px; padding:12px; margin-bottom:8px; border-radius:11px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .core-card.has { border-color:rgba(140,120,255,0.4); cursor:pointer; }
+  .core-card.has:active { background:rgba(140,120,255,0.14); }
+  .core-card.no { opacity:0.4; }
 </style>
 </head>
 <body>
@@ -868,6 +896,38 @@
   </div>
 </div><!-- /screen-events -->
 
+<div id="screen-squad" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🛡️ Отряд</div>
+    <div class="divider"></div>
+    <div id="squad-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-squad -->
+
+<div id="screen-trade" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">💸 Перевод золота</div>
+    <div class="divider"></div>
+    <div id="trade-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-trade -->
+
+<div id="screen-wandcraft" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🪄 Создание палочки</div>
+    <div class="divider"></div>
+    <div id="wand-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-wandcraft -->
+
+<div id="screen-bank" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏦 Банк Гринготтс</div>
+    <div class="divider"></div>
+    <div id="bank-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-bank -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -1027,6 +1087,18 @@
   </div>
   <div class="tab" id="tab-events" onclick="switchTab('events')">
     <div class="tab-ico">🎉</div><div class="tab-label">События</div>
+  </div>
+  <div class="tab" id="tab-squad" onclick="switchTab('squad')">
+    <div class="tab-ico">🛡️</div><div class="tab-label">Отряд</div>
+  </div>
+  <div class="tab" id="tab-trade" onclick="switchTab('trade')">
+    <div class="tab-ico">💸</div><div class="tab-label">Перевод</div>
+  </div>
+  <div class="tab" id="tab-wandcraft" onclick="switchTab('wandcraft')">
+    <div class="tab-ico">🪄</div><div class="tab-label">Палочка</div>
+  </div>
+  <div class="tab" id="tab-bank" onclick="switchTab('bank')">
+    <div class="tab-ico">🏦</div><div class="tab-label">Банк</div>
   </div>
 </div>
 
@@ -1226,9 +1298,13 @@
   let tourLoaded = false;
   let tbLoaded = false;
   let eventsLoaded = false;
+  let squadLoaded = false;
+  let tradeLoaded = false;
+  let wandLoaded = false;
+  let bankLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -1246,6 +1322,175 @@
     if (tab === "tournament" && !tourLoaded) { tourLoaded = true; loadTournament(); }
     if (tab === "teambattle" && !tbLoaded) { tbLoaded = true; loadTeamBattle(); }
     if (tab === "events" && !eventsLoaded) { eventsLoaded = true; loadEvents(); }
+    if (tab === "squad" && !squadLoaded) { squadLoaded = true; loadSquad(); }
+    if (tab === "trade" && !tradeLoaded) { tradeLoaded = true; loadTrade(); }
+    if (tab === "wandcraft" && !wandLoaded) { wandLoaded = true; loadWandcraft(); }
+    if (tab === "bank" && !bankLoaded) { bankLoaded = true; loadBank(); }
+  }
+
+  // ── Отряд ──────────────────────────────────────────────────────────────
+  let squadBusy = false;
+  async function squadReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/squad", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    return await resp.json();
+  }
+  function renderSquad(d) {
+    const box = document.getElementById("squad-content");
+    if (d.inSquad) {
+      let html = '<div class="bank-card"><div class="tb-squad-name" style="color:#ffe9a8;">🛡️ '+d.squadName+'</div>' +
+                 '<div class="tb-power" style="color:#c9b8e8;">'+d.memberCount+'/'+d.maxMembers+' бойцов'+(d.isLeader?' • Ты командир':'')+'</div></div>';
+      html += '<div class="sec-title">Состав</div>';
+      html += d.roster.map(function(m){
+        return '<div class="tb-member"><span style="font-size:16px;">'+m.house+'</span>'+(m.isLeader?'👑 ':'')+m.name+' • ур.'+m.level+'</div>';
+      }).join("");
+      if (d.isLeader) html += '<div class="action-btn red" onclick="squadAction(\'disband\')" style="margin-top:12px;">💥 Распустить отряд</div>';
+      else html += '<div class="action-btn red" onclick="squadAction(\'leave\')" style="margin-top:12px;">🚪 Покинуть отряд</div>';
+      html += '<div class="pet-msg" id="squad-msg"></div>';
+      box.innerHTML = html;
+    } else {
+      let html = '<div class="ev-hint">Отряд нужен для командных боёв 3×3. Создай свой или вступи в существующий.</div>';
+      html += '<div class="input-row"><input id="squad-name-input" class="gold-input" placeholder="Название отряда" maxlength="24"></div>';
+      html += '<div class="action-btn purple" onclick="createSquad()">⚔️ Создать отряд ('+d.createCost+' 💰)</div>';
+      html += '<div class="action-btn" style="margin-top:8px;" onclick="browseSquads()">🔍 Найти отряд</div>';
+      html += '<div id="squad-browse"></div><div class="pet-msg" id="squad-msg"></div>';
+      box.innerHTML = html;
+    }
+  }
+  async function loadSquad() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("squad-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderSquad(await squadReq("status")); } catch (e) { document.getElementById("squad-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function createSquad() {
+    if (squadBusy) return; squadBusy = true;
+    const name = document.getElementById("squad-name-input").value.trim();
+    try { const d = await squadReq("create", { name: name }); renderSquad(d); showMsg("squad-msg", d); } catch(e){} finally { squadBusy = false; }
+  }
+  async function browseSquads() {
+    const box = document.getElementById("squad-browse");
+    box.innerHTML = '<div class="lb-empty">Поиск...</div>';
+    try {
+      const d = await squadReq("browse");
+      if (!d.squads || !d.squads.length) { box.innerHTML='<div class="lb-empty">Нет открытых отрядов</div>'; return; }
+      box.innerHTML = '<div class="sec-title" style="margin-top:10px;">Открытые отряды</div>' + d.squads.map(function(s){
+        return '<div class="tb-enemy" onclick="joinSquad('+s.id+')"><span>🛡️ '+s.name+' ('+s.count+'/'+s.max+')</span><span>➕</span></div>';
+      }).join("");
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function joinSquad(sid) {
+    if (squadBusy) return; squadBusy = true;
+    try { const d = await squadReq("join", { squadId: sid }); renderSquad(d); showMsg("squad-msg", d); } catch(e){} finally { squadBusy = false; }
+  }
+  async function squadAction(act) {
+    if (squadBusy) return; squadBusy = true;
+    try { const d = await squadReq(act); renderSquad(d); showMsg("squad-msg", d); } catch(e){} finally { squadBusy = false; }
+  }
+
+  // ── Перевод золота ─────────────────────────────────────────────────────
+  let tradeBusy = false;
+  async function loadTrade() {
+    const box = document.getElementById("trade-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/trade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "info" }) });
+      const d = await resp.json();
+      box.innerHTML = '<div class="big-num">💰 '+(d.gold||0)+'</div>' +
+        '<div class="ev-hint">Переведи золото другому игроку по его ID. Комиссия '+d.taxPercent+'%. Сумма '+d.minAmount+'–'+d.maxAmount+'.</div>' +
+        '<div class="input-row"><input id="trade-id" class="gold-input" placeholder="ID игрока" inputmode="numeric"></div>' +
+        '<div class="input-row"><input id="trade-amount" class="gold-input" placeholder="Сумма" inputmode="numeric"></div>' +
+        '<div class="action-btn green" onclick="sendGold()">💸 Перевести</div>' +
+        '<div class="pet-msg" id="trade-msg"></div>';
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function sendGold() {
+    if (tradeBusy) return; tradeBusy = true;
+    const tid = document.getElementById("trade-id").value.trim();
+    const amt = document.getElementById("trade-amount").value.trim();
+    const msg = document.getElementById("trade-msg");
+    if (!/^\d+$/.test(tid) || !/^\d+$/.test(amt)) { msg.style.color="#ffb0b0"; msg.textContent="Введи корректные ID и сумму"; tradeBusy=false; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/trade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action:"send", targetId: parseInt(tid), amount: parseInt(amt) }) });
+      const d = await resp.json();
+      showMsg("trade-msg", d);
+      if (d.ok) loadTrade();
+    } catch (e) {} finally { tradeBusy = false; }
+  }
+
+  // ── Создание палочки ───────────────────────────────────────────────────
+  let wandBusy = false;
+  async function wandReq(action, core) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/wandcraft", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, core: core || "" }) });
+    return await resp.json();
+  }
+  function renderWand(d) {
+    const box = document.getElementById("wand-content");
+    let html = '<div class="ev-hint">Создай палочку из сердцевины + 2 ингредиента + '+d.cost+' 💰. У тебя: '+d.gold+' 💰, ингредиентов: '+d.ingredients+'</div>';
+    html += '<div class="sec-title">Сердцевины</div>';
+    html += d.cores.map(function(c){
+      if (c.have) return '<div class="core-card has" onclick="craftWand(\''+c.id+'\')"><span style="font-size:22px;">🔮</span><div style="flex:1;"><div style="color:#f4f0e6;">'+c.name+'</div><div style="font-size:12px;color:#9be8c0;">+'+c.attack+' базовой атаки</div></div><span>🪄</span></div>';
+      return '<div class="core-card no"><span style="font-size:22px;">🔮</span><div style="flex:1;"><div style="color:#f4f0e6;">'+c.name+'</div><div style="font-size:12px;color:#b0a3d0;">нет в инвентаре</div></div></div>';
+    }).join("");
+    if (!d.canCraft) html += '<div class="ev-hint" style="color:#ff9b9b;">Нужно минимум 2 ингредиента для крафта</div>';
+    html += '<div class="pet-msg" id="wand-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadWandcraft() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("wand-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderWand(await wandReq("info")); } catch (e) { document.getElementById("wand-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function craftWand(core) {
+    if (wandBusy) return; wandBusy = true;
+    try {
+      const d = await wandReq("craft", core);
+      if (d.ok) { renderWand(await wandReq("info")); }
+      const msg = document.getElementById("wand-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { wandBusy = false; }
+  }
+
+  // ── Банк ───────────────────────────────────────────────────────────────
+  let bankBusy = false;
+  async function bankReq(action, amount) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/bank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, amount: amount || 0 }) });
+    return await resp.json();
+  }
+  function renderBank(d) {
+    const box = document.getElementById("bank-content");
+    box.innerHTML = '<div class="bank-card"><div style="font-size:13px;color:#c9b8e8;">В банке</div>' +
+      '<div class="big-num">🏦 '+(d.balance||0).toLocaleString()+'</div>' +
+      '<div style="font-size:12px;color:#9be8c0;">Ставка '+d.rate+'%/день • завтра +'+d.nextInterest+' 💰</div></div>' +
+      '<div style="text-align:center;font-size:13px;color:#b0a3d0;margin-bottom:10px;">На руках: 💰 '+(d.gold||0).toLocaleString()+'</div>' +
+      '<div class="input-row"><input id="bank-amount" class="gold-input" placeholder="Сумма" inputmode="numeric"></div>' +
+      '<div class="input-row"><div class="action-btn green" style="flex:1;" onclick="bankAction(\'deposit\')">📥 Внести</div>' +
+      '<div class="action-btn" style="flex:1;" onclick="bankAction(\'withdraw\')">📤 Снять</div></div>' +
+      '<div class="pet-msg" id="bank-msg"></div>';
+  }
+  async function loadBank() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("bank-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderBank(await bankReq("info")); } catch (e) { document.getElementById("bank-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function bankAction(act) {
+    if (bankBusy) return; bankBusy = true;
+    const amt = parseInt(document.getElementById("bank-amount").value.trim()) || 0;
+    try {
+      const d = await bankReq(act, amt);
+      renderBank(d);
+      const msg = document.getElementById("bank-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+    } catch (e) {} finally { bankBusy = false; }
+  }
+
+  function showMsg(id, d) {
+    const msg = document.getElementById(id);
+    if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg;
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} } }
   }
 
   // ── Командный бой 3×3 ──────────────────────────────────────────────────
