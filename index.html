@@ -103,20 +103,50 @@
   /* Нижние вкладки */
   .tabbar {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-    display: flex; justify-content: center; gap: 8px;
+    display: flex; justify-content: flex-start; gap: 4px;
     background: rgba(15, 10, 28, 0.92);
     backdrop-filter: blur(14px);
     border-top: 1px solid rgba(255,216,107,0.25);
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
   }
+  .tabbar::-webkit-scrollbar { display: none; }
   .tab {
-    flex: 1; max-width: 120px; text-align: center; padding: 6px 2px;
+    flex: 0 0 auto; min-width: 64px; text-align: center; padding: 6px 8px;
     border-radius: 12px; cursor: pointer; transition: background 0.2s;
     color: #9d8fc0;
   }
   .tab.active { background: rgba(255,216,107,0.14); color: #ffe9a8; }
   .tab-ico { font-size: 20px; }
   .tab-label { font-size: 10px; margin-top: 2px; }
+
+  /* Зелья */
+  .pot-card {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+    border-radius:12px; padding:12px; margin-bottom:9px;
+  }
+  .pot-head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .pot-emoji { font-size:24px; }
+  .pot-name { flex:1; font-size:15px; font-weight:600; color:#f4f0e6; }
+  .pot-time { font-size:12px; color:#b0a3d0; }
+  .pot-ing { font-size:12px; margin:2px 0; }
+  .pot-ing.ok { color:#9be8c0; }
+  .pot-ing.no { color:#ff9b9b; }
+  .pot-brew {
+    margin-top:8px; text-align:center; padding:9px; border-radius:10px;
+    font-size:13px; font-weight:600; cursor:pointer;
+    background:rgba(255,216,107,0.14); border:1px solid rgba(255,216,107,0.3); color:#ffe9a8;
+  }
+  .pot-brew.disabled { opacity:0.4; pointer-events:none; }
+  .pot-queue-item {
+    display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:7px;
+    border-radius:12px; background:rgba(92,157,255,0.10); border:1px solid rgba(92,157,255,0.25);
+  }
+  .pot-queue-item.ready { background:rgba(107,232,155,0.12); border-color:rgba(107,232,155,0.4); }
+  .pot-collect {
+    text-align:center; padding:10px; border-radius:11px; margin-bottom:12px; cursor:pointer;
+    background:rgba(107,232,155,0.16); border:1px solid rgba(107,232,155,0.4); color:#9be8c0; font-weight:600;
+  }
 
   /* Экран питомца */
   .pet-crest {
@@ -409,6 +439,16 @@
   </div>
 </div><!-- /screen-pet -->
 
+<div id="screen-potions" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">⚗️ Зельеварение</div>
+    <div class="divider"></div>
+    <div id="pot-queue"></div>
+    <div id="pot-list"><div class="lb-empty">Загрузка...</div></div>
+    <div class="pet-msg" id="pot-msg"></div>
+  </div>
+</div><!-- /screen-potions -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="battle-box">
@@ -451,6 +491,9 @@
   </div>
   <div class="tab" id="tab-pet" onclick="switchTab('pet')">
     <div class="tab-ico">🐾</div><div class="tab-label">Питомец</div>
+  </div>
+  <div class="tab" id="tab-potions" onclick="switchTab('potions')">
+    <div class="tab-ico">⚗️</div><div class="tab-label">Зелья</div>
   </div>
 </div>
 
@@ -592,9 +635,10 @@
   let inventoryLoaded = false;
   let cupLoaded = false;
   let petLoaded = false;
+  let potionsLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -602,6 +646,92 @@
     if (tab === "inventory" && !inventoryLoaded) { inventoryLoaded = true; loadInventory(); }
     if (tab === "cup" && !cupLoaded) { cupLoaded = true; loadHouseCup(); }
     if (tab === "pet" && !petLoaded) { petLoaded = true; loadPet(); }
+    if (tab === "potions" && !potionsLoaded) { potionsLoaded = true; loadPotions(); }
+  }
+
+  // ── Зелья ──────────────────────────────────────────────────────────────
+  let potBusy = false;
+  async function potReq(action, recipe) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/potions", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, recipe: recipe || "" })
+    });
+    return await resp.json();
+  }
+
+  function fmtTime(sec) {
+    const m = Math.floor(sec/60), s = sec%60;
+    return m > 0 ? (m + " мин " + s + " с") : (s + " с");
+  }
+
+  function renderPotions(d) {
+    // Очередь
+    const qbox = document.getElementById("pot-queue");
+    let anyReady = false;
+    if (d.queue && d.queue.length) {
+      qbox.innerHTML = d.queue.map(function(q){
+        if (q.ready) anyReady = true;
+        return '<div class="pot-queue-item' + (q.ready ? ' ready' : '') + '">' +
+                 '<span style="font-size:20px;">' + q.emoji + '</span>' +
+                 '<span style="flex:1;">' + q.name + '</span>' +
+                 '<span style="font-size:12px;">' + (q.ready ? '✅ Готово!' : '⏱ ' + fmtTime(q.remaining)) + '</span>' +
+               '</div>';
+      }).join("");
+      if (anyReady) {
+        qbox.innerHTML += '<div class="pot-collect" onclick="collectPotions()">📥 Собрать готовые зелья</div>';
+      }
+    } else { qbox.innerHTML = ""; }
+
+    // Рецепты
+    const box = document.getElementById("pot-list");
+    if (!d.recipes || !d.recipes.length) {
+      box.innerHTML = '<div class="lb-empty">Нет доступных рецептов</div>'; return;
+    }
+    box.innerHTML = d.recipes.map(function(r){
+      const ings = r.ingredients.map(function(i){
+        const cls = (i.have >= i.need) ? "ok" : "no";
+        return '<div class="pot-ing ' + cls + '">• ' + i.name + ': ' + i.have + '/' + i.need + '</div>';
+      }).join("");
+      const btn = r.canBrew
+        ? '<div class="pot-brew" onclick="brewPotion(\'' + r.id + '\')">🔥 Варить (' + r.time + ' мин)</div>'
+        : '<div class="pot-brew disabled">Не хватает ингредиентов</div>';
+      return '<div class="pot-card">' +
+               '<div class="pot-head"><span class="pot-emoji">' + r.emoji + '</span>' +
+               '<span class="pot-name">' + r.name + '</span></div>' +
+               ings + btn +
+             '</div>';
+    }).join("");
+  }
+
+  async function loadPotions() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      document.getElementById("pot-list").innerHTML = '<div class="lb-empty">Недоступно</div>'; return;
+    }
+    try { renderPotions(await potReq("list")); }
+    catch (e) { document.getElementById("pot-list").innerHTML = '<div class="lb-empty">Ошибка</div>'; }
+  }
+
+  async function brewPotion(rid) {
+    if (potBusy) return; potBusy = true;
+    const msg = document.getElementById("pot-msg");
+    msg.style.color = "#c9b8e8"; msg.textContent = "⏳...";
+    try {
+      const d = await potReq("brew", rid);
+      msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
+      if (d.recipes) renderPotions(d);
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { potBusy = false; }
+  }
+
+  async function collectPotions() {
+    if (potBusy) return; potBusy = true;
+    const msg = document.getElementById("pot-msg");
+    try {
+      const d = await potReq("collect");
+      msg.style.color = d.ok ? "#9be8c0" : "#b0a3d0"; msg.textContent = d.msg || "";
+      if (d.recipes) renderPotions(d);
+    } catch (e) {} finally { potBusy = false; }
   }
 
   // ── Питомец ────────────────────────────────────────────────────────────
