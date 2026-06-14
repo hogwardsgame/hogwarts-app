@@ -1,0 +1,2147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Паспорт волшебника</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #f4f0e6;
+    overflow-x: hidden;
+  }
+  body {
+    background: linear-gradient(160deg, #1a1033 0%, #2d1b4e 35%, #1f1238 70%, #0d0820 100%);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 18px 40px;
+    position: relative;
+  }
+  /* Звёздная пыль на фоне */
+  .stars { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  .star {
+    position: absolute; width: 3px; height: 3px; border-radius: 50%;
+    background: #ffd86b; opacity: 0; animation: twinkle 3s infinite ease-in-out;
+  }
+  @keyframes twinkle { 0%,100% { opacity: 0; transform: scale(0.5);} 50% { opacity: 0.9; transform: scale(1);} }
+
+  .card {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 420px;
+    background: rgba(28, 18, 52, 0.72);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 216, 107, 0.35);
+    border-radius: 22px;
+    padding: 28px 22px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(30px);} to { opacity: 1; transform: translateY(0);} }
+
+  .crest {
+    width: 92px; height: 92px; margin: 0 auto 14px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 46px;
+    background: radial-gradient(circle at 30% 30%, #ffd86b33, #ffd86b11);
+    border: 2px solid rgba(255, 216, 107, 0.5);
+    box-shadow: 0 0 30px rgba(255, 216, 107, 0.25);
+    animation: glow 3s infinite ease-in-out;
+  }
+  @keyframes glow { 0%,100% { box-shadow: 0 0 20px rgba(255,216,107,0.2);} 50% { box-shadow: 0 0 36px rgba(255,216,107,0.45);} }
+
+  .name { text-align: center; font-size: 25px; font-weight: 700; letter-spacing: 0.5px;
+          color: #ffe9a8; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  .house { text-align: center; font-size: 15px; color: #c9b8e8; margin-top: 4px; margin-bottom: 4px; }
+  .rank  { text-align: center; font-size: 14px; color: #ffd86b; margin-bottom: 20px; font-weight: 600; }
+
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,216,107,0.4), transparent); margin: 16px 0; }
+
+  .bar-row { margin-bottom: 14px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; color: #d8cdf0; }
+  .bar-track { height: 11px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; transition: width 1.1s cubic-bezier(0.2,0.8,0.2,1); width: 0; }
+  .hp   .bar-fill { background: linear-gradient(90deg, #ff5c5c, #ff8a5c); }
+  .mana .bar-fill { background: linear-gradient(90deg, #5c9dff, #5cd8ff); }
+  .xp   .bar-fill { background: linear-gradient(90deg, #ffd86b, #ffb347); }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .stat {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .stat .ico { font-size: 22px; }
+  .stat .val { font-size: 18px; font-weight: 700; color: #fff; }
+  .stat .cap { font-size: 11px; color: #b0a3d0; }
+
+  .gold-banner {
+    margin-top: 18px; text-align: center;
+    background: linear-gradient(90deg, rgba(255,216,107,0.15), rgba(255,179,71,0.15));
+    border: 1px solid rgba(255,216,107,0.3); border-radius: 14px;
+    padding: 12px; font-size: 19px; font-weight: 700; color: #ffe9a8;
+  }
+
+  .footer { text-align: center; margin-top: 22px; font-size: 12px; color: #8678a8; z-index: 1; }
+  .id-chip { display:inline-block; margin-top:8px; font-size:11px; color:#9d8fc0;
+             background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:8px; }
+
+  /* Экраны */
+  .screen { width: 100%; max-width: 420px; z-index: 1; padding-bottom: 80px; }
+
+  /* Нижние вкладки */
+  .tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: flex-start; gap: 4px;
+    background: rgba(15, 10, 28, 0.92);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid rgba(255,216,107,0.25);
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .tabbar::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 0 0 auto; min-width: 64px; text-align: center; padding: 6px 8px;
+    border-radius: 12px; cursor: pointer; transition: background 0.2s;
+    color: #9d8fc0;
+  }
+  .tab.active { background: rgba(255,216,107,0.14); color: #ffe9a8; }
+  .tab-ico { font-size: 20px; }
+  .tab-label { font-size: 10px; margin-top: 2px; }
+
+  /* Зелья */
+  .pot-card {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+    border-radius:12px; padding:12px; margin-bottom:9px;
+  }
+  .pot-head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .pot-emoji { font-size:24px; }
+  .pot-name { flex:1; font-size:15px; font-weight:600; color:#f4f0e6; }
+  .pot-time { font-size:12px; color:#b0a3d0; }
+  .pot-ing { font-size:12px; margin:2px 0; }
+  .pot-ing.ok { color:#9be8c0; }
+  .pot-ing.no { color:#ff9b9b; }
+  .pot-brew {
+    margin-top:8px; text-align:center; padding:9px; border-radius:10px;
+    font-size:13px; font-weight:600; cursor:pointer;
+    background:rgba(255,216,107,0.14); border:1px solid rgba(255,216,107,0.3); color:#ffe9a8;
+  }
+  .pot-brew.disabled { opacity:0.4; pointer-events:none; }
+  .pot-queue-item {
+    display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:7px;
+    border-radius:12px; background:rgba(92,157,255,0.10); border:1px solid rgba(92,157,255,0.25);
+  }
+  .pot-queue-item.ready { background:rgba(107,232,155,0.12); border-color:rgba(107,232,155,0.4); }
+  .pot-collect {
+    text-align:center; padding:10px; border-radius:11px; margin-bottom:12px; cursor:pointer;
+    background:rgba(107,232,155,0.16); border:1px solid rgba(107,232,155,0.4); color:#9be8c0; font-weight:600;
+  }
+
+  /* Экран питомца */
+  .pet-crest {
+    width:110px; height:110px; margin:6px auto 12px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:60px;
+    background:radial-gradient(circle at 30% 30%, #ffd86b33, #ffd86b11);
+    border:2px solid rgba(255,216,107,0.4); box-shadow:0 0 26px rgba(255,216,107,0.2);
+  }
+  .pet-name { text-align:center; font-size:20px; font-weight:700; color:#ffe9a8; }
+  .pet-stage { text-align:center; font-size:13px; color:#c9b8e8; margin:4px 0 14px; }
+  .pet-bonus { text-align:center; font-size:13px; color:#9be8c0; margin-bottom:12px; }
+  .pet-stat-row { margin-bottom:12px; }
+  .pet-actions { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+  .pet-msg { text-align:center; font-size:13px; color:#9be8c0; min-height:16px; margin-top:4px; }
+
+  /* Рейтинг */
+  .lb-title { text-align:center; font-size:20px; font-weight:700; color:#ffe9a8; }
+  .lb-empty { text-align:center; color:#9d8fc0; padding:20px 0; font-size:14px; }
+  .lb-row {
+    display:flex; align-items:center; gap:12px; padding:11px 12px;
+    border-radius:12px; margin-bottom:7px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+  }
+  .lb-place { font-size:16px; font-weight:700; width:34px; text-align:center; color:#ffd86b; }
+  .lb-name { flex:1; font-size:15px; color:#f4f0e6; }
+  .lb-lvl { font-size:13px; color:#b0a3d0; }
+  .lb-row.me { border-color: rgba(255,216,107,0.5); background: rgba(255,216,107,0.10); }
+
+  /* Инвентарь */
+  .inv-row {
+    display:flex; align-items:center; gap:12px; padding:11px 12px;
+    border-radius:12px; margin-bottom:7px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+  }
+  .inv-emoji { font-size:22px; width:30px; text-align:center; }
+  .inv-name { flex:1; font-size:15px; color:#f4f0e6; }
+  .inv-qty { font-size:13px; color:#ffd86b; font-weight:600; }
+
+  /* Титул */
+  .title-badge {
+    text-align:center; font-size:13px; color:#ffe9a8; margin-top:6px;
+    background:rgba(255,216,107,0.12); border:1px solid rgba(255,216,107,0.3);
+    border-radius:10px; padding:4px 12px; display:inline-block;
+  }
+  /* Доп. характеристики профиля */
+  .extra-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .extra {
+    display:flex; flex-direction:column; gap:3px; padding:10px 12px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:12px;
+  }
+  .ex-cap { font-size:11px; color:#b0a3d0; }
+  .ex-val { font-size:15px; font-weight:600; color:#f4f0e6; }
+  /* Переключатель категорий рейтинга */
+  .lb-cats { display:flex; gap:6px; margin-top:12px; }
+  .lb-cat {
+    flex:1; text-align:center; font-size:12px; padding:7px 4px; border-radius:10px;
+    background:rgba(255,255,255,0.05); color:#b0a3d0; cursor:pointer; transition:background 0.2s;
+  }
+  .lb-cat.active { background:rgba(255,216,107,0.16); color:#ffe9a8; }
+
+  /* Кнопки действий */
+  .actions { margin-top:16px; display:flex; flex-direction:column; gap:8px; }
+  .act-btn {
+    text-align:center; padding:12px; border-radius:12px; cursor:pointer;
+    font-size:14px; font-weight:600; color:#ffe9a8;
+    background:rgba(255,216,107,0.12); border:1px solid rgba(255,216,107,0.3);
+    transition:background 0.15s;
+  }
+  .act-btn:active { background:rgba(255,216,107,0.25); }
+  .act-msg { text-align:center; font-size:13px; color:#9be8c0; min-height:16px; margin-top:2px; }
+
+  /* Кубок факультетов */
+  .cup-row {
+    display:flex; align-items:center; gap:14px; padding:14px 14px;
+    border-radius:14px; margin-bottom:9px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .cup-emoji { font-size:30px; }
+  .cup-name { flex:1; font-size:16px; font-weight:600; color:#f4f0e6; }
+  .cup-pts { font-size:18px; font-weight:700; color:#ffd86b; }
+  .cup-row.first { border-color:rgba(255,216,107,0.5); background:rgba(255,216,107,0.10); }
+
+  /* Кнопка В бой */
+  .battle-btn { background:linear-gradient(90deg,#ff5c5c33,#ff8a5c33); border-color:rgba(255,140,92,0.5); color:#ffcfa8; font-size:16px; }
+  .pvp-btn { background:linear-gradient(90deg,#9b5fd833,#5c9dff33); border-color:rgba(140,120,255,0.5); color:#cfc0ff; font-size:16px; }
+
+  /* PvP арена */
+  .pvp-fighters { display:flex; align-items:flex-start; gap:8px; margin:8px 0 14px; }
+  .pvp-side { flex:1; text-align:center; }
+  .pvp-vs { font-size:24px; padding-top:24px; opacity:0.8; }
+  .pvp-crest {
+    width:78px; height:78px; margin:0 auto 8px; border-radius:50%; font-size:42px;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.18), rgba(255,255,255,0.04));
+    border:2px solid rgba(255,216,107,0.45); box-shadow:0 0 18px rgba(255,216,107,0.18);
+  }
+  .pvp-crest.hit { animation:hitReact 0.4s; }
+  .pvp-name { font-size:15px; font-weight:700; color:#f4f0e6; margin-bottom:8px; line-height:1.25; }
+  .pvp-house { font-size:11px; font-weight:500; color:#c9b8e8; margin-top:1px; }
+  .pvp-hp-txt { font-size:12px; color:#e0d0d0; margin-top:4px; }
+  .pvp-fighters .bar-fill { transition:width 0.45s cubic-bezier(0.3,0.7,0.3,1); }
+
+  /* Живой бой UI */
+  .live-box {
+    background:rgba(140,120,255,0.08); border:1px solid rgba(140,120,255,0.25);
+    border-radius:13px; padding:13px; margin-bottom:6px;
+  }
+  .live-title { font-size:14px; font-weight:700; color:#cfc0ff; margin-bottom:9px; text-align:center; }
+  .live-btn {
+    text-align:center; padding:11px; border-radius:11px; cursor:pointer; margin-bottom:8px;
+    background:rgba(140,120,255,0.16); border:1px solid rgba(140,120,255,0.35);
+    color:#e0d8ff; font-size:14px; font-weight:600;
+  }
+  .live-btn:active { background:rgba(140,120,255,0.3); }
+  .live-id-row { display:flex; gap:8px; margin-bottom:10px; }
+  .live-input {
+    flex:1; padding:10px 12px; border-radius:10px; font-size:14px;
+    background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.15); color:#fff; outline:none;
+  }
+  .live-btn-sm {
+    padding:10px 16px; border-radius:10px; cursor:pointer; white-space:nowrap;
+    background:rgba(140,120,255,0.2); border:1px solid rgba(140,120,255,0.4);
+    color:#e0d8ff; font-size:13px; font-weight:600;
+  }
+  .live-block-row {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:12px; color:#b0a3d0; padding-top:4px;
+  }
+  .live-toggle {
+    padding:6px 14px; border-radius:20px; cursor:pointer; font-size:12px; font-weight:600;
+    background:rgba(107,232,155,0.16); border:1px solid rgba(107,232,155,0.4); color:#9be8c0;
+  }
+  .live-toggle.blocked { background:rgba(255,120,90,0.16); border-color:rgba(255,120,90,0.4); color:#ffb0a0; }
+  .invite-card {
+    display:flex; align-items:center; gap:10px; padding:12px; margin-bottom:8px;
+    border-radius:12px; background:rgba(255,216,107,0.12); border:1px solid rgba(255,216,107,0.4);
+    animation:pop 0.4s;
+  }
+  .invite-info { flex:1; font-size:14px; color:#ffe9a8; }
+  .invite-accept {
+    padding:8px 14px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600;
+    background:rgba(107,232,155,0.2); border:1px solid rgba(107,232,155,0.45); color:#9be8c0;
+  }
+  .invite-decline {
+    padding:8px 12px; border-radius:10px; cursor:pointer; font-size:13px;
+    background:rgba(255,90,90,0.16); border:1px solid rgba(255,90,90,0.35); color:#ffb0b0;
+  }
+  .live-turn {
+    text-align:center; font-size:15px; font-weight:700; padding:8px; margin-bottom:8px;
+    border-radius:10px;
+  }
+  .live-turn.you { color:#9be8c0; background:rgba(107,232,155,0.12); }
+  .live-turn.wait { color:#ffcf8a; background:rgba(255,200,100,0.1); }
+
+  /* Боевой оверлей */
+  .battle-overlay {
+    position:fixed; inset:0; z-index:50;
+    background:linear-gradient(160deg,#1a0820 0%,#2a0f30 50%,#10060f 100%);
+    display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  .battle-box { width:100%; max-width:420px; }
+  .bt-enemy { text-align:center; margin-bottom:10px; }
+  .bt-enemy-emoji { font-size:64px; filter:drop-shadow(0 0 16px rgba(255,80,80,0.4)); transition:transform 0.2s; }
+  .bt-enemy-emoji.hit { animation:shake 0.4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-10px) rotate(-5deg);} 75%{transform:translateX(10px) rotate(5deg);} }
+  .bt-enemy-name { font-size:18px; font-weight:700; color:#ffd0d0; margin:4px 0; }
+  .bt-hp { max-width:240px; margin:0 auto; height:13px; }
+  .bt-hp-txt { font-size:12px; color:#e0b0b0; margin-top:3px; }
+
+  .bt-flash { text-align:center; font-size:22px; font-weight:800; min-height:30px; color:#ffd86b; margin:6px 0; }
+  .bt-flash.show { animation:pop 0.5s; }
+  @keyframes pop { 0%{transform:scale(0.3);opacity:0;} 50%{transform:scale(1.2);opacity:1;} 100%{transform:scale(1);} }
+
+  .bt-log {
+    background:rgba(0,0,0,0.35); border-radius:12px; padding:10px 12px;
+    font-size:13px; color:#d8cdf0; min-height:70px; margin-bottom:12px;
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .bt-log div { margin-bottom:3px; }
+
+  .bt-player-bars { margin-bottom:12px; }
+
+  .bt-spells { display:flex; flex-direction:column; gap:7px; }
+  .bt-spell {
+    padding:11px; border-radius:11px; text-align:center; cursor:pointer;
+    background:rgba(92,157,255,0.14); border:1px solid rgba(92,157,255,0.3);
+    color:#cfe0ff; font-size:14px; font-weight:600;
+  }
+  .bt-spell:active { background:rgba(92,157,255,0.3); }
+  .bt-spell.disabled { opacity:0.4; pointer-events:none; }
+
+  .bt-result { text-align:center; font-size:22px; font-weight:800; padding:16px; }
+  .bt-again {
+    display:inline-block; margin-top:12px; font-size:15px; font-weight:600;
+    color:#cfe0ff; background:rgba(92,157,255,0.16); border:1px solid rgba(92,157,255,0.35);
+    border-radius:11px; padding:9px 18px; cursor:pointer;
+  }
+  .bt-flee {
+    text-align:center; padding:11px; margin-top:10px; border-radius:11px;
+    background:rgba(255,255,255,0.06); color:#b0a3d0; cursor:pointer; font-size:14px;
+  }
+
+  /* === Анимации боя (улучшенные) === */
+  /* Монстр парит (дыхание) в покое */
+  .bt-enemy-emoji { animation: floatIdle 2.8s ease-in-out infinite; }
+  @keyframes floatIdle { 0%,100%{transform:translateY(0) scale(1);} 50%{transform:translateY(-8px) scale(1.03);} }
+
+  /* Тряска экрана при крите (сильнее) */
+  .battle-overlay.shake { animation:screenShake 0.55s; }
+  @keyframes screenShake {
+    0%,100%{transform:translate(0,0);} 8%{transform:translate(-11px,5px) rotate(-1deg);}
+    25%{transform:translate(10px,-7px) rotate(1deg);} 45%{transform:translate(-9px,8px) rotate(-1deg);}
+    65%{transform:translate(8px,-4px);} 85%{transform:translate(-4px,3px);}
+  }
+
+  /* Вспышка всего экрана при попадании */
+  .hit-flash { position:fixed; inset:0; z-index:46; pointer-events:none; opacity:0; background:#fff; }
+  .hit-flash.show { animation:hitFlash 0.22s; }
+  @keyframes hitFlash { 0%{opacity:0;} 40%{opacity:0.35;} 100%{opacity:0;} }
+
+  /* Всплывающие цифры урона */
+  .dmg-pop {
+    position:absolute; font-weight:900; font-size:32px; pointer-events:none;
+    z-index:60; animation:dmgFloat 1.1s cubic-bezier(0.2,0.9,0.3,1) forwards;
+    text-shadow:0 2px 10px rgba(0,0,0,0.7), 0 0 4px rgba(0,0,0,0.5);
+  }
+  .dmg-pop.crit { font-size:50px; color:#ffd24a; text-shadow:0 0 14px rgba(255,180,40,0.8), 0 2px 6px #000; }
+  .dmg-pop.normal { color:#ff7a5c; }
+  .dmg-pop.player-dmg { color:#ff8a8a; }
+  .dmg-pop.heal { color:#6be89b; }
+  @keyframes dmgFloat {
+    0%{opacity:0; transform:translateY(0) scale(0.4);}
+    18%{opacity:1; transform:translateY(-22px) scale(1.25);}
+    35%{transform:translateY(-30px) scale(1);}
+    100%{opacity:0; transform:translateY(-80px) scale(0.9);}
+  }
+
+  /* Снаряд с дугой и свечением */
+  .projectile {
+    position:absolute; font-size:38px; z-index:55; pointer-events:none;
+    filter:drop-shadow(0 0 10px currentColor);
+    animation:fly 0.5s cubic-bezier(0.4,0,0.7,1) forwards;
+  }
+  @keyframes fly {
+    0%{opacity:0; transform:translate(0,0) scale(0.6) rotate(0);}
+    15%{opacity:1; transform:translate(calc(var(--fx)*0.3), calc(var(--fy)*0.3 - 40px)) scale(1.1) rotate(120deg);}
+    100%{opacity:1; transform:translate(var(--fx), var(--fy)) scale(1.4) rotate(360deg);}
+  }
+
+  /* Взрыв при попадании */
+  .burst {
+    position:absolute; z-index:57; pointer-events:none; font-size:46px;
+    animation:burst 0.45s ease-out forwards;
+  }
+  @keyframes burst {
+    0%{opacity:0; transform:scale(0.2);} 30%{opacity:1; transform:scale(1.3);}
+    100%{opacity:0; transform:scale(1.8);}
+  }
+
+  /* Монстр получает удар */
+  .bt-enemy-emoji.hit { animation:hitReact 0.4s; }
+  @keyframes hitReact {
+    0%{transform:translateX(0);} 20%{transform:translateX(-14px) scale(1.05); filter:brightness(2.2);}
+    40%{transform:translateX(12px); filter:brightness(1);} 60%{transform:translateX(-7px);}
+    80%{transform:translateX(5px);} 100%{transform:translateX(0);}
+  }
+  /* Смерть монстра */
+  .bt-enemy-emoji.dying { animation:die 1.1s forwards; }
+  @keyframes die {
+    0%{transform:scale(1) rotate(0); opacity:1;}
+    30%{transform:scale(1.3) rotate(-12deg); filter:brightness(2.5) hue-rotate(30deg);}
+    100%{transform:scale(0) rotate(120deg) translateY(30px); opacity:0; filter:grayscale(1);}
+  }
+
+  .bt-spell { transition:transform 0.1s, background 0.15s; }
+  .bt-spell:active { transform:scale(0.95); }
+
+  /* Стихийная вспышка */
+  .elem-flash { position:fixed; inset:0; z-index:45; pointer-events:none; opacity:0; }
+  .elem-flash.show { animation:elemFlash 0.55s; }
+  @keyframes elemFlash { 0%{opacity:0;} 30%{opacity:0.4;} 100%{opacity:0;} }
+
+  /* Частицы */
+  .particle {
+    position:absolute; width:8px; height:8px; border-radius:50%;
+    z-index:58; pointer-events:none; box-shadow:0 0 6px currentColor;
+    animation:partFly 0.8s ease-out forwards;
+  }
+  @keyframes partFly { 0%{opacity:1; transform:translate(0,0) scale(1);} 100%{opacity:0; transform:translate(var(--px),var(--py)) scale(0.3);} }
+
+  /* HP-бары: плавный слив + "призрачный" след урона */
+  .bt-hp .bar-fill, .bt-player-bars .bar-fill { transition: width 0.55s cubic-bezier(0.3,0.7,0.3,1); position:relative; }
+  .bar-track { position:relative; overflow:visible; }
+  .ghost-bar {
+    position:absolute; top:0; left:0; height:100%; border-radius:6px;
+    background:rgba(255,255,255,0.55); z-index:1;
+    transition:width 0.1s; pointer-events:none;
+  }
+  .ghost-bar.drain { transition:width 0.9s ease-out 0.25s; }
+
+  /* Победа/поражение — появление */
+  .bt-result { animation:resultPop 0.5s cubic-bezier(0.2,0.9,0.3,1); }
+  @keyframes resultPop { 0%{opacity:0; transform:scale(0.5);} 60%{transform:scale(1.1);} 100%{opacity:1; transform:scale(1);} }
+
+  /* Выбор зоны */
+  .zone-card {
+    display:flex; align-items:center; gap:12px; padding:13px;
+    border-radius:13px; margin-bottom:8px; cursor:pointer;
+    background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+    transition:background 0.15s;
+  }
+  .zone-card:active { background:rgba(255,216,107,0.14); }
+  .zone-card.locked { opacity:0.5; pointer-events:none; }
+  .zone-emoji { font-size:30px; }
+  .zone-info { flex:1; }
+  .zone-name { font-size:15px; font-weight:600; color:#f4f0e6; }
+  .zone-sub { font-size:12px; color:#b0a3d0; }
+  .zone-lock { font-size:12px; color:#ff9b9b; }
+  .zone-go { font-size:20px; }
+  .zone-card-wrap { margin-bottom:8px; }
+  .zone-card-wrap .zone-card { margin-bottom:0; }
+  .zone-boss {
+    margin-top:3px; text-align:center; padding:9px; border-radius:0 0 12px 12px;
+    font-size:12px; font-weight:600; cursor:pointer; color:#ffcf8a;
+    background:rgba(255,90,90,0.14); border:1px solid rgba(255,120,90,0.35); border-top:none;
+  }
+  .zone-boss:active { background:rgba(255,90,90,0.28); }
+
+  /* Секции профиля */
+  .sec-title { text-align:center; font-size:15px; font-weight:700; color:#ffe9a8; margin-bottom:10px; }
+  .equip-row {
+    display:flex; align-items:center; gap:10px; padding:9px 12px; margin-bottom:6px;
+    border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .equip-emoji { font-size:20px; }
+  .equip-slot { font-size:11px; color:#b0a3d0; }
+  .equip-name { font-size:14px; color:#f4f0e6; flex:1; }
+  .equip-bonus { font-size:13px; color:#9be8c0; font-weight:600; }
+  .wand-info {
+    text-align:center; font-size:14px; color:#e8dcff; padding:12px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,216,107,0.2); border-radius:12px;
+  }
+  .stats2-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .stat2 {
+    padding:10px 12px; border-radius:11px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .stat2-val { font-size:17px; font-weight:700; color:#fff; }
+  .stat2-cap { font-size:11px; color:#b0a3d0; }
+
+  /* Магазин */
+  .shop-gold { text-align:center; font-size:16px; font-weight:700; color:#ffe9a8; margin-top:6px; }
+  .shop-row {
+    display:flex; align-items:center; gap:11px; padding:11px 12px; margin-bottom:8px;
+    border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .shop-emoji { font-size:24px; }
+  .shop-info { flex:1; }
+  .shop-name { font-size:14px; color:#f4f0e6; }
+  .shop-stock { font-size:11px; color:#b0a3d0; }
+  .shop-buy {
+    padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+    background:rgba(255,216,107,0.16); border:1px solid rgba(255,216,107,0.35); color:#ffe9a8;
+  }
+  .shop-buy.cant { opacity:0.4; pointer-events:none; }
+
+  /* Достижения */
+  .ach-row {
+    display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px;
+    border-radius:12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .ach-row.done { border-color:rgba(107,232,155,0.45); background:rgba(107,232,155,0.08); }
+  .ach-emoji { font-size:26px; }
+  .ach-info { flex:1; }
+  .ach-name { font-size:14px; font-weight:600; color:#f4f0e6; }
+  .ach-desc { font-size:12px; color:#b0a3d0; margin:2px 0 5px; }
+  .ach-bar-track { height:7px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; }
+  .ach-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#ffd86b,#ffb347); }
+  .ach-prog { font-size:11px; color:#9d8fc0; margin-top:3px; }
+  .ach-check { font-size:22px; }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+
+<div id="screen-profile" class="screen">
+<div class="card">
+  <div class="crest" id="crest">🦁</div>
+  <div class="name" id="name">Волшебник</div>
+  <div class="house" id="house">Хогвартс</div>
+  <div class="rank" id="rank">🐣 Первокурсник</div>
+  <div class="title-badge" id="title-badge" style="display:none;"></div>
+
+  <div class="divider"></div>
+
+  <div class="bar-row hp">
+    <div class="bar-label"><span>❤️ Здоровье</span><span id="hp-txt">100 / 100</span></div>
+    <div class="bar-track"><div class="bar-fill" id="hp-bar"></div></div>
+  </div>
+  <div class="bar-row mana">
+    <div class="bar-label"><span>💧 Мана</span><span id="mana-txt">50 / 50</span></div>
+    <div class="bar-track"><div class="bar-fill" id="mana-bar"></div></div>
+  </div>
+  <div class="bar-row xp">
+    <div class="bar-label"><span>✨ Опыт</span><span id="xp-txt">0 / 150</span></div>
+    <div class="bar-track"><div class="bar-fill" id="xp-bar"></div></div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat"><span class="ico">⚔️</span><div><div class="val" id="atk">10</div><div class="cap">Атака</div></div></div>
+    <div class="stat"><span class="ico">🛡️</span><div><div class="val" id="def">5</div><div class="cap">Защита</div></div></div>
+    <div class="stat"><span class="ico">⚡</span><div><div class="val" id="spd">10</div><div class="cap">Скорость</div></div></div>
+    <div class="stat"><span class="ico">🍀</span><div><div class="val" id="luck">5</div><div class="cap">Удача</div></div></div>
+  </div>
+
+  <div class="gold-banner">💰 <span id="gold">150</span> галлеонов</div>
+
+  <div class="extra-grid" id="extra-grid">
+    <div class="extra"><span class="ex-cap">🎖️ Лига</span><span class="ex-val" id="ex-league">—</span></div>
+    <div class="extra"><span class="ex-cap">⚔️ Винрейт</span><span class="ex-val" id="ex-winrate">—</span></div>
+    <div class="extra"><span class="ex-cap">🏆 Дуэли</span><span class="ex-val" id="ex-duels">—</span></div>
+    <div class="extra"><span class="ex-cap">🐾 Питомец</span><span class="ex-val" id="ex-pet">нет</span></div>
+  </div>
+
+  <div class="actions">
+    <div class="act-btn battle-btn" onclick="openBattle()">⚔️ В БОЙ! (PvE)</div>
+    <div class="act-btn pvp-btn" onclick="openPvP()">🤺 ДУЭЛЬ С ИГРОКОМ</div>
+    <div class="act-btn" id="act-feed" onclick="doAction('feedpet', this)">🍖 Покормить питомца</div>
+    <div class="act-btn" id="act-daily" onclick="doAction('claimdaily', this)">🎁 Забрать бонус дня</div>
+    <div class="act-btn" id="act-equip" onclick="doAction('equipbest', this)">⚡ Надеть лучшее снаряжение</div>
+    <div class="act-msg" id="act-msg"></div>
+  </div>
+
+  <div id="equip-section" style="display:none;">
+    <div class="divider"></div>
+    <div class="sec-title">🗡️ Снаряжение</div>
+    <div id="equip-list"></div>
+  </div>
+
+  <div id="wand-section" style="display:none;">
+    <div class="divider"></div>
+    <div class="sec-title">🪄 Палочка</div>
+    <div id="wand-info" class="wand-info"></div>
+  </div>
+
+  <div id="stats-section" style="display:none;">
+    <div class="divider"></div>
+    <div class="sec-title">📊 Статистика</div>
+    <div class="stats2-grid" id="stats2-grid"></div>
+  </div>
+</div>
+
+<div class="footer">
+  Hogwarts Legacy RPG
+  <div class="id-chip" id="idchip">ID: —</div>
+</div>
+</div><!-- /screen-profile -->
+
+<div id="screen-rating" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏆 Рейтинг волшебников</div>
+    <div class="lb-cats">
+      <div class="lb-cat active" id="cat-level" onclick="loadLeaderboard('level')">⭐ Уровень</div>
+      <div class="lb-cat" id="cat-gold" onclick="loadLeaderboard('gold')">💰 Золото</div>
+      <div class="lb-cat" id="cat-pvp" onclick="loadLeaderboard('pvp')">⚔️ Дуэли</div>
+    </div>
+    <div class="divider"></div>
+    <div id="lb-list">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-rating -->
+
+<div id="screen-inventory" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🎒 Инвентарь</div>
+    <div class="divider"></div>
+    <div id="inv-list">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-inventory -->
+
+<div id="screen-cup" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏰 Кубок факультетов</div>
+    <div class="divider"></div>
+    <div id="cup-list">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-cup -->
+
+<div id="screen-pet" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🐾 Питомец</div>
+    <div class="divider"></div>
+    <div id="pet-box">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-pet -->
+
+<div id="screen-potions" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">⚗️ Зельеварение</div>
+    <div class="divider"></div>
+    <div id="pot-queue"></div>
+    <div id="pot-list"><div class="lb-empty">Загрузка...</div></div>
+    <div class="pet-msg" id="pot-msg"></div>
+  </div>
+</div><!-- /screen-potions -->
+
+<div id="screen-shop" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏪 Магазин</div>
+    <div class="shop-gold" id="shop-gold">💰 —</div>
+    <div class="divider"></div>
+    <div id="shop-list"><div class="lb-empty">Загрузка...</div></div>
+    <div class="pet-msg" id="shop-msg"></div>
+  </div>
+</div><!-- /screen-shop -->
+
+<div id="screen-ach" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏅 Достижения</div>
+    <div class="divider"></div>
+    <div id="ach-list"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-ach -->
+
+<div id="battle-overlay" class="battle-overlay" style="display:none;">
+  <div class="elem-flash" id="elem-flash"></div>
+  <div class="hit-flash" id="hit-flash"></div>
+  <div class="battle-box">
+    <div id="bt-zone-select" style="display:none;">
+      <div class="lb-title" style="margin-bottom:4px;">⚔️ Выбери место боя</div>
+      <div id="bt-zone-list"><div class="lb-empty">Загрузка...</div></div>
+      <div class="bt-flee" onclick="closeBattle()">✖️ Отмена</div>
+    </div>
+    <div id="bt-scene">
+    <div class="bt-enemy">
+      <div class="bt-enemy-emoji" id="bt-enemy-emoji">👹</div>
+      <div class="bt-enemy-name" id="bt-enemy-name">Монстр</div>
+      <div class="bar-track bt-hp"><div class="bar-fill" id="bt-enemy-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+      <div class="bt-hp-txt" id="bt-enemy-hp-txt">100/100</div>
+    </div>
+
+    <div class="bt-flash" id="bt-flash"></div>
+
+    <div class="bt-log" id="bt-log"></div>
+
+    <div class="bt-player-bars" id="bt-player-bars">
+      <div class="bar-label"><span>❤️ Здоровье</span><span id="bt-player-hp-txt">100/100</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bt-player-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+      <div class="bar-label" style="margin-top:6px;"><span>💧 Мана</span><span id="bt-player-mana-txt">50/50</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bt-player-mana" style="background:linear-gradient(90deg,#5c9dff,#5cd8ff)"></div></div>
+    </div>
+
+    <div class="bt-spells" id="bt-spells"></div>
+    <div class="bt-result" id="bt-result" style="display:none;"></div>
+    <div class="bt-flee" id="bt-flee" onclick="fleeBattle()">🏃 Сбежать</div>
+    </div><!-- /bt-scene -->
+  </div>
+</div>
+
+<div id="pvp-overlay" class="battle-overlay" style="display:none;">
+  <div class="battle-box">
+    <div id="pvp-select" style="display:none;">
+      <div class="lb-title" style="margin-bottom:4px;">🤺 Дуэль с игроком</div>
+
+      <div id="pvp-incoming"></div>
+
+      <div class="live-box">
+        <div class="live-title">⚡ Живой бой (реалтайм)</div>
+        <div class="live-btn" onclick="liveRandom()">🎲 Случайный соперник (±4 ур.)</div>
+        <div class="live-id-row">
+          <input id="live-id-input" class="live-input" placeholder="ID игрока" inputmode="numeric">
+          <div class="live-btn-sm" onclick="liveChallengeId()">Вызвать</div>
+        </div>
+        <div class="live-block-row">
+          <span id="live-block-label">Случайные приглашения: загрузка...</span>
+          <div class="live-toggle" id="live-toggle" onclick="toggleBlock()">—</div>
+        </div>
+        <div class="pet-msg" id="live-msg"></div>
+      </div>
+
+      <div class="live-title" style="margin-top:14px;">🤖 Быстрый бой (автобой)</div>
+      <div id="pvp-opp-list"><div class="lb-empty">Загрузка...</div></div>
+      <div class="bt-flee" onclick="closePvP()">✖️ Отмена</div>
+    </div>
+    <div id="pvp-arena" style="display:none;">
+      <div class="pvp-fighters">
+        <div class="pvp-side">
+          <div class="pvp-crest" id="pvp-you-crest">🧙</div>
+          <div class="pvp-name" id="pvp-you-name">Ты</div>
+          <div class="bar-track"><div class="bar-fill" id="pvp-you-hp" style="background:linear-gradient(90deg,#5cd87a,#8ae85c)"></div></div>
+          <div class="pvp-hp-txt" id="pvp-you-hp-txt"></div>
+        </div>
+        <div class="pvp-vs">⚔️</div>
+        <div class="pvp-side">
+          <div class="pvp-crest" id="pvp-foe-crest">🧙</div>
+          <div class="pvp-name" id="pvp-foe-name">Соперник</div>
+          <div class="bar-track"><div class="bar-fill" id="pvp-foe-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+          <div class="pvp-hp-txt" id="pvp-foe-hp-txt"></div>
+        </div>
+      </div>
+      <div class="bt-flash" id="pvp-flash"></div>
+      <div class="bt-log" id="pvp-log"></div>
+      <div class="bt-result" id="pvp-result" style="display:none;"></div>
+      <div class="bt-flee" id="pvp-close" onclick="closePvP()" style="display:none;">✖️ Закрыть</div>
+    </div>
+  </div>
+</div>
+
+<div id="live-overlay" class="battle-overlay" style="display:none;">
+  <div class="elem-flash" id="live-elem-flash"></div>
+  <div class="hit-flash" id="live-hit-flash"></div>
+  <div class="battle-box">
+    <div class="pvp-fighters">
+      <div class="pvp-side">
+        <div class="pvp-crest" id="live-you-crest">🧙</div>
+        <div class="pvp-name" id="live-you-name">Ты</div>
+        <div class="bar-track"><div class="bar-fill" id="live-you-hp" style="background:linear-gradient(90deg,#5cd87a,#8ae85c)"></div></div>
+        <div class="pvp-hp-txt" id="live-you-hp-txt"></div>
+        <div class="bar-track" style="margin-top:4px;"><div class="bar-fill" id="live-you-mana" style="background:linear-gradient(90deg,#5c9dff,#5cd8ff)"></div></div>
+      </div>
+      <div class="pvp-vs">⚔️</div>
+      <div class="pvp-side">
+        <div class="pvp-crest" id="live-foe-crest">🧙</div>
+        <div class="pvp-name" id="live-foe-name">Соперник</div>
+        <div class="bar-track"><div class="bar-fill" id="live-foe-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+        <div class="pvp-hp-txt" id="live-foe-hp-txt"></div>
+        <div class="bar-track" style="margin-top:4px;"><div class="bar-fill" id="live-foe-mana" style="background:linear-gradient(90deg,#5c9dff,#5cd8ff)"></div></div>
+      </div>
+    </div>
+    <div class="live-turn" id="live-turn">—</div>
+    <div class="bt-flash" id="live-bt-flash"></div>
+    <div class="bt-log" id="live-bt-log"></div>
+    <div class="bt-spells" id="live-spells"></div>
+    <div class="bt-result" id="live-bt-result" style="display:none;"></div>
+    <div class="bt-flee" id="live-flee" onclick="liveFlee()">🏳️ Сдаться</div>
+  </div>
+</div>
+
+<div class="tabbar">
+  <div class="tab active" id="tab-profile" onclick="switchTab('profile')">
+    <div class="tab-ico">🧙</div><div class="tab-label">Профиль</div>
+  </div>
+  <div class="tab" id="tab-rating" onclick="switchTab('rating')">
+    <div class="tab-ico">🏆</div><div class="tab-label">Рейтинг</div>
+  </div>
+  <div class="tab" id="tab-inventory" onclick="switchTab('inventory')">
+    <div class="tab-ico">🎒</div><div class="tab-label">Сумка</div>
+  </div>
+  <div class="tab" id="tab-cup" onclick="switchTab('cup')">
+    <div class="tab-ico">🏰</div><div class="tab-label">Кубок</div>
+  </div>
+  <div class="tab" id="tab-pet" onclick="switchTab('pet')">
+    <div class="tab-ico">🐾</div><div class="tab-label">Питомец</div>
+  </div>
+  <div class="tab" id="tab-potions" onclick="switchTab('potions')">
+    <div class="tab-ico">⚗️</div><div class="tab-label">Зелья</div>
+  </div>
+  <div class="tab" id="tab-shop" onclick="switchTab('shop')">
+    <div class="tab-ico">🏪</div><div class="tab-label">Магазин</div>
+  </div>
+  <div class="tab" id="tab-ach" onclick="switchTab('ach')">
+    <div class="tab-ico">🏅</div><div class="tab-label">Награды</div>
+  </div>
+</div>
+
+<script>
+  // ── Telegram Web App init ──────────────────────────────────────────────
+  const tg = window.Telegram ? window.Telegram.WebApp : null;
+  if (tg) {
+    tg.ready(); tg.expand();
+    try { tg.setHeaderColor("#1a1033"); } catch(e){}
+    try { tg.setBackgroundColor("#0d0820"); } catch(e){}
+    try { tg.enableClosingConfirmation(); } catch(e){}
+  }
+
+  // ⚙️ АДРЕС API — публичный URL с Railway
+  const API_URL = "https://hogwards-production.up.railway.app";
+
+  // Имя по умолчанию (если API недоступен — покажем хотя бы имя от Telegram)
+  let fallbackName = "Волшебник";
+  let userId = "—";
+  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+    const u = tg.initDataUnsafe.user;
+    fallbackName = u.first_name || u.username || "Волшебник";
+    userId = u.id || "—";
+  }
+
+  // Демо-данные на случай если API не настроен / недоступен
+  const demoData = {
+    registered: true,
+    name: fallbackName, house: "Хогвартс", houseEmoji: "🏰",
+    rank: "🐣 Первокурсник",
+    hp: 100, maxHp: 100, mana: 50, maxMana: 50, xp: 40, maxXp: 150,
+    atk: 12, def: 6, spd: 10, luck: 5, gold: 150, id: userId
+  };
+
+  // ── Тема факультета: меняет фон и акценты под герб игрока ──────────────
+  function applyHouseTheme(emoji) {
+    // Палитры: [фон-градиент, цвет акцента (рамки/имя), цвет свечения герба]
+    const themes = {
+      "🦁": { // Гриффиндор — багрово-золотой
+        bgOverlay: "linear-gradient(160deg, rgba(58,13,13,0.78), rgba(92,20,20,0.70) 35%, rgba(46,10,10,0.82) 70%, rgba(26,5,5,0.90))",
+        bg: "https://i.postimg.cc/RF3LFcJ7/IMG-20260614-090735-709.png",
+        accent: "#ffd86b", glow: "#ffd86b"
+      },
+      "🐍": { // Слизерин — изумрудно-серебряный
+        bgOverlay: "linear-gradient(160deg, rgba(10,46,26,0.78), rgba(15,68,41,0.70) 35%, rgba(8,37,20,0.82) 70%, rgba(4,20,10,0.90))",
+        bg: "https://i.postimg.cc/vmTWqWzN/IMG-20260614-090858-932.png",
+        accent: "#9be8c0", glow: "#5fd89b"
+      },
+      "🦅": { // Когтевран — сине-бронзовый
+        bgOverlay: "linear-gradient(160deg, rgba(13,26,58,0.78), rgba(20,39,92,0.70) 35%, rgba(10,21,48,0.82) 70%, rgba(5,11,26,0.90))",
+        bg: "https://i.postimg.cc/ZRr0VR1f/IMG-20260614-091219-622.png",
+        accent: "#9bc0e8", glow: "#5f9bd8"
+      },
+      "🦡": { // Пуффендуй — жёлто-чёрный
+        bgOverlay: "linear-gradient(160deg, rgba(58,48,13,0.78), rgba(92,73,20,0.70) 35%, rgba(46,37,9,0.82) 70%, rgba(26,21,5,0.90))",
+        bg: "https://i.postimg.cc/jSL5BZV0/IMG-20260614-091402-694.png",
+        accent: "#ffe06b", glow: "#ffd233"
+      },
+    };
+    const th = themes[emoji];
+    if (!th) return; // неизвестный факультет — оставляем фон по умолчанию
+    const BG_IMG = 'url("' + th.bg + '")';
+    // Градиент факультета поверх фоновой картинки факультета
+    document.body.style.background = th.bgOverlay + ", " + BG_IMG;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+    document.body.style.backgroundAttachment = "fixed";
+    document.documentElement.style.setProperty("--accent", th.accent);
+    document.documentElement.style.setProperty("--glow", th.glow);
+    // Применяем акцент к ключевым элементам
+    document.getElementById("name").style.color = th.accent;
+    document.getElementById("rank").style.color = th.accent;
+    const crest = document.getElementById("crest");
+    crest.style.borderColor = th.accent + "88";
+    crest.style.boxShadow = "0 0 30px " + th.glow + "44";
+  }
+
+  function render(data) {
+    applyHouseTheme(data.houseEmoji);
+    myName = data.name;
+    document.getElementById("name").textContent  = data.name;
+    document.getElementById("house").textContent = data.house;
+    document.getElementById("crest").textContent = data.houseEmoji;
+    document.getElementById("rank").textContent  = data.rank;
+    document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
+    document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
+    document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
+    document.getElementById("atk").textContent  = data.atk;
+    document.getElementById("def").textContent  = data.def;
+    document.getElementById("spd").textContent  = data.spd;
+    document.getElementById("luck").textContent = data.luck;
+    document.getElementById("gold").textContent = data.gold;
+    document.getElementById("idchip").textContent = "ID: " + data.id;
+
+    // Титул
+    const tb = document.getElementById("title-badge");
+    if (data.title) { tb.textContent = "« " + data.title + " »"; tb.style.display = "inline-block"; }
+    else { tb.style.display = "none"; }
+
+    // Доп. характеристики
+    document.getElementById("ex-league").textContent  = data.division || "—";
+    document.getElementById("ex-winrate").textContent = data.winrate || "—";
+    document.getElementById("ex-duels").textContent   = (data.pvpWins != null)
+        ? (data.pvpWins + "П / " + data.pvpLosses + "О") : "—";
+    document.getElementById("ex-pet").textContent     = data.pet
+        ? (data.pet.emoji + " " + data.pet.name + " ур." + data.pet.level) : "нет";
+
+    // Снаряжение
+    const eqSec = document.getElementById("equip-section");
+    if (data.equipment && data.equipment.length) {
+      eqSec.style.display = "block";
+      document.getElementById("equip-list").innerHTML = data.equipment.map(function(e){
+        return '<div class="equip-row"><span class="equip-emoji">' + e.emoji + '</span>' +
+               '<div style="flex:1;"><div class="equip-name">' + e.name + '</div>' +
+               '<div class="equip-slot">' + e.slot + '</div></div>' +
+               (e.bonus ? '<span class="equip-bonus">+' + e.bonus + '</span>' : '') + '</div>';
+      }).join("");
+    } else { eqSec.style.display = "none"; }
+
+    // Палочка
+    const wSec = document.getElementById("wand-section");
+    if (data.wand) {
+      wSec.style.display = "block";
+      document.getElementById("wand-info").innerHTML =
+        "🪄 " + data.wand.wood + "<br><span style='font-size:12px;color:#b0a3d0;'>Сердцевина: " + data.wand.core + "</span>";
+    } else { wSec.style.display = "none"; }
+
+    // Статистика
+    const sSec = document.getElementById("stats-section");
+    if (data.stats && Object.keys(data.stats).length) {
+      sSec.style.display = "block";
+      const s = data.stats;
+      const items = [
+        ["⚔️", s.pveKills, "Убито монстров"],
+        ["👑", s.bossKills, "Боссов повержено"],
+        ["🐉", s.worldBoss, "Мировых боссов"],
+        ["⚗️", s.potions, "Зелий сварено"],
+        ["✨", s.combos, "Комбо проведено"],
+        ["💰", s.goldEarned, "Золота заработано"],
+      ];
+      document.getElementById("stats2-grid").innerHTML = items.map(function(it){
+        return '<div class="stat2"><div class="stat2-val">' + it[0] + ' ' + (it[1]||0) + '</div>' +
+               '<div class="stat2-cap">' + it[2] + '</div></div>';
+      }).join("");
+    } else { sSec.style.display = "none"; }
+    setTimeout(() => {
+      document.getElementById("hp-bar").style.width   = (data.hp/data.maxHp*100) + "%";
+      document.getElementById("mana-bar").style.width = (data.mana/data.maxMana*100) + "%";
+      document.getElementById("xp-bar").style.width   = (data.xp/data.maxXp*100) + "%";
+    }, 250);
+  }
+
+  // ── Запрашиваем РЕАЛЬНЫЕ данные у API ──────────────────────────────────
+  async function loadProfile() {
+    // Если адрес API ещё не вставлен — показываем демо
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      render(demoData);
+      return;
+    }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      if (!resp.ok) throw new Error("api " + resp.status);
+      const data = await resp.json();
+      if (data.registered === false) {
+        // Игрок не зарегистрирован в боте
+        demoData.name = fallbackName;
+        demoData.house = "Сначала зарегистрируйся в боте";
+        render(demoData);
+        return;
+      }
+      render(data);
+    } catch (e) {
+      // API недоступен — показываем демо, чтобы экран не был пустым
+      render(demoData);
+    }
+  }
+
+  loadProfile();
+
+  // ── Вкладки ────────────────────────────────────────────────────────────
+  let ratingLoaded = false;
+  let inventoryLoaded = false;
+  let cupLoaded = false;
+  let petLoaded = false;
+  let potionsLoaded = false;
+  let shopLoaded = false;
+  let achLoaded = false;
+  let myName = fallbackName;
+  function switchTab(tab) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach"].forEach(function(t) {
+      document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
+      document.getElementById("tab-" + t).classList.toggle("active", t === tab);
+    });
+    if (tab === "rating" && !ratingLoaded) { ratingLoaded = true; loadLeaderboard("level"); }
+    if (tab === "inventory" && !inventoryLoaded) { inventoryLoaded = true; loadInventory(); }
+    if (tab === "cup" && !cupLoaded) { cupLoaded = true; loadHouseCup(); }
+    if (tab === "pet" && !petLoaded) { petLoaded = true; loadPet(); }
+    if (tab === "potions" && !potionsLoaded) { potionsLoaded = true; loadPotions(); }
+    if (tab === "shop" && !shopLoaded) { shopLoaded = true; loadShop(); }
+    if (tab === "ach" && !achLoaded) { achLoaded = true; loadAchievements(); }
+  }
+
+  // ── Магазин ────────────────────────────────────────────────────────────
+  let shopBusy = false;
+  async function shopReq(action, rowId) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/shop", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, rowId: rowId || 0 })
+    });
+    return await resp.json();
+  }
+  function renderShop(d) {
+    document.getElementById("shop-gold").textContent = "💰 " + (d.gold != null ? d.gold : "—") + " галлеонов";
+    const box = document.getElementById("shop-list");
+    if (!d.items || !d.items.length) { box.innerHTML = '<div class="lb-empty">Магазин пуст</div>'; return; }
+    box.innerHTML = d.items.map(function(it){
+      const stock = (it.stock < 0) ? "∞" : it.stock;
+      const btn = (it.afford && it.stock !== 0)
+        ? '<div class="shop-buy" onclick="buyItem(' + it.rowId + ')">' + it.price + ' 💰</div>'
+        : '<div class="shop-buy cant">' + it.price + ' 💰</div>';
+      return '<div class="shop-row"><span class="shop-emoji">' + it.emoji + '</span>' +
+             '<div class="shop-info"><div class="shop-name">' + it.rarity + ' ' + it.name + '</div>' +
+             '<div class="shop-stock">В наличии: ' + stock + '</div></div>' + btn + '</div>';
+    }).join("");
+  }
+  async function loadShop() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("shop-list").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderShop(await shopReq("list")); }
+    catch (e) { document.getElementById("shop-list").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function buyItem(rowId) {
+    if (shopBusy) return; shopBusy = true;
+    const msg = document.getElementById("shop-msg");
+    msg.style.color = "#c9b8e8"; msg.textContent = "⏳...";
+    try {
+      const d = await shopReq("buy", rowId);
+      renderShop(d);
+      msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { shopBusy = false; }
+  }
+
+  // ── Достижения ─────────────────────────────────────────────────────────
+  async function loadAchievements() {
+    const box = document.getElementById("ach-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/achievements", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const d = await resp.json();
+      if (!d.achievements || !d.achievements.length) { box.innerHTML='<div class="lb-empty">Нет данных</div>'; return; }
+      box.innerHTML = d.achievements.map(function(a){
+        const pct = Math.min(100, a.cur / a.goal * 100);
+        const tierTxt = a.maxTier > 1 ? (" • " + a.tier + "/" + a.maxTier + " ⭐") : "";
+        return '<div class="ach-row' + (a.done ? ' done' : '') + '">' +
+                 '<span class="ach-emoji">' + a.emoji + '</span>' +
+                 '<div class="ach-info"><div class="ach-name">' + a.name + tierTxt + '</div>' +
+                 '<div class="ach-desc">' + a.desc + '</div>' +
+                 (a.done ? '' :
+                   '<div class="ach-bar-track"><div class="ach-bar-fill" style="width:' + pct + '%"></div></div>' +
+                   '<div class="ach-prog">' + a.cur + ' / ' + a.goal + '</div>') +
+                 '</div>' +
+                 (a.done ? '<span class="ach-check">✅</span>' : '') +
+               '</div>';
+      }).join("");
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+
+  // ── Зелья ──────────────────────────────────────────────────────────────
+  let potBusy = false;
+  async function potReq(action, recipe) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/potions", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, recipe: recipe || "" })
+    });
+    return await resp.json();
+  }
+
+  function fmtTime(sec) {
+    const m = Math.floor(sec/60), s = sec%60;
+    return m > 0 ? (m + " мин " + s + " с") : (s + " с");
+  }
+
+  function renderPotions(d) {
+    // Очередь
+    const qbox = document.getElementById("pot-queue");
+    let anyReady = false;
+    if (d.queue && d.queue.length) {
+      qbox.innerHTML = d.queue.map(function(q){
+        if (q.ready) anyReady = true;
+        return '<div class="pot-queue-item' + (q.ready ? ' ready' : '') + '">' +
+                 '<span style="font-size:20px;">' + q.emoji + '</span>' +
+                 '<span style="flex:1;">' + q.name + '</span>' +
+                 '<span style="font-size:12px;">' + (q.ready ? '✅ Готово!' : '⏱ ' + fmtTime(q.remaining)) + '</span>' +
+               '</div>';
+      }).join("");
+      if (anyReady) {
+        qbox.innerHTML += '<div class="pot-collect" onclick="collectPotions()">📥 Собрать готовые зелья</div>';
+      }
+    } else { qbox.innerHTML = ""; }
+
+    // Рецепты
+    const box = document.getElementById("pot-list");
+    if (!d.recipes || !d.recipes.length) {
+      box.innerHTML = '<div class="lb-empty">Нет доступных рецептов</div>'; return;
+    }
+    box.innerHTML = d.recipes.map(function(r){
+      const ings = r.ingredients.map(function(i){
+        const cls = (i.have >= i.need) ? "ok" : "no";
+        return '<div class="pot-ing ' + cls + '">• ' + i.name + ': ' + i.have + '/' + i.need + '</div>';
+      }).join("");
+      const btn = r.canBrew
+        ? '<div class="pot-brew" onclick="brewPotion(\'' + r.id + '\')">🔥 Варить (' + r.time + ' мин)</div>'
+        : '<div class="pot-brew disabled">Не хватает ингредиентов</div>';
+      return '<div class="pot-card">' +
+               '<div class="pot-head"><span class="pot-emoji">' + r.emoji + '</span>' +
+               '<span class="pot-name">' + r.name + '</span></div>' +
+               ings + btn +
+             '</div>';
+    }).join("");
+  }
+
+  async function loadPotions() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      document.getElementById("pot-list").innerHTML = '<div class="lb-empty">Недоступно</div>'; return;
+    }
+    try { renderPotions(await potReq("list")); }
+    catch (e) { document.getElementById("pot-list").innerHTML = '<div class="lb-empty">Ошибка</div>'; }
+  }
+
+  async function brewPotion(rid) {
+    if (potBusy) return; potBusy = true;
+    const msg = document.getElementById("pot-msg");
+    msg.style.color = "#c9b8e8"; msg.textContent = "⏳...";
+    try {
+      const d = await potReq("brew", rid);
+      msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
+      if (d.recipes) renderPotions(d);
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { potBusy = false; }
+  }
+
+  async function collectPotions() {
+    if (potBusy) return; potBusy = true;
+    const msg = document.getElementById("pot-msg");
+    try {
+      const d = await potReq("collect");
+      msg.style.color = d.ok ? "#9be8c0" : "#b0a3d0"; msg.textContent = d.msg || "";
+      if (d.recipes) renderPotions(d);
+    } catch (e) {} finally { potBusy = false; }
+  }
+
+  // ── Питомец ────────────────────────────────────────────────────────────
+  let petBusy = false;
+  async function petReq(action) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/pet", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action })
+    });
+    return await resp.json();
+  }
+
+  function renderPet(d) {
+    const box = document.getElementById("pet-box");
+    if (!d || !d.hasPet) {
+      box.innerHTML = '<div class="lb-empty">У тебя пока нет питомца.<br>Получи его в боте в разделе «Питомец»!</div>';
+      return;
+    }
+    const xpPct = Math.min(100, d.xp / d.maxXp * 100);
+    const happyPct = d.happiness;
+    const evoText = d.nextEvo ? ("След. эволюция на " + d.nextEvo + " ур.") : "Финальная форма!";
+    box.innerHTML =
+      '<div class="pet-crest">' + d.emoji + '</div>' +
+      '<div class="pet-name">' + d.name + '</div>' +
+      '<div class="pet-stage">Стадия ' + d.stage + ' • Уровень ' + d.level + '/' + d.maxLevel + '</div>' +
+      (d.bonus ? '<div class="pet-bonus">🎁 ' + d.bonus + '</div>' : '') +
+      '<div class="pet-stat-row">' +
+        '<div class="bar-label"><span>✨ Опыт</span><span>' + d.xp + ' / ' + d.maxXp + '</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + xpPct + '%;background:linear-gradient(90deg,#ffd86b,#ffb347)"></div></div>' +
+      '</div>' +
+      '<div class="pet-stat-row">' +
+        '<div class="bar-label"><span>💛 Счастье</span><span>' + d.happiness + ' / 100</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + happyPct + '%;background:linear-gradient(90deg,#ffe06b,#ffd233)"></div></div>' +
+      '</div>' +
+      '<div class="pet-stage">🔮 ' + evoText + '</div>' +
+      '<div class="pet-actions">' +
+        '<div class="act-btn" onclick="trainPet()">🎯 Тренировать (50 💰 → +40 опыта)</div>' +
+        '<div class="act-btn" onclick="feedPetTab()">🍖 Покормить (+счастье)</div>' +
+        '<div class="pet-msg" id="pet-msg"></div>' +
+      '</div>';
+  }
+
+  async function loadPet() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      document.getElementById("pet-box").innerHTML = '<div class="lb-empty">Недоступно</div>'; return;
+    }
+    try { renderPet(await petReq("info")); }
+    catch (e) { document.getElementById("pet-box").innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+
+  async function trainPet() {
+    if (petBusy) return; petBusy = true;
+    const msg = document.getElementById("pet-msg");
+    if (msg) { msg.style.color = "#c9b8e8"; msg.textContent = "⏳..."; }
+    try {
+      const d = await petReq("train");
+      renderPet(d);
+      const m2 = document.getElementById("pet-msg");
+      if (m2) { m2.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; m2.textContent = d.msg || ""; }
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { petBusy = false; }
+  }
+
+  async function feedPetTab() {
+    if (petBusy) return; petBusy = true;
+    const msg = document.getElementById("pet-msg");
+    if (msg) { msg.style.color = "#c9b8e8"; msg.textContent = "⏳..."; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/feedpet", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const data = await resp.json();
+      const m2 = document.getElementById("pet-msg");
+      if (m2) { m2.style.color = data.ok ? "#9be8c0" : "#ffb0b0"; m2.textContent = data.msg || ""; }
+      if (data.ok) { renderPet(await petReq("info")); }
+    } catch (e) {} finally { petBusy = false; }
+  }
+
+  // Универсальное действие: feedpet / claimdaily / equipbest
+  let actionBusy = false;
+  async function doAction(endpoint, btn) {
+    if (actionBusy) return;
+    const msg = document.getElementById("act-msg");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      msg.style.color = "#ffb0b0"; msg.textContent = "Недоступно"; return;
+    }
+    actionBusy = true;
+    if (btn) btn.style.opacity = "0.5";
+    msg.style.color = "#c9b8e8";
+    msg.textContent = "⏳ Выполняю...";
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/" + endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const data = await resp.json();
+      msg.style.color = data.ok ? "#9be8c0" : "#ffb0b0";
+      msg.textContent = data.msg || "";
+      if (data.ok) {
+        if (tg && tg.HapticFeedback) {
+          try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){}
+        }
+        // Обновляем профиль, чтобы цифры (золото/опыт/снаряжение) подтянулись
+        setTimeout(loadProfile, 600);
+      }
+    } catch (e) {
+      msg.style.color = "#ffb0b0";
+      msg.textContent = "Ошибка соединения";
+    } finally {
+      actionBusy = false;
+      if (btn) btn.style.opacity = "1";
+    }
+  }
+
+  async function loadHouseCup() {
+    const box = document.getElementById("cup-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      box.innerHTML = '<div class="lb-empty">Недоступно</div>'; return;
+    }
+    try {
+      const resp = await fetch(API_URL + "/api/housecup");
+      const data = await resp.json();
+      if (!data.houses || data.houses.length === 0) {
+        box.innerHTML = '<div class="lb-empty">Нет данных</div>'; return;
+      }
+      box.innerHTML = data.houses.map(function(h, i) {
+        const first = (i === 0) ? " first" : "";
+        return '<div class="cup-row' + first + '">' +
+                 '<div class="cup-emoji">' + h.emoji + '</div>' +
+                 '<div class="cup-name">' + h.name + '</div>' +
+                 '<div class="cup-pts">' + h.points + '</div>' +
+               '</div>';
+      }).join("");
+    } catch (e) {
+      box.innerHTML = '<div class="lb-empty">Не удалось загрузить</div>';
+    }
+  }
+
+  async function loadInventory() {
+    const box = document.getElementById("inv-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      box.innerHTML = '<div class="lb-empty">Инвентарь недоступен</div>';
+      return;
+    }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const data = await resp.json();
+      if (!data.items || data.items.length === 0) {
+        box.innerHTML = '<div class="lb-empty">Инвентарь пуст. Покупай предметы в магазине!</div>';
+        return;
+      }
+      box.innerHTML = data.items.map(function(it) {
+        return '<div class="inv-row">' +
+                 '<div class="inv-emoji">' + it.emoji + '</div>' +
+                 '<div class="inv-name">' + it.rarity + ' ' + it.name + '</div>' +
+                 '<div class="inv-qty">×' + it.qty + '</div>' +
+               '</div>';
+      }).join("");
+    } catch (e) {
+      box.innerHTML = '<div class="lb-empty">Не удалось загрузить инвентарь</div>';
+    }
+  }
+
+  async function loadLeaderboard(cat) {
+    cat = cat || "level";
+    // Подсветка активной категории
+    ["level","gold","pvp"].forEach(function(c) {
+      document.getElementById("cat-" + c).classList.toggle("active", c === cat);
+    });
+    const box = document.getElementById("lb-list");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      box.innerHTML = '<div class="lb-empty">Рейтинг недоступен</div>';
+      return;
+    }
+    try {
+      const resp = await fetch(API_URL + "/api/leaderboard?cat=" + cat);
+      const data = await resp.json();
+      if (!data.top || data.top.length === 0) {
+        box.innerHTML = '<div class="lb-empty">Пока нет игроков в рейтинге</div>';
+        return;
+      }
+      const medals = {1:"🥇", 2:"🥈", 3:"🥉"};
+      box.innerHTML = data.top.map(function(p) {
+        const place = medals[p.place] || ("#" + p.place);
+        const isMe = (p.name === myName) ? " me" : "";
+        return '<div class="lb-row' + isMe + '">' +
+                 '<div class="lb-place">' + place + '</div>' +
+                 '<div class="lb-name">' + p.house + ' ' + p.name + '</div>' +
+                 '<div class="lb-lvl">' + p.metric + '</div>' +
+               '</div>';
+      }).join("");
+    } catch (e) {
+      box.innerHTML = '<div class="lb-empty">Не удалось загрузить рейтинг</div>';
+    }
+  }
+
+  // ── PvE-БОЙ ────────────────────────────────────────────────────────────
+  let battleBusy = false;
+
+  async function battleReq(action, spell) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/battle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, spell: spell || "" })
+    });
+    return await resp.json();
+  }
+
+  async function openBattle() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) return;
+    document.getElementById("battle-overlay").style.display = "flex";
+    document.getElementById("bt-zone-select").style.display = "block";
+    document.getElementById("bt-scene").style.display = "none";
+    // Telegram-кнопка "Назад" закрывает бой
+    if (tg && tg.BackButton) {
+      try { tg.BackButton.show(); tg.BackButton.onClick(closeBattle); } catch(e){}
+    }
+    loadZones();
+  }
+
+  async function loadZones() {
+    const box = document.getElementById("bt-zone-list");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const d = await battleReq("zones");
+      if (!d.zones || !d.zones.length) { box.innerHTML = '<div class="lb-empty">Нет зон</div>'; return; }
+      box.innerHTML = d.zones.map(function(z){
+        if (z.locked) {
+          return '<div class="zone-card locked">' +
+                   '<span class="zone-emoji">' + z.emoji + '</span>' +
+                   '<div class="zone-info"><div class="zone-name">' + z.name + '</div>' +
+                   '<div class="zone-lock">🔒 С ' + z.minLevel + ' уровня</div></div></div>';
+        }
+        return '<div class="zone-card-wrap">' +
+                 '<div class="zone-card" onclick="startInZone(\'' + z.id + '\')">' +
+                   '<span class="zone-emoji">' + z.emoji + '</span>' +
+                   '<div class="zone-info"><div class="zone-name">' + z.name + '</div>' +
+                   '<div class="zone-sub">' + z.monsters + ' видов врагов • ур. ' + z.minLevel + '+</div></div>' +
+                   '<span class="zone-go">⚔️</span></div>' +
+                 (z.boss ? '<div class="zone-boss" onclick="startBoss(\'' + z.id + '\')">' +
+                   (z.bossEmoji || '👑') + ' БОСС: ' + z.boss + ' (×2.5 награда)</div>' : '') +
+               '</div>';
+      }).join("");
+    } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки зон</div>'; }
+  }
+
+  async function startInZone(zoneId) {
+    document.getElementById("bt-zone-select").style.display = "none";
+    document.getElementById("bt-scene").style.display = "block";
+    document.getElementById("bt-result").style.display = "none";
+    document.getElementById("bt-flash").textContent = "";
+    document.getElementById("bt-enemy-emoji").classList.remove("dying");
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/battle", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData, action: "start", zone: zoneId })
+      });
+      const st = await resp.json();
+      renderBattle(st, true);
+    } catch (e) {
+      document.getElementById("bt-log").innerHTML = "<div>Не удалось начать бой</div>";
+    }
+  }
+
+  async function startBoss(zoneId) {
+    document.getElementById("bt-zone-select").style.display = "none";
+    document.getElementById("bt-scene").style.display = "block";
+    document.getElementById("bt-result").style.display = "none";
+    document.getElementById("bt-flash").textContent = "";
+    document.getElementById("bt-enemy-emoji").classList.remove("dying");
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/battle", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData, action: "start", zone: zoneId, boss: true })
+      });
+      const st = await resp.json();
+      if (st.error === "zone_locked") {
+        document.getElementById("bt-zone-select").style.display = "block";
+        document.getElementById("bt-scene").style.display = "none";
+        return;
+      }
+      renderBattle(st, true);
+    } catch (e) {
+      document.getElementById("bt-log").innerHTML = "<div>Не удалось начать бой с боссом</div>";
+    }
+  }
+
+  function closeBattle() {
+    document.getElementById("battle-overlay").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeBattle); } catch(e){} }
+    loadProfile();
+  }
+
+  function renderBattle(st, full) {
+    if (!st || !st.active) {
+      document.getElementById("battle-overlay").style.display = "none";
+      loadProfile();
+      return;
+    }
+    const m = st.monster, p = st.player;
+    if (full) {
+      document.getElementById("bt-enemy-emoji").textContent = m.emoji;
+      document.getElementById("bt-enemy-name").textContent  = (st.isBoss ? "👑 " : "") + m.name + (st.isBoss ? " 👑" : "");
+    }
+    document.getElementById("bt-enemy-hp").style.width = (m.hp/m.maxHp*100) + "%";
+    document.getElementById("bt-enemy-hp-txt").textContent = m.hp + "/" + m.maxHp;
+    document.getElementById("bt-player-hp").style.width = (p.hp/p.maxHp*100) + "%";
+    document.getElementById("bt-player-hp-txt").textContent = p.hp + "/" + p.maxHp;
+    document.getElementById("bt-player-mana").style.width = (p.mana/p.maxMana*100) + "%";
+    document.getElementById("bt-player-mana-txt").textContent = p.mana + "/" + p.maxMana;
+
+    // Лог
+    document.getElementById("bt-log").innerHTML = st.log.map(function(l){ return "<div>" + l + "</div>"; }).join("");
+
+    // Заклинания
+    const sbox = document.getElementById("bt-spells");
+    if (st.over) {
+      sbox.innerHTML = "";
+      const r = document.getElementById("bt-result");
+      r.style.display = "block";
+      if (st.result === "win") {
+        r.style.color = "#9be8c0";
+        let html = "🏆 ПОБЕДА!<br><span style='font-size:15px;'>+" +
+                   (st.reward ? st.reward.xp : 0) + " XP, +" +
+                   (st.reward ? st.reward.gold : 0) + " 💰</span>";
+        if (st.reward && st.reward.item) {
+          html += "<br><span style='font-size:15px;color:#ffd86b;'>🎁 Добыча: " +
+                  st.reward.item.emoji + " " + st.reward.item.name + "</span>";
+        }
+        if (st.reward && st.reward.streak && st.reward.streak > 1) {
+          html += "<br><span style='font-size:14px;color:#ff9b5c;'>🔥 Серия побед: " +
+                  st.reward.streak + "</span>";
+        }
+        html += "<br><span class='bt-again' onclick='openBattle()'>⚔️ Ещё бой</span>";
+        r.innerHTML = html;
+      } else {
+        r.style.color = "#ffb0b0";
+        r.innerHTML = "💀 Поражение";
+      }
+      document.getElementById("bt-flee").textContent = "✖️ Закрыть";
+    } else {
+      sbox.innerHTML = st.spells.map(function(s){
+        const dis = (s.mana > p.mana) ? " disabled" : "";
+        const info = (s.damage ? "⚔️"+s.damage+" " : "") + (s.heal ? "💚"+s.heal+" " : "") + "💧"+s.mana;
+        return '<div class="bt-spell' + dis + '" onclick="castSpell(\'' + s.id + '\')">' +
+               s.element + s.emoji + " " + s.name + " (" + info + ")</div>";
+      }).join("");
+    }
+  }
+
+  // Вспомогательные: цвет стихии
+  const ELEM_COLORS = {"🔥":"#ff6b3d","💧":"#5c9dff","⚡":"#ffd24a","🌑":"#9b5fd8","🌿":"#5fd89b"};
+
+  function spawnDamage(targetEl, text, cls, overlayId) {
+    const overlay = document.getElementById(overlayId || "battle-overlay");
+    const rect = targetEl.getBoundingClientRect();
+    const pop = document.createElement("div");
+    pop.className = "dmg-pop " + cls;
+    pop.textContent = text;
+    pop.style.left = (rect.left + rect.width/2 - 20) + "px";
+    pop.style.top  = (rect.top + rect.height/2 - 10) + "px";
+    overlay.appendChild(pop);
+    setTimeout(function(){ pop.remove(); }, 1000);
+  }
+
+  function spawnBurst(targetEl, emoji, overlayId) {
+    const overlay = document.getElementById(overlayId || "battle-overlay");
+    const rect = targetEl.getBoundingClientRect();
+    const b = document.createElement("div");
+    b.className = "burst";
+    b.textContent = emoji || "💥";
+    b.style.left = (rect.left + rect.width/2 - 23) + "px";
+    b.style.top  = (rect.top + rect.height/2 - 23) + "px";
+    overlay.appendChild(b);
+    setTimeout(function(){ b.remove(); }, 450);
+  }
+
+  function spawnParticles(targetEl, color, overlayId) {
+    const overlay = document.getElementById(overlayId || "battle-overlay");
+    const rect = targetEl.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    for (let i=0; i<10; i++) {
+      const p = document.createElement("div");
+      p.className = "particle";
+      p.style.background = color || "#ffd86b";
+      p.style.color = color || "#ffd86b";
+      p.style.left = cx + "px"; p.style.top = cy + "px";
+      const ang = Math.random()*Math.PI*2, dist = 40+Math.random()*40;
+      p.style.setProperty("--px", Math.cos(ang)*dist + "px");
+      p.style.setProperty("--py", Math.sin(ang)*dist + "px");
+      overlay.appendChild(p);
+      setTimeout(function(){ p.remove(); }, 700);
+    }
+  }
+
+  function flyProjectile(fromEl, toEl, emoji) {
+    const overlay = document.getElementById("battle-overlay");
+    const f = fromEl.getBoundingClientRect(), t = toEl.getBoundingClientRect();
+    const proj = document.createElement("div");
+    proj.className = "projectile";
+    proj.textContent = emoji || "✨";
+    proj.style.left = (f.left + f.width/2 - 17) + "px";
+    proj.style.top  = (f.top + f.height/2 - 17) + "px";
+    proj.style.setProperty("--fx", (t.left - f.left) + "px");
+    proj.style.setProperty("--fy", (t.top - f.top) + "px");
+    overlay.appendChild(proj);
+    setTimeout(function(){ proj.remove(); }, 450);
+  }
+
+  function flyProjectileColored(fromEl, toEl, emoji, color) {
+    const overlay = document.getElementById("battle-overlay");
+    const f = fromEl.getBoundingClientRect(), t = toEl.getBoundingClientRect();
+    const proj = document.createElement("div");
+    proj.className = "projectile";
+    proj.textContent = emoji || "✨";
+    proj.style.color = color || "#ffd86b";
+    proj.style.left = (f.left + f.width/2 - 19) + "px";
+    proj.style.top  = (f.top + f.height/2 - 19) + "px";
+    proj.style.setProperty("--fx", (t.left - f.left) + "px");
+    proj.style.setProperty("--fy", (t.top - f.top + t.height/2) + "px");
+    overlay.appendChild(proj);
+    setTimeout(function(){ proj.remove(); }, 500);
+  }
+
+  async function castSpell(spellId) {
+    if (battleBusy) return;
+    battleBusy = true;
+    const enemyEmoji = document.getElementById("bt-enemy-emoji");
+    const flash = document.getElementById("bt-flash");
+    const overlay = document.getElementById("battle-overlay");
+    const elemFlash = document.getElementById("elem-flash");
+    // блокируем кнопки на время анимации
+    document.querySelectorAll(".bt-spell").forEach(function(b){ b.classList.add("disabled"); });
+
+    try {
+      const st = await battleReq("cast", spellId);
+      const lt = st.lastTurn || {};
+      const elemColor = ELEM_COLORS[lt.element] || "#ffd86b";
+
+      // 1. Летящий снаряд от низа к монстру (со свечением цвета стихии)
+      const playerBars = document.getElementById("bt-player-bars") || document.getElementById("bt-log");
+      flyProjectileColored(playerBars, enemyEmoji, lt.element || "✨", elemColor);
+
+      // 2. Через 420мс — попадание
+      setTimeout(function(){
+        // Вспышка экрана + стихийная вспышка
+        const hitFlash = document.getElementById("hit-flash");
+        hitFlash.classList.remove("show"); void hitFlash.offsetWidth; hitFlash.classList.add("show");
+        if (lt.element) {
+          elemFlash.style.background = "radial-gradient(circle, " + elemColor + "55, transparent 70%)";
+          elemFlash.classList.remove("show"); void elemFlash.offsetWidth; elemFlash.classList.add("show");
+        }
+        // Взрыв на монстре
+        spawnBurst(enemyEmoji, lt.crit ? "💥" : (lt.element || "✨"));
+        // Реакция монстра + тряска экрана (при крите)
+        enemyEmoji.classList.remove("hit"); void enemyEmoji.offsetWidth; enemyEmoji.classList.add("hit");
+        if (lt.crit) {
+          overlay.classList.remove("shake"); void overlay.offsetWidth; overlay.classList.add("shake");
+        }
+        if (lt.dmg > 0) {
+          spawnParticles(enemyEmoji, elemColor);
+          spawnDamage(enemyEmoji, (lt.crit ? "−"+lt.dmg+"!" : "−"+lt.dmg), lt.crit ? "crit" : "normal");
+        } else if (lt.heal > 0) {
+          spawnDamage(document.getElementById("bt-player-hp"), "+"+lt.heal, "heal");
+        }
+        if (lt.crit) { flash.textContent = "💥 КРИТИЧЕСКИЙ УДАР!"; }
+        else if (lt.elementAdv) { flash.textContent = lt.element + " ПРЕИМУЩЕСТВО СТИХИИ!"; }
+        else { flash.textContent = ""; }
+        if (flash.textContent) {
+          flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show");
+        }
+        if (tg && tg.HapticFeedback) {
+          try { tg.HapticFeedback.impactOccurred(lt.crit ? "heavy" : "medium"); } catch(e){}
+        }
+        updateBattleBars(st);
+      }, 420);
+
+      // 3. Через 1050мс — показываем ответ монстра (урон игроку) или конец
+      setTimeout(function(){
+        flash.textContent = "";
+        const lt2 = st.lastTurn || {};
+        // Если последний ход был монстра — показать урон игроку
+        if (lt2.who === "monster" && lt2.dmg > 0) {
+          const pbar = document.getElementById("bt-player-hp");
+          spawnDamage(pbar, "−"+lt2.dmg, "player-dmg");
+          const hitFlash = document.getElementById("hit-flash");
+          hitFlash.classList.remove("show"); void hitFlash.offsetWidth; hitFlash.classList.add("show");
+          if (lt2.crit) { overlay.classList.remove("shake"); void overlay.offsetWidth; overlay.classList.add("shake"); }
+          if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+        }
+        renderBattle(st, false);
+
+        // Смерть монстра
+        if (st.over && st.result === "win") {
+          enemyEmoji.classList.add("dying");
+        }
+        battleBusy = false;
+      }, 1050);
+
+    } catch (e) {
+      battleBusy = false;
+      document.querySelectorAll(".bt-spell").forEach(function(b){ b.classList.remove("disabled"); });
+    }
+  }
+
+  // Обновить только бары (для плавной анимации между фазами)
+  function updateBattleBars(st) {
+    if (!st || !st.active) return;
+    const m = st.monster, p = st.player;
+    document.getElementById("bt-enemy-hp").style.width = (m.hp/m.maxHp*100) + "%";
+    document.getElementById("bt-enemy-hp-txt").textContent = m.hp + "/" + m.maxHp;
+    document.getElementById("bt-player-hp").style.width = (p.hp/p.maxHp*100) + "%";
+    document.getElementById("bt-player-hp-txt").textContent = p.hp + "/" + p.maxHp;
+    document.getElementById("bt-player-mana").style.width = (p.mana/p.maxMana*100) + "%";
+    document.getElementById("bt-player-mana-txt").textContent = p.mana + "/" + p.maxMana;
+  }
+
+  async function fleeBattle() {
+    try { await battleReq("flee"); } catch (e) {}
+    document.getElementById("battle-overlay").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeBattle); } catch(e){} }
+    loadProfile();
+  }
+
+  // ── Асинхронный PvP ────────────────────────────────────────────────────
+  async function pvpReq(action, opponent) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/pvp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, opponent: opponent || 0 })
+    });
+    return await resp.json();
+  }
+
+  function openPvP() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) return;
+    document.getElementById("pvp-overlay").style.display = "flex";
+    document.getElementById("pvp-select").style.display = "block";
+    document.getElementById("pvp-arena").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closePvP); } catch(e){} }
+    loadOpponents();
+    loadBlockStatus();
+    loadIncoming();
+    startIncomingPoll();
+  }
+
+  // ── Живой бой: матчинг (Шаг 1) ─────────────────────────────────────────
+  async function liveReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/liveduel", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    return await resp.json();
+  }
+
+  async function loadBlockStatus() {
+    try {
+      const d = await liveReq("block_status");
+      renderBlock(d.blocked);
+    } catch (e) {}
+  }
+  function renderBlock(blocked) {
+    const tog = document.getElementById("live-toggle");
+    const lbl = document.getElementById("live-block-label");
+    if (blocked) {
+      tog.textContent = "🔒 Заблокированы"; tog.classList.add("blocked");
+      lbl.textContent = "Случайные приглашения:";
+    } else {
+      tog.textContent = "🔓 Разрешены"; tog.classList.remove("blocked");
+      lbl.textContent = "Случайные приглашения:";
+    }
+  }
+  async function toggleBlock() {
+    try {
+      const d = await liveReq("toggle_block");
+      renderBlock(d.blocked);
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+    } catch (e) {}
+  }
+
+  async function liveRandom() {
+    const msg = document.getElementById("live-msg");
+    msg.style.color = "#c9b8e8"; msg.textContent = "🔎 Ищу соперника...";
+    try {
+      const d = await liveReq("challenge_random");
+      msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
+      if (d.ok && d.inviteId) waitForAccept(d.inviteId);
+    } catch (e) { msg.style.color="#ffb0b0"; msg.textContent="Ошибка"; }
+  }
+
+  async function liveChallengeId() {
+    const val = document.getElementById("live-id-input").value.trim();
+    const msg = document.getElementById("live-msg");
+    if (!val || !/^\d+$/.test(val)) { msg.style.color="#ffb0b0"; msg.textContent="Введи корректный ID (число)"; return; }
+    msg.style.color = "#c9b8e8"; msg.textContent = "📨 Отправляю вызов...";
+    try {
+      const d = await liveReq("challenge_id", { targetId: parseInt(val) });
+      msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
+      if (d.ok && d.inviteId) waitForAccept(d.inviteId);
+    } catch (e) { msg.style.color="#ffb0b0"; msg.textContent="Ошибка"; }
+  }
+
+  // Вызывающий ждёт ответа соперника (опрос статуса)
+  let acceptPoll = null;
+  function waitForAccept(inviteId) {
+    if (acceptPoll) clearInterval(acceptPoll);
+    let waited = 0;
+    acceptPoll = setInterval(async function() {
+      waited += 2;
+      try {
+        const d = await liveReq("check_status", { inviteId: inviteId });
+        if (d.status === "accepted") {
+          clearInterval(acceptPoll); acceptPoll = null;
+          document.getElementById("live-msg").style.color = "#9be8c0";
+          document.getElementById("live-msg").textContent = "✅ Соперник принял! Бой начинается...";
+          if (d.roomId) startLiveBattle(d.roomId);
+        } else if (d.status === "declined") {
+          clearInterval(acceptPoll); acceptPoll = null;
+          document.getElementById("live-msg").style.color = "#ffb0b0";
+          document.getElementById("live-msg").textContent = "❌ Соперник отклонил вызов.";
+        } else if (d.status === "expired" || waited > 120) {
+          clearInterval(acceptPoll); acceptPoll = null;
+          document.getElementById("live-msg").style.color = "#b0a3d0";
+          document.getElementById("live-msg").textContent = "⌛ Вызов истёк (нет ответа).";
+        }
+      } catch (e) {}
+    }, 2000);
+  }
+
+  // Опрос входящих приглашений
+  let incomingPoll = null;
+  function startIncomingPoll() {
+    if (incomingPoll) clearInterval(incomingPoll);
+    incomingPoll = setInterval(loadIncoming, 4000);
+  }
+  function stopIncomingPoll() {
+    if (incomingPoll) { clearInterval(incomingPoll); incomingPoll = null; }
+    if (acceptPoll) { clearInterval(acceptPoll); acceptPoll = null; }
+  }
+  async function loadIncoming() {
+    try {
+      const d = await liveReq("incoming");
+      const box = document.getElementById("pvp-incoming");
+      if (!d.incoming || !d.incoming.length) { box.innerHTML = ""; return; }
+      box.innerHTML = d.incoming.map(function(inv){
+        return '<div class="invite-card">' +
+                 '<div class="invite-info">⚔️ <b>' + inv.fromName + '</b> вызывает на дуэль!</div>' +
+                 '<div class="invite-accept" onclick="respondInvite(\'' + inv.inviteId + '\',true)">Принять</div>' +
+                 '<div class="invite-decline" onclick="respondInvite(\'' + inv.inviteId + '\',false)">✖️</div>' +
+               '</div>';
+      }).join("");
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("warning"); } catch(e){} }
+    } catch (e) {}
+  }
+  async function respondInvite(inviteId, accept) {
+    try {
+      const d = await liveReq("respond", { inviteId: inviteId, accept: accept });
+      const msg = document.getElementById("live-msg");
+      msg.style.color = d.accepted ? "#9be8c0" : "#b0a3d0";
+      msg.textContent = d.msg || "";
+      loadIncoming();
+      if (d.accepted && d.roomId) startLiveBattle(d.roomId);
+    } catch (e) {}
+  }
+
+  // ── Живой бой: Шаг 2-3 (опрос + ходы) ──────────────────────────────────
+  let liveRoomId = null;
+  let livePoll = null;
+  let liveOver = false;
+
+  function startLiveBattle(roomId) {
+    liveRoomId = roomId;
+    liveOver = false;
+    stopIncomingPoll();
+    document.getElementById("pvp-overlay").style.display = "none";
+    document.getElementById("live-overlay").style.display = "flex";
+    document.getElementById("live-bt-result").style.display = "none";
+    document.getElementById("live-flee").style.display = "block";
+    document.getElementById("live-bt-log").innerHTML = '<div>Загрузка боя...</div>';
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); } catch(e){} }
+    pollLiveState();
+    livePoll = setInterval(pollLiveState, 1500);
+  }
+
+  async function liveStateReq(action, spell) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/liveduel", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, roomId: liveRoomId, spell: spell || "" })
+    });
+    return await resp.json();
+  }
+
+  async function pollLiveState() {
+    if (!liveRoomId || liveOver) return;
+    try {
+      const st = await liveStateReq("battle_state");
+      renderLiveBattle(st);
+    } catch (e) {}
+  }
+
+  let liveLastLogLen = 0;
+  function renderLiveBattle(st) {
+    if (!st || !st.active) {
+      if (st && st.error === "no_room") {
+        document.getElementById("live-bt-log").innerHTML = '<div>Бой не найден или завершён</div>';
+      }
+      return;
+    }
+    document.getElementById("live-you-crest").textContent = st.me.house || "🧙";
+    document.getElementById("live-you-name").innerHTML = st.me.name +
+      (st.me.houseName ? '<div class="pvp-house">' + st.me.houseName + '</div>' : '');
+    document.getElementById("live-foe-crest").textContent = st.foe.house || "🧙";
+    document.getElementById("live-foe-name").innerHTML = st.foe.name +
+      (st.foe.houseName ? '<div class="pvp-house">' + st.foe.houseName + '</div>' : '');
+    document.getElementById("live-you-hp").style.width = (st.me.hp/st.me.maxHp*100) + "%";
+    document.getElementById("live-you-hp-txt").textContent = "❤️ " + st.me.hp + "/" + st.me.maxHp;
+    document.getElementById("live-you-mana").style.width = (st.me.mana/st.me.maxMana*100) + "%";
+    document.getElementById("live-foe-hp").style.width = (st.foe.hp/st.foe.maxHp*100) + "%";
+    document.getElementById("live-foe-hp-txt").textContent = "❤️ " + st.foe.hp + "/" + st.foe.maxHp;
+    var foeManaEl = document.getElementById("live-foe-mana");
+    if (foeManaEl) foeManaEl.style.width = (st.foe.mana/st.foe.maxMana*100) + "%";
+
+    document.getElementById("live-bt-log").innerHTML = (st.log||[]).map(function(l){ return "<div>"+l+"</div>"; }).join("");
+
+    // Анимация удара при новом событии в логе
+    if (st.lastTurn && st.log && st.log.length !== liveLastLogLen) {
+      liveLastLogLen = st.log.length;
+      const lt = st.lastTurn;
+      // Кто бил: если by == мой ход только что прошёл? Определяем по тому, чей ход СЕЙЧАС.
+      // Если сейчас НЕ мой ход — значит только что бил я (цель — соперник).
+      // Если сейчас мой ход — только что бил соперник (цель — я).
+      const iAttacked = !st.yourTurn;
+      const youCrest = document.getElementById("live-you-crest");
+      const foeCrest = document.getElementById("live-foe-crest");
+      const targetCrest = iAttacked ? foeCrest : youCrest;
+      const sourceCrest = iAttacked ? youCrest : foeCrest;
+      const ELEM_COLORS2 = {"🔥":"#ff6b3d","💧":"#5c9dff","⚡":"#ffd24a","🌑":"#9b5fd8","🌿":"#5fd89b","❄️":"#5c9dff"};
+      const col = ELEM_COLORS2[lt.element] || "#ffd86b";
+      const flash = document.getElementById("live-bt-flash");
+      const overlay = document.getElementById("live-overlay");
+      const hitFlash = document.getElementById("live-hit-flash");
+      const elemFlash = document.getElementById("live-elem-flash");
+
+      // Снаряд
+      try { flyProjectileColored(sourceCrest, targetCrest, lt.element || "✨", col); } catch(e){}
+      setTimeout(function(){
+        try {
+          hitFlash.classList.remove("show"); void hitFlash.offsetWidth; hitFlash.classList.add("show");
+          if (lt.element) {
+            elemFlash.style.background = "radial-gradient(circle, " + col + "55, transparent 70%)";
+            elemFlash.classList.remove("show"); void elemFlash.offsetWidth; elemFlash.classList.add("show");
+          }
+          targetCrest.classList.remove("hit"); void targetCrest.offsetWidth; targetCrest.classList.add("hit");
+          spawnBurst(targetCrest, lt.crit ? "💥" : (lt.element || "✨"), "live-overlay");
+          if (lt.dmg > 0) {
+            spawnParticles(targetCrest, col, "live-overlay");
+            spawnDamage(targetCrest, (lt.crit ? "−"+lt.dmg+"!" : "−"+lt.dmg), lt.crit ? "crit" : (iAttacked ? "normal" : "player-dmg"), "live-overlay");
+          } else if (lt.heal > 0) {
+            spawnDamage(sourceCrest, "+"+lt.heal, "heal", "live-overlay");
+          }
+          if (lt.crit) {
+            flash.textContent = "💥 КРИТ!";
+            flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show");
+            overlay.classList.remove("shake"); void overlay.offsetWidth; overlay.classList.add("shake");
+          } else { flash.textContent = ""; }
+          if (tg && tg.HapticFeedback && lt.dmg > 0) { try { tg.HapticFeedback.impactOccurred(lt.crit ? "heavy" : "light"); } catch(e){} }
+        } catch(e){}
+      }, 380);
+    }
+
+    const turnEl = document.getElementById("live-turn");
+    const spellsBox = document.getElementById("live-spells");
+    if (st.over) {
+      liveOver = true;
+      if (livePoll) { clearInterval(livePoll); livePoll = null; }
+      turnEl.textContent = ""; turnEl.className = "live-turn";
+      spellsBox.innerHTML = "";
+      const r = document.getElementById("live-bt-result");
+      r.style.display = "block";
+      if (st.youWon) { r.style.color = "#9be8c0"; r.innerHTML = "🏆 ПОБЕДА!<br><span style='font-size:14px;'>+90 XP, +60 💰</span>"; }
+      else { r.style.color = "#ffb0b0"; r.innerHTML = "💀 Поражение"; }
+      document.getElementById("live-flee").textContent = "✖️ Закрыть";
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(st.youWon ? "success" : "error"); } catch(e){} }
+      return;
+    }
+
+    if (st.yourTurn) {
+      turnEl.textContent = "🟢 Твой ход! (" + st.timeLeft + "с)";
+      turnEl.className = "live-turn you";
+      spellsBox.innerHTML = st.spells.map(function(s){
+        const dis = (s.mana > st.me.mana) ? " disabled" : "";
+        const info = (s.damage ? "⚔️"+s.damage+" " : "") + (s.heal ? "💚"+s.heal+" " : "") + "💧"+s.mana;
+        return '<div class="bt-spell'+dis+'" onclick="liveCast(\''+s.id+'\')">'+s.element+s.emoji+" "+s.name+" ("+info+")</div>";
+      }).join("");
+    } else {
+      turnEl.textContent = "⏳ Ход соперника... (" + st.timeLeft + "с)";
+      turnEl.className = "live-turn wait";
+      spellsBox.innerHTML = '<div class="lb-empty">Ждём ход соперника...</div>';
+    }
+  }
+
+  let liveCastBusy = false;
+  async function liveCast(spellId) {
+    if (liveCastBusy || liveOver) return;
+    liveCastBusy = true;
+    document.querySelectorAll("#live-spells .bt-spell").forEach(function(b){ b.classList.add("disabled"); });
+    try {
+      const st = await liveStateReq("battle_cast", spellId);
+      renderLiveBattle(st);
+    } catch (e) {} finally { liveCastBusy = false; }
+  }
+
+  async function liveFlee() {
+    if (liveOver) {
+      // кнопка стала "Закрыть"
+      document.getElementById("live-overlay").style.display = "none";
+      if (livePoll) { clearInterval(livePoll); livePoll = null; }
+      liveRoomId = null;
+      loadProfile();
+      return;
+    }
+    try { await liveStateReq("battle_flee"); } catch (e) {}
+    if (livePoll) { clearInterval(livePoll); livePoll = null; }
+    liveOver = true;
+    document.getElementById("live-overlay").style.display = "none";
+    liveRoomId = null;
+    loadProfile();
+  }
+
+  function closePvP() {
+    document.getElementById("pvp-overlay").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closePvP); } catch(e){} }
+    stopIncomingPoll();
+    loadProfile();
+  }
+
+  async function loadOpponents() {
+    const box = document.getElementById("pvp-opp-list");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const d = await pvpReq("opponents");
+      if (!d.opponents || !d.opponents.length) {
+        box.innerHTML = '<div class="lb-empty">Нет доступных соперников.<br>Подожди, пока появятся другие игроки!</div>';
+        return;
+      }
+      box.innerHTML = d.opponents.map(function(o){
+        return '<div class="zone-card" onclick="startPvP(' + o.id + ')">' +
+                 '<span class="zone-emoji">' + o.house + '</span>' +
+                 '<div class="zone-info"><div class="zone-name">' + o.name + '</div>' +
+                 '<div class="zone-sub">Уровень ' + o.level + '</div></div>' +
+                 '<span class="zone-go">🤺</span></div>';
+      }).join("");
+    } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+
+  let pvpBusy = false;
+  async function startPvP(oppId) {
+    if (pvpBusy) return; pvpBusy = true;
+    document.getElementById("pvp-select").style.display = "none";
+    document.getElementById("pvp-arena").style.display = "block";
+    document.getElementById("pvp-result").style.display = "none";
+    document.getElementById("pvp-close").style.display = "none";
+    document.getElementById("pvp-flash").textContent = "";
+    document.getElementById("pvp-log").innerHTML = '<div>Дуэль начинается...</div>';
+    try {
+      const d = await pvpReq("fight", oppId);
+      if (!d.ok) { document.getElementById("pvp-log").innerHTML = '<div>Не удалось начать дуэль</div>'; pvpBusy = false; return; }
+      playReplay(d);
+    } catch (e) {
+      document.getElementById("pvp-log").innerHTML = '<div>Ошибка соединения</div>'; pvpBusy = false;
+    }
+  }
+
+  function playReplay(d) {
+    // Заголовки бойцов
+    document.getElementById("pvp-you-crest").textContent = d.you.house;
+    document.getElementById("pvp-you-name").textContent = d.you.name;
+    document.getElementById("pvp-foe-crest").textContent = d.foe.house;
+    document.getElementById("pvp-foe-name").textContent = d.foe.name;
+    document.getElementById("pvp-you-hp").style.width = "100%";
+    document.getElementById("pvp-foe-hp").style.width = "100%";
+    document.getElementById("pvp-you-hp-txt").textContent = d.you.maxHp + "/" + d.you.maxHp;
+    document.getElementById("pvp-foe-hp-txt").textContent = d.foe.maxHp + "/" + d.foe.maxHp;
+    document.getElementById("pvp-log").innerHTML = "";
+
+    const replay = d.replay || [];
+    let i = 0;
+    const flash = document.getElementById("pvp-flash");
+    const logBox = document.getElementById("pvp-log");
+
+    function step() {
+      if (i >= replay.length) { finishPvP(d); return; }
+      const t = replay[i]; i++;
+      const youCrest = document.getElementById("pvp-you-crest");
+      const foeCrest = document.getElementById("pvp-foe-crest");
+      const attacker = (t.by === 1) ? d.you.name : d.foe.name;
+      const targetCrest = (t.by === 1) ? foeCrest : youCrest;
+
+      // Бары
+      document.getElementById("pvp-you-hp").style.width = (t.hp1 / d.you.maxHp * 100) + "%";
+      document.getElementById("pvp-foe-hp").style.width = (t.hp2 / d.foe.maxHp * 100) + "%";
+      document.getElementById("pvp-you-hp-txt").textContent = t.hp1 + "/" + d.you.maxHp;
+      document.getElementById("pvp-foe-hp-txt").textContent = t.hp2 + "/" + d.foe.maxHp;
+
+      // Анимация удара
+      targetCrest.classList.remove("hit"); void targetCrest.offsetWidth; targetCrest.classList.add("hit");
+      if (t.crit) { flash.textContent = "💥 КРИТ!"; flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show"); }
+      else { flash.textContent = ""; }
+
+      // Лог
+      const dmgTxt = t.dmg > 0 ? ("−" + t.dmg) : (t.heal > 0 ? ("+" + t.heal) : "промах");
+      const line = document.createElement("div");
+      line.innerHTML = (t.by === 1 ? "🟢 " : "🔴 ") + attacker + ": " + t.element + t.spell + " (" + dmgTxt + ")";
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+      while (logBox.children.length > 5) logBox.removeChild(logBox.firstChild);
+
+      if (tg && tg.HapticFeedback && t.dmg > 0) { try { tg.HapticFeedback.impactOccurred(t.crit ? "heavy" : "light"); } catch(e){} }
+      setTimeout(step, 750);
+    }
+    setTimeout(step, 500);
+  }
+
+  function finishPvP(d) {
+    const r = document.getElementById("pvp-result");
+    r.style.display = "block";
+    if (d.youWon) {
+      r.style.color = "#9be8c0";
+      r.innerHTML = "🏆 ПОБЕДА!<br><span style='font-size:14px;'>+" +
+        (d.reward ? d.reward.xp : 0) + " XP, +" + (d.reward ? d.reward.gold : 0) + " 💰" +
+        (d.eloChange ? " • " + (d.eloChange >= 0 ? "+" : "") + d.eloChange + " ELO" : "") + "</span>";
+    } else {
+      r.style.color = "#ffb0b0";
+      r.innerHTML = "💀 Поражение<br><span style='font-size:14px;'>" +
+        (d.eloChange ? (d.eloChange >= 0 ? "+" : "") + d.eloChange + " ELO" : "") + "</span>";
+    }
+    document.getElementById("pvp-close").style.display = "block";
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(d.youWon ? "success" : "error"); } catch(e){} }
+    pvpBusy = false;
+  }
+
+  // Генерация звёзд на фоне
+  const starsBox = document.getElementById("stars");
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement("div");
+    s.className = "star";
+    s.style.left = Math.random()*100 + "%";
+    s.style.top = Math.random()*100 + "%";
+    s.style.animationDelay = (Math.random()*3) + "s";
+    starsBox.appendChild(s);
+  }
+</script>
+</body>
+</html>
