@@ -110,13 +110,27 @@
     padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
   }
   .tab {
-    flex: 1; max-width: 160px; text-align: center; padding: 6px 4px;
+    flex: 1; max-width: 120px; text-align: center; padding: 6px 2px;
     border-radius: 12px; cursor: pointer; transition: background 0.2s;
     color: #9d8fc0;
   }
   .tab.active { background: rgba(255,216,107,0.14); color: #ffe9a8; }
-  .tab-ico { font-size: 21px; }
-  .tab-label { font-size: 11px; margin-top: 2px; }
+  .tab-ico { font-size: 20px; }
+  .tab-label { font-size: 10px; margin-top: 2px; }
+
+  /* Экран питомца */
+  .pet-crest {
+    width:110px; height:110px; margin:6px auto 12px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:60px;
+    background:radial-gradient(circle at 30% 30%, #ffd86b33, #ffd86b11);
+    border:2px solid rgba(255,216,107,0.4); box-shadow:0 0 26px rgba(255,216,107,0.2);
+  }
+  .pet-name { text-align:center; font-size:20px; font-weight:700; color:#ffe9a8; }
+  .pet-stage { text-align:center; font-size:13px; color:#c9b8e8; margin:4px 0 14px; }
+  .pet-bonus { text-align:center; font-size:13px; color:#9be8c0; margin-bottom:12px; }
+  .pet-stat-row { margin-bottom:12px; }
+  .pet-actions { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+  .pet-msg { text-align:center; font-size:13px; color:#9be8c0; min-height:16px; margin-top:4px; }
 
   /* Рейтинг */
   .lb-title { text-align:center; font-size:20px; font-weight:700; color:#ffe9a8; }
@@ -385,6 +399,16 @@
   </div>
 </div><!-- /screen-cup -->
 
+<div id="screen-pet" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🐾 Питомец</div>
+    <div class="divider"></div>
+    <div id="pet-box">
+      <div class="lb-empty">Загрузка...</div>
+    </div>
+  </div>
+</div><!-- /screen-pet -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="battle-box">
@@ -424,6 +448,9 @@
   </div>
   <div class="tab" id="tab-cup" onclick="switchTab('cup')">
     <div class="tab-ico">🏰</div><div class="tab-label">Кубок</div>
+  </div>
+  <div class="tab" id="tab-pet" onclick="switchTab('pet')">
+    <div class="tab-ico">🐾</div><div class="tab-label">Питомец</div>
   </div>
 </div>
 
@@ -564,15 +591,96 @@
   let ratingLoaded = false;
   let inventoryLoaded = false;
   let cupLoaded = false;
+  let petLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
     if (tab === "rating" && !ratingLoaded) { ratingLoaded = true; loadLeaderboard("level"); }
     if (tab === "inventory" && !inventoryLoaded) { inventoryLoaded = true; loadInventory(); }
     if (tab === "cup" && !cupLoaded) { cupLoaded = true; loadHouseCup(); }
+    if (tab === "pet" && !petLoaded) { petLoaded = true; loadPet(); }
+  }
+
+  // ── Питомец ────────────────────────────────────────────────────────────
+  let petBusy = false;
+  async function petReq(action) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/pet", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action })
+    });
+    return await resp.json();
+  }
+
+  function renderPet(d) {
+    const box = document.getElementById("pet-box");
+    if (!d || !d.hasPet) {
+      box.innerHTML = '<div class="lb-empty">У тебя пока нет питомца.<br>Получи его в боте в разделе «Питомец»!</div>';
+      return;
+    }
+    const xpPct = Math.min(100, d.xp / d.maxXp * 100);
+    const happyPct = d.happiness;
+    const evoText = d.nextEvo ? ("След. эволюция на " + d.nextEvo + " ур.") : "Финальная форма!";
+    box.innerHTML =
+      '<div class="pet-crest">' + d.emoji + '</div>' +
+      '<div class="pet-name">' + d.name + '</div>' +
+      '<div class="pet-stage">Стадия ' + d.stage + ' • Уровень ' + d.level + '/' + d.maxLevel + '</div>' +
+      (d.bonus ? '<div class="pet-bonus">🎁 ' + d.bonus + '</div>' : '') +
+      '<div class="pet-stat-row">' +
+        '<div class="bar-label"><span>✨ Опыт</span><span>' + d.xp + ' / ' + d.maxXp + '</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + xpPct + '%;background:linear-gradient(90deg,#ffd86b,#ffb347)"></div></div>' +
+      '</div>' +
+      '<div class="pet-stat-row">' +
+        '<div class="bar-label"><span>💛 Счастье</span><span>' + d.happiness + ' / 100</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + happyPct + '%;background:linear-gradient(90deg,#ffe06b,#ffd233)"></div></div>' +
+      '</div>' +
+      '<div class="pet-stage">🔮 ' + evoText + '</div>' +
+      '<div class="pet-actions">' +
+        '<div class="act-btn" onclick="trainPet()">🎯 Тренировать (50 💰 → +40 опыта)</div>' +
+        '<div class="act-btn" onclick="feedPetTab()">🍖 Покормить (+счастье)</div>' +
+        '<div class="pet-msg" id="pet-msg"></div>' +
+      '</div>';
+  }
+
+  async function loadPet() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
+      document.getElementById("pet-box").innerHTML = '<div class="lb-empty">Недоступно</div>'; return;
+    }
+    try { renderPet(await petReq("info")); }
+    catch (e) { document.getElementById("pet-box").innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+
+  async function trainPet() {
+    if (petBusy) return; petBusy = true;
+    const msg = document.getElementById("pet-msg");
+    if (msg) { msg.style.color = "#c9b8e8"; msg.textContent = "⏳..."; }
+    try {
+      const d = await petReq("train");
+      renderPet(d);
+      const m2 = document.getElementById("pet-msg");
+      if (m2) { m2.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; m2.textContent = d.msg || ""; }
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { petBusy = false; }
+  }
+
+  async function feedPetTab() {
+    if (petBusy) return; petBusy = true;
+    const msg = document.getElementById("pet-msg");
+    if (msg) { msg.style.color = "#c9b8e8"; msg.textContent = "⏳..."; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/feedpet", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: initData })
+      });
+      const data = await resp.json();
+      const m2 = document.getElementById("pet-msg");
+      if (m2) { m2.style.color = data.ok ? "#9be8c0" : "#ffb0b0"; m2.textContent = data.msg || ""; }
+      if (data.ok) { renderPet(await petReq("info")); }
+    } catch (e) {} finally { petBusy = false; }
   }
 
   // Универсальное действие: feedpet / claimdaily / equipbest
