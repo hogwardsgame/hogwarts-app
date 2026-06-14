@@ -525,6 +525,140 @@
   .ach-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#ffd86b,#ffb347); }
   .ach-prog { font-size:11px; color:#9d8fc0; margin-top:3px; }
   .ach-check { font-size:22px; }
+
+  /* Лига */
+  .league-me-card {
+    text-align:center; padding:16px; border-radius:14px; margin-bottom:14px;
+    background:linear-gradient(160deg, rgba(255,216,107,0.12), rgba(255,216,107,0.04));
+    border:1px solid rgba(255,216,107,0.3);
+  }
+  .league-div { font-size:22px; font-weight:800; color:#ffe9a8; }
+  .league-elo { font-size:15px; color:#f4f0e6; margin:6px 0; }
+  .league-sub { font-size:12px; color:#b0a3d0; }
+  .league-next { font-size:12px; color:#9be8c0; margin-top:6px; }
+  .lg-row {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:6px;
+    border-radius:11px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .lg-row.me { border-color:rgba(255,216,107,0.5); background:rgba(255,216,107,0.1); }
+  .lg-place { font-size:14px; font-weight:700; color:#ffe9a8; width:28px; text-align:center; }
+  .lg-name { flex:1; font-size:14px; color:#f4f0e6; }
+  .lg-elo { font-size:14px; font-weight:700; color:#cfe0ff; }
+  .lg-wl { font-size:11px; color:#b0a3d0; }
+
+  /* Квесты */
+  .quest-card {
+    padding:13px; border-radius:12px; margin-bottom:9px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .quest-card.done { border-color:rgba(107,232,155,0.45); background:rgba(107,232,155,0.08); }
+  .quest-name { font-size:14px; font-weight:600; color:#f4f0e6; margin-bottom:6px; }
+  .quest-reward { font-size:12px; color:#ffd86b; }
+  .quest-bar-track { height:8px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; margin:6px 0 3px; }
+  .quest-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#5cd87a,#8ae85c); }
+  .quest-prog { font-size:11px; color:#9d8fc0; }
+
+  /* Уроки */
+  .subject-card {
+    display:flex; align-items:center; gap:12px; padding:13px; margin-bottom:8px;
+    border-radius:12px; cursor:pointer;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+  }
+  .subject-card:active { background:rgba(140,120,255,0.14); }
+  .subject-emoji { font-size:26px; }
+  .subject-name { font-size:15px; font-weight:600; color:#f4f0e6; }
+  .subject-teacher { font-size:12px; color:#b0a3d0; }
+  .quiz-q { font-size:16px; font-weight:600; color:#f4f0e6; margin-bottom:14px; line-height:1.4; }
+  .quiz-opt {
+    padding:13px; border-radius:11px; margin-bottom:9px; cursor:pointer; font-size:14px; color:#e8dcff;
+    background:rgba(140,120,255,0.1); border:1px solid rgba(140,120,255,0.25);
+  }
+  .quiz-opt:active { background:rgba(140,120,255,0.22); }
+  .quiz-opt.correct { background:rgba(107,232,155,0.2); border-color:rgba(107,232,155,0.5); color:#9be8c0; }
+  .quiz-opt.wrong { background:rgba(255,90,90,0.16); border-color:rgba(255,90,90,0.4); color:#ffb0b0; }
+  .quiz-opt.disabled { pointer-events:none; }
+  .quiz-result { text-align:center; font-size:15px; font-weight:600; padding:14px; }
+  .quiz-hint { font-size:13px; color:#c9b8e8; text-align:center; margin-bottom:12px; }
+
+  /* Мировой босс */
+  .wb-hero { text-align:center; margin-bottom:14px; }
+  .wb-emoji { font-size:64px; filter:drop-shadow(0 0 18px rgba(255,80,80,0.4)); }
+  .wb-name { font-size:20px; font-weight:800; color:#ff9b9b; margin:6px 0; }
+  .wb-weak { font-size:13px; color:#ffd86b; }
+  .wb-hp-track { height:18px; background:rgba(0,0,0,0.3); border-radius:9px; overflow:hidden; margin:12px 0 4px; }
+  .wb-hp-fill { height:100%; background:linear-gradient(90deg,#ff5c5c,#ff8a5c); border-radius:9px; transition:width 0.5s; }
+  .wb-hp-txt { text-align:center; font-size:13px; color:#e0d0d0; margin-bottom:14px; }
+  .wb-attack-btn {
+    text-align:center; padding:14px; border-radius:12px; cursor:pointer; margin-bottom:10px;
+    background:linear-gradient(90deg,#ff5c5c33,#ff8a5c33); border:1px solid rgba(255,140,92,0.5);
+    color:#ffcfa8; font-size:16px; font-weight:700;
+  }
+  .wb-attack-btn.disabled { opacity:0.4; pointer-events:none; }
+  .wb-mine { text-align:center; font-size:13px; color:#9be8c0; margin-bottom:12px; }
+  .wb-top-row {
+    display:flex; align-items:center; gap:10px; padding:8px 12px; margin-bottom:5px;
+    border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+  }
+  .wb-top-row.me { border-color:rgba(255,216,107,0.5); background:rgba(255,216,107,0.1); }
+
+  /* Турнир */
+  .tour-card {
+    text-align:center; padding:16px; border-radius:14px; margin-bottom:14px;
+    background:linear-gradient(160deg, rgba(255,216,107,0.12), rgba(255,216,107,0.04));
+    border:1px solid rgba(255,216,107,0.3);
+  }
+  .tour-status { font-size:18px; font-weight:800; color:#ffe9a8; margin-bottom:6px; }
+  .tour-count { font-size:15px; color:#f4f0e6; }
+  .tour-fee { font-size:13px; color:#b0a3d0; margin-top:4px; }
+  .tour-reward-row {
+    display:flex; justify-content:space-between; padding:9px 12px; margin-bottom:6px;
+    border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+    font-size:13px; color:#f4f0e6;
+  }
+  .tour-btn {
+    text-align:center; padding:14px; border-radius:12px; cursor:pointer; margin:14px 0 8px;
+    background:rgba(255,216,107,0.16); border:1px solid rgba(255,216,107,0.4);
+    color:#ffe9a8; font-size:16px; font-weight:700;
+  }
+  .tour-btn.disabled { opacity:0.5; pointer-events:none; }
+
+  /* Командный бой 3×3 */
+  .tb-squad-card {
+    text-align:center; padding:14px; border-radius:13px; margin-bottom:12px;
+    background:rgba(140,120,255,0.08); border:1px solid rgba(140,120,255,0.25);
+  }
+  .tb-squad-name { font-size:18px; font-weight:700; color:#cfc0ff; }
+  .tb-power { font-size:13px; color:#9be8c0; margin-top:4px; }
+  .tb-member {
+    display:flex; align-items:center; gap:8px; padding:7px 11px; margin-bottom:5px;
+    border-radius:10px; background:rgba(255,255,255,0.04); font-size:13px; color:#f4f0e6;
+  }
+  .tb-btn {
+    text-align:center; padding:13px; border-radius:12px; cursor:pointer; margin:12px 0 8px;
+    background:rgba(140,120,255,0.16); border:1px solid rgba(140,120,255,0.4);
+    color:#e0d8ff; font-size:15px; font-weight:700;
+  }
+  .tb-btn.disabled { opacity:0.5; pointer-events:none; }
+  .tb-enemy {
+    display:flex; align-items:center; justify-content:space-between; padding:12px;
+    margin-bottom:8px; border-radius:11px; cursor:pointer;
+    background:rgba(255,90,90,0.08); border:1px solid rgba(255,90,90,0.25);
+  }
+  .tb-duel {
+    display:flex; align-items:center; justify-content:center; gap:8px; padding:9px;
+    margin-bottom:6px; border-radius:10px; font-size:13px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06); color:#e8dcff;
+  }
+  .tb-win { color:#9be8c0; font-weight:600; }
+  .tb-lose { color:#ff9b9b; opacity:0.7; }
+
+  /* События */
+  .ev-hero { text-align:center; margin-bottom:14px; }
+  .ev-emoji { font-size:56px; }
+  .ev-title { font-size:19px; font-weight:800; color:#ffe9a8; margin:6px 0; }
+  .ev-desc { font-size:13px; color:#c9b8e8; }
+  .ev-time { font-size:13px; color:#ff9b5c; margin-top:6px; }
+  .ev-hint { font-size:12px; color:#b0a3d0; text-align:center; margin:12px 0; padding:10px; border-radius:10px; background:rgba(255,255,255,0.04); }
 </style>
 </head>
 <body>
@@ -676,6 +810,64 @@
   </div>
 </div><!-- /screen-ach -->
 
+<div id="screen-league" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏆 Дуэльная лига</div>
+    <div class="divider"></div>
+    <div id="league-me"></div>
+    <div id="league-top"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-league -->
+
+<div id="screen-quests" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">📜 Задания дня</div>
+    <div class="divider"></div>
+    <div id="quests-list"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-quests -->
+
+<div id="screen-lessons" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">📚 Уроки</div>
+    <div class="divider"></div>
+    <div id="lessons-subjects"><div class="lb-empty">Загрузка...</div></div>
+    <div id="lessons-quiz" style="display:none;"></div>
+  </div>
+</div><!-- /screen-lessons -->
+
+<div id="screen-worldboss" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🐲 Мировой босс</div>
+    <div class="divider"></div>
+    <div id="wb-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-worldboss -->
+
+<div id="screen-tournament" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏆 Турнир</div>
+    <div class="divider"></div>
+    <div id="tour-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-tournament -->
+
+<div id="screen-teambattle" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">⚔️ Командный бой 3×3</div>
+    <div class="divider"></div>
+    <div id="tb-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-teambattle -->
+
+<div id="screen-events" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🎉 События</div>
+    <div class="divider"></div>
+    <div id="events-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-events -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -814,6 +1006,27 @@
   </div>
   <div class="tab" id="tab-ach" onclick="switchTab('ach')">
     <div class="tab-ico">🏅</div><div class="tab-label">Награды</div>
+  </div>
+  <div class="tab" id="tab-league" onclick="switchTab('league')">
+    <div class="tab-ico">🏆</div><div class="tab-label">Лига</div>
+  </div>
+  <div class="tab" id="tab-quests" onclick="switchTab('quests')">
+    <div class="tab-ico">📜</div><div class="tab-label">Задания</div>
+  </div>
+  <div class="tab" id="tab-lessons" onclick="switchTab('lessons')">
+    <div class="tab-ico">📚</div><div class="tab-label">Уроки</div>
+  </div>
+  <div class="tab" id="tab-worldboss" onclick="switchTab('worldboss')">
+    <div class="tab-ico">🐲</div><div class="tab-label">Босс</div>
+  </div>
+  <div class="tab" id="tab-tournament" onclick="switchTab('tournament')">
+    <div class="tab-ico">🏆</div><div class="tab-label">Турнир</div>
+  </div>
+  <div class="tab" id="tab-teambattle" onclick="switchTab('teambattle')">
+    <div class="tab-ico">⚔️</div><div class="tab-label">3×3</div>
+  </div>
+  <div class="tab" id="tab-events" onclick="switchTab('events')">
+    <div class="tab-ico">🎉</div><div class="tab-label">События</div>
   </div>
 </div>
 
@@ -1006,9 +1219,16 @@
   let potionsLoaded = false;
   let shopLoaded = false;
   let achLoaded = false;
+  let leagueLoaded = false;
+  let questsLoaded = false;
+  let lessonsLoaded = false;
+  let wbLoaded = false;
+  let tourLoaded = false;
+  let tbLoaded = false;
+  let eventsLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions","shop","ach"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -1019,6 +1239,338 @@
     if (tab === "potions" && !potionsLoaded) { potionsLoaded = true; loadPotions(); }
     if (tab === "shop" && !shopLoaded) { shopLoaded = true; loadShop(); }
     if (tab === "ach" && !achLoaded) { achLoaded = true; loadAchievements(); }
+    if (tab === "league" && !leagueLoaded) { leagueLoaded = true; loadLeague(); }
+    if (tab === "quests" && !questsLoaded) { questsLoaded = true; loadQuests(); }
+    if (tab === "lessons" && !lessonsLoaded) { lessonsLoaded = true; loadLessons(); }
+    if (tab === "worldboss" && !wbLoaded) { wbLoaded = true; loadWorldBoss(); }
+    if (tab === "tournament" && !tourLoaded) { tourLoaded = true; loadTournament(); }
+    if (tab === "teambattle" && !tbLoaded) { tbLoaded = true; loadTeamBattle(); }
+    if (tab === "events" && !eventsLoaded) { eventsLoaded = true; loadEvents(); }
+  }
+
+  // ── Командный бой 3×3 ──────────────────────────────────────────────────
+  let tbBusy = false;
+  async function tbReq(action, enemyId) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/teambattle", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ initData: initData, action: action, enemyId: enemyId || 0 })
+    });
+    return await resp.json();
+  }
+  async function loadTeamBattle() {
+    const box = document.getElementById("tb-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const d = await tbReq("status");
+      if (!d.hasSquad) { box.innerHTML = '<div class="lb-empty">У тебя нет отряда.<br>Вступи в отряд в боте, чтобы участвовать в командных боях 3×3!</div>'; return; }
+      if (!d.enoughMembers) {
+        box.innerHTML = '<div class="lb-empty">В отряде «'+d.squadName+'» пока '+d.memberCount+' бойцов.<br>Нужно минимум '+d.needed+' для боя 3×3.</div>';
+        return;
+      }
+      let html = '<div class="tb-squad-card"><div class="tb-squad-name">🛡️ '+d.squadName+'</div>' +
+                 '<div class="tb-power">Мощь: '+d.power+(d.synergy?' (+'+d.synergy+' синергия факультета)':'')+'</div></div>';
+      html += '<div class="sec-title">Состав</div>';
+      html += d.roster.map(function(m){
+        return '<div class="tb-member"><span style="font-size:16px;">'+m.house+'</span>'+m.name+' • ур.'+m.level+' • ⚔️'+m.attack+'</div>';
+      }).join("");
+      html += '<div class="tb-btn" onclick="findTeamEnemy()">🔍 Найти соперника</div>';
+      html += '<div id="tb-enemies"></div><div class="pet-msg" id="tb-msg"></div>';
+      box.innerHTML = html;
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function findTeamEnemy() {
+    const box = document.getElementById("tb-enemies");
+    box.innerHTML = '<div class="lb-empty">Поиск...</div>';
+    try {
+      const d = await tbReq("find");
+      if (!d.enemies || !d.enemies.length) { box.innerHTML = '<div class="lb-empty">Нет отрядов с 3+ бойцами. Попробуй позже.</div>'; return; }
+      box.innerHTML = '<div class="sec-title" style="margin-top:8px;">Выбери соперника</div>' +
+        d.enemies.map(function(s){
+          return '<div class="tb-enemy" onclick="fightTeam('+s.id+')"><span>🛡️ '+s.name+' ('+s.count+' бойцов)</span><span>⚔️</span></div>';
+        }).join("");
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function fightTeam(enemyId) {
+    if (tbBusy) return; tbBusy = true;
+    const box = document.getElementById("tb-enemies");
+    box.innerHTML = '<div class="lb-empty">⚔️ Битва...</div>';
+    try {
+      const d = await tbReq("fight", enemyId);
+      if (!d.ok) { box.innerHTML = '<div class="lb-empty">'+(d.msg||'Ошибка')+'</div>'; tbBusy=false; return; }
+      let html = '<div class="tb-squad-card"><div class="tb-squad-name">' +
+                 (d.iWon?'🏆 Победа!':'💀 Поражение') + '</div>' +
+                 '<div class="tb-power">'+d.myName+' ('+d.myPower+(d.mySynergy?'+'+d.mySynergy:'')+') vs '+d.enemyName+' ('+d.enemyPower+(d.enemySynergy?'+'+d.enemySynergy:'')+')</div></div>';
+      html += '<div class="sec-title">Поединки</div>';
+      html += d.duels.map(function(du){
+        return '<div class="tb-duel"><span class="'+(du.aWon?'tb-win':'tb-lose')+'">'+du.aHouse+' '+du.a+'</span>⚔️<span class="'+(du.aWon?'tb-lose':'tb-win')+'">'+du.bHouse+' '+du.b+'</span></div>';
+      }).join("");
+      html += '<div class="quiz-result" style="color:'+(d.iWon?'#9be8c0':'#ffb0b0')+'">Награда: +'+d.reward.xp+' XP, +'+d.reward.gold+' 💰</div>';
+      html += '<div class="tb-btn" onclick="loadTeamBattle()">◀️ Назад</div>';
+      box.innerHTML = html;
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(d.iWon?"success":"error"); } catch(e){} }
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; } finally { tbBusy = false; }
+  }
+
+  // ── События ────────────────────────────────────────────────────────────
+  async function loadEvents() {
+    const box = document.getElementById("events-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/events", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ initData: initData })
+      });
+      const d = await resp.json();
+      if (!d.active) { box.innerHTML = '<div class="lb-empty">🌙 Сейчас нет активных событий.<br>Следи за анонсами — события появляются регулярно!</div>'; return; }
+      let html = '<div class="ev-hero"><div class="ev-emoji">'+d.emoji+'</div>' +
+                 '<div class="ev-title">'+d.title+'</div>' +
+                 (d.desc?'<div class="ev-desc">'+d.desc+'</div>':'') +
+                 (d.timeLeft?'<div class="ev-time">⏳ Осталось: '+d.timeLeft+'</div>':'') + '</div>';
+      if (d.hint) html += '<div class="ev-hint">'+d.hint+'</div>';
+      if (d.top && d.top.length) {
+        html += '<div class="sec-title">🏅 Топ по урону</div>' + d.top.map(function(t){
+          return '<div class="wb-top-row"><span class="lg-place">#'+t.place+'</span><span style="font-size:16px;">'+t.house+'</span><span class="lg-name">'+t.name+'</span><span class="lg-elo">'+t.damage.toLocaleString()+'</span></div>';
+        }).join("");
+      }
+      box.innerHTML = html;
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+
+  // ── Мировой босс ───────────────────────────────────────────────────────
+  let wbBusy = false;
+  async function wbReq(action, spell) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/worldboss", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ initData: initData, action: action, spell: spell || "" })
+    });
+    return await resp.json();
+  }
+  function renderWorldBoss(d) {
+    const box = document.getElementById("wb-content");
+    if (!d || !d.active) {
+      box.innerHTML = '<div class="lb-empty">🌙 Сейчас нет активного мирового босса.<br>Боссы появляются по расписанию — загляни позже!</div>';
+      return;
+    }
+    const pct = Math.max(0, d.hp/d.maxHp*100);
+    const canAttack = d.attacksLeft > 0;
+    box.innerHTML =
+      '<div class="wb-hero"><div class="wb-emoji">'+d.emoji+'</div>' +
+      '<div class="wb-name">'+d.name+'</div>' +
+      (d.weakness ? '<div class="wb-weak">Слабость: '+d.weakness+'</div>' : '') + '</div>' +
+      '<div class="wb-hp-track"><div class="wb-hp-fill" style="width:'+pct+'%"></div></div>' +
+      '<div class="wb-hp-txt">'+d.hp.toLocaleString()+' / '+d.maxHp.toLocaleString()+' HP</div>' +
+      (canAttack
+        ? '<div class="wb-attack-btn" onclick="attackWorldBoss()">⚔️ Атаковать! (осталось: '+d.attacksLeft+')</div>'
+        : '<div class="wb-attack-btn disabled">✅ Ты уже атаковал сегодня</div>') +
+      (d.myDamage ? '<div class="wb-mine">Твой урон: '+d.myDamage.toLocaleString()+'</div>' : '') +
+      '<div class="pet-msg" id="wb-msg"></div>' +
+      (d.top && d.top.length ? '<div class="sec-title" style="margin-top:10px;">🏅 Топ по урону</div>' +
+        d.top.map(function(t){
+          return '<div class="wb-top-row'+(t.isMe?' me':'')+'">' +
+                 '<span class="lg-place">#'+t.place+'</span>' +
+                 '<span class="lg-name">'+t.name+'</span>' +
+                 '<span class="lg-elo">'+t.damage.toLocaleString()+'</span></div>';
+        }).join("") : "");
+  }
+  async function loadWorldBoss() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("wb-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderWorldBoss(await wbReq("status")); }
+    catch (e) { document.getElementById("wb-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function attackWorldBoss() {
+    if (wbBusy) return; wbBusy = true;
+    try {
+      const d = await wbReq("attack");
+      renderWorldBoss(d);
+      const msg = document.getElementById("wb-msg");
+      if (msg && d.msg) { msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred(d.crit ? "heavy":"medium"); } catch(e){} }
+      if (d.killed && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { wbBusy = false; }
+  }
+
+  // ── Турнир ─────────────────────────────────────────────────────────────
+  let tourBusy = false;
+  async function tourReq(action) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/tournament", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ initData: initData, action: action })
+    });
+    return await resp.json();
+  }
+  function renderTournament(d) {
+    const box = document.getElementById("tour-content");
+    let statusTxt, statusColor;
+    if (!d.open) { statusTxt = "🌙 Регистрация закрыта"; }
+    else if (d.registered) { statusTxt = "✅ Ты зарегистрирован!"; }
+    else { statusTxt = "📋 Регистрация открыта"; }
+    let html = '<div class="tour-card">' +
+      '<div class="tour-status">'+statusTxt+'</div>' +
+      '<div class="tour-count">Участников: '+d.count+'/'+d.max+'</div>' +
+      '<div class="tour-fee">Взнос: '+d.fee+' 💰 • У тебя: '+d.gold+' 💰</div></div>';
+    html += '<div class="sec-title">🎁 Призы</div>';
+    html += d.rewards.map(function(r){
+      return '<div class="tour-reward-row"><span>'+r.place+'</span><span>'+r.xp+' XP + '+r.gold+' 💰</span></div>';
+    }).join("");
+    if (d.open && !d.registered) {
+      const can = d.gold >= d.fee;
+      html += can
+        ? '<div class="tour-btn" onclick="registerTournament()">⚔️ Участвовать ('+d.fee+' 💰)</div>'
+        : '<div class="tour-btn disabled">Не хватает золота</div>';
+    } else if (d.registered) {
+      html += '<div class="tour-btn disabled">✅ Жди начала турнира</div>';
+    }
+    html += '<div class="quiz-hint" style="margin-top:10px;">Турнир запускается автоматически при наборе участников. Бои пройдут в боте — следи за уведомлениями!</div>';
+    html += '<div class="pet-msg" id="tour-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadTournament() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("tour-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderTournament(await tourReq("status")); }
+    catch (e) { document.getElementById("tour-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function registerTournament() {
+    if (tourBusy) return; tourBusy = true;
+    try {
+      const d = await tourReq("register");
+      renderTournament(d);
+      const msg = document.getElementById("tour-msg");
+      if (msg && d.msg) { msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { tourBusy = false; }
+  }
+
+  // ── Дуэльная лига ──────────────────────────────────────────────────────
+  async function loadLeague() {
+    const meBox = document.getElementById("league-me");
+    const topBox = document.getElementById("league-top");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { topBox.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/league", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ initData: initData })
+      });
+      const d = await resp.json();
+      if (d.me) {
+        const m = d.me;
+        let nextTxt = m.nextDivision ? ("До " + m.nextDivision + ": " + (m.nextElo - m.elo) + " ELO") : "Высший дивизион! 🌟";
+        meBox.innerHTML = '<div class="league-me-card">' +
+          '<div class="league-div">' + m.division + '</div>' +
+          '<div class="league-elo">' + m.elo + ' ELO • Место #' + m.rank + '</div>' +
+          '<div class="league-sub">Побед: ' + m.wins + ' • Поражений: ' + m.losses + ' • Пик: ' + m.peak + '</div>' +
+          '<div class="league-next">' + nextTxt + '</div></div>';
+      } else { meBox.innerHTML = ""; }
+      if (d.top && d.top.length) {
+        topBox.innerHTML = '<div class="sec-title">🏅 Топ дуэлянтов</div>' + d.top.map(function(t){
+          const medal = t.place===1?"🥇":t.place===2?"🥈":t.place===3?"🥉":("#"+t.place);
+          return '<div class="lg-row' + (t.isMe?' me':'') + '">' +
+                   '<span class="lg-place">' + medal + '</span>' +
+                   '<span style="font-size:18px;">' + t.house + '</span>' +
+                   '<div class="lg-name">' + t.name + '<div class="lg-wl">' + t.division + ' • ' + t.wins + 'W/' + t.losses + 'L</div></div>' +
+                   '<span class="lg-elo">' + t.elo + '</span></div>';
+        }).join("");
+      } else { topBox.innerHTML = '<div class="lb-empty">Пока нет дуэлянтов в рейтинге</div>'; }
+    } catch (e) { topBox.innerHTML = '<div class="lb-empty">Ошибка</div>'; }
+  }
+
+  // ── Задания дня ────────────────────────────────────────────────────────
+  async function loadQuests() {
+    const box = document.getElementById("quests-list");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/quests", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ initData: initData })
+      });
+      const d = await resp.json();
+      if (!d.quests || !d.quests.length) { box.innerHTML = '<div class="lb-empty">Нет заданий</div>'; return; }
+      box.innerHTML = d.quests.map(function(q){
+        const pct = Math.min(100, q.cur/q.need*100);
+        return '<div class="quest-card' + (q.done?' done':'') + '">' +
+                 '<div class="quest-name">' + (q.done?'✅ ':'📜 ') + q.name + '</div>' +
+                 '<div class="quest-reward">Награда: +' + q.rewardXp + ' XP, +' + q.rewardGold + ' 💰</div>' +
+                 (q.done ? '' :
+                   '<div class="quest-bar-track"><div class="quest-bar-fill" style="width:'+pct+'%"></div></div>' +
+                   '<div class="quest-prog">' + q.cur + ' / ' + q.need + '</div>') +
+               '</div>';
+      }).join("");
+    } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка</div>'; }
+  }
+
+  // ── Уроки ──────────────────────────────────────────────────────────────
+  async function lessonReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/lessons", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    return await resp.json();
+  }
+  async function loadLessons() {
+    const box = document.getElementById("lessons-subjects");
+    document.getElementById("lessons-quiz").style.display = "none";
+    box.style.display = "block";
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const d = await lessonReq("subjects");
+      if (!d.subjects || !d.subjects.length) { box.innerHTML='<div class="lb-empty">Нет предметов</div>'; return; }
+      box.innerHTML = '<div class="quiz-hint">Выбери предмет и ответь на вопрос — за верный ответ XP и золото</div>' +
+        d.subjects.map(function(s){
+          return '<div class="subject-card" onclick="startLesson(\''+s.id+'\')">' +
+                   '<span class="subject-emoji">'+s.emoji+'</span>' +
+                   '<div><div class="subject-name">'+s.name+'</div>' +
+                   '<div class="subject-teacher">'+s.teacher+'</div></div></div>';
+        }).join("");
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  let quizAnswered = false;
+  async function startLesson(subject) {
+    const qbox = document.getElementById("lessons-quiz");
+    document.getElementById("lessons-subjects").style.display = "none";
+    qbox.style.display = "block";
+    qbox.innerHTML = '<div class="lb-empty">Загрузка вопроса...</div>';
+    quizAnswered = false;
+    try {
+      const d = await lessonReq("question", { subject: subject });
+      if (d.error) { qbox.innerHTML = '<div class="lb-empty">Нет вопросов</div>'; return; }
+      qbox.innerHTML = '<div class="quiz-q">'+d.question+'</div>' +
+        d.options.map(function(o,i){
+          return '<div class="quiz-opt" id="quiz-opt-'+i+'" onclick="answerQuiz('+i+')">'+o+'</div>';
+        }).join("") +
+        '<div class="quiz-result" id="quiz-result" style="display:none;"></div>' +
+        '<div class="bt-flee" onclick="loadLessons()">◀️ К предметам</div>';
+    } catch (e) { qbox.innerHTML = '<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function answerQuiz(choice) {
+    if (quizAnswered) return; quizAnswered = true;
+    document.querySelectorAll(".quiz-opt").forEach(function(o){ o.classList.add("disabled"); });
+    try {
+      const d = await lessonReq("answer", { choice: choice });
+      const correctEl = document.getElementById("quiz-opt-" + d.correctIndex);
+      if (correctEl) correctEl.classList.add("correct");
+      if (!d.correct) {
+        const chosenEl = document.getElementById("quiz-opt-" + choice);
+        if (chosenEl) chosenEl.classList.add("wrong");
+      }
+      const res = document.getElementById("quiz-result");
+      res.style.display = "block";
+      if (d.correct) {
+        res.style.color = "#9be8c0";
+        res.innerHTML = "✅ Верно! +" + d.xp + " XP, +" + d.gold + " 💰";
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+      } else {
+        res.style.color = "#ffb0b0";
+        res.innerHTML = "❌ Неверно" + (d.hint ? "<br><span style='font-size:12px;color:#c9b8e8;'>💡 " + d.hint + "</span>" : "");
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("error"); } catch(e){} }
+      }
+    } catch (e) {}
   }
 
   // ── Магазин ────────────────────────────────────────────────────────────
