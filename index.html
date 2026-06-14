@@ -671,7 +671,12 @@
 <script>
   // ── Telegram Web App init ──────────────────────────────────────────────
   const tg = window.Telegram ? window.Telegram.WebApp : null;
-  if (tg) { tg.ready(); tg.expand(); }
+  if (tg) {
+    tg.ready(); tg.expand();
+    try { tg.setHeaderColor("#1a1033"); } catch(e){}
+    try { tg.setBackgroundColor("#0d0820"); } catch(e){}
+    try { tg.enableClosingConfirmation(); } catch(e){}
+  }
 
   // ⚙️ АДРЕС API — публичный URL с Railway
   const API_URL = "https://hogwards-production.up.railway.app";
@@ -1245,6 +1250,10 @@
     document.getElementById("battle-overlay").style.display = "flex";
     document.getElementById("bt-zone-select").style.display = "block";
     document.getElementById("bt-scene").style.display = "none";
+    // Telegram-кнопка "Назад" закрывает бой
+    if (tg && tg.BackButton) {
+      try { tg.BackButton.show(); tg.BackButton.onClick(closeBattle); } catch(e){}
+    }
     loadZones();
   }
 
@@ -1319,6 +1328,7 @@
 
   function closeBattle() {
     document.getElementById("battle-overlay").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeBattle); } catch(e){} }
     loadProfile();
   }
 
@@ -1549,6 +1559,7 @@
   async function fleeBattle() {
     try { await battleReq("flee"); } catch (e) {}
     document.getElementById("battle-overlay").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeBattle); } catch(e){} }
     loadProfile();
   }
 
