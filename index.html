@@ -760,6 +760,8 @@
 </div>
 
 <div id="live-overlay" class="battle-overlay" style="display:none;">
+  <div class="elem-flash" id="live-elem-flash"></div>
+  <div class="hit-flash" id="live-hit-flash"></div>
   <div class="battle-box">
     <div class="pvp-fighters">
       <div class="pvp-side">
@@ -1537,8 +1539,8 @@
   // Вспомогательные: цвет стихии
   const ELEM_COLORS = {"🔥":"#ff6b3d","💧":"#5c9dff","⚡":"#ffd24a","🌑":"#9b5fd8","🌿":"#5fd89b"};
 
-  function spawnDamage(targetEl, text, cls) {
-    const overlay = document.getElementById("battle-overlay");
+  function spawnDamage(targetEl, text, cls, overlayId) {
+    const overlay = document.getElementById(overlayId || "battle-overlay");
     const rect = targetEl.getBoundingClientRect();
     const pop = document.createElement("div");
     pop.className = "dmg-pop " + cls;
@@ -1549,8 +1551,8 @@
     setTimeout(function(){ pop.remove(); }, 1000);
   }
 
-  function spawnBurst(targetEl, emoji) {
-    const overlay = document.getElementById("battle-overlay");
+  function spawnBurst(targetEl, emoji, overlayId) {
+    const overlay = document.getElementById(overlayId || "battle-overlay");
     const rect = targetEl.getBoundingClientRect();
     const b = document.createElement("div");
     b.className = "burst";
@@ -1561,8 +1563,8 @@
     setTimeout(function(){ b.remove(); }, 450);
   }
 
-  function spawnParticles(targetEl, color) {
-    const overlay = document.getElementById("battle-overlay");
+  function spawnParticles(targetEl, color, overlayId) {
+    const overlay = document.getElementById(overlayId || "battle-overlay");
     const rect = targetEl.getBoundingClientRect();
     const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
     for (let i=0; i<10; i++) {
@@ -1907,15 +1909,50 @@
 
     document.getElementById("live-bt-log").innerHTML = (st.log||[]).map(function(l){ return "<div>"+l+"</div>"; }).join("");
 
-    // Анимация удара по сопернику при новом событии в логе
+    // Анимация удара при новом событии в логе
     if (st.lastTurn && st.log && st.log.length !== liveLastLogLen) {
       liveLastLogLen = st.log.length;
-      const youId = st.me.name;
-      const targetCrest = (st.lastTurn.by && st.yourTurn === false) ? document.getElementById("live-foe-crest") : null;
+      const lt = st.lastTurn;
+      // Кто бил: если by == мой ход только что прошёл? Определяем по тому, чей ход СЕЙЧАС.
+      // Если сейчас НЕ мой ход — значит только что бил я (цель — соперник).
+      // Если сейчас мой ход — только что бил соперник (цель — я).
+      const iAttacked = !st.yourTurn;
+      const youCrest = document.getElementById("live-you-crest");
+      const foeCrest = document.getElementById("live-foe-crest");
+      const targetCrest = iAttacked ? foeCrest : youCrest;
+      const sourceCrest = iAttacked ? youCrest : foeCrest;
+      const ELEM_COLORS2 = {"🔥":"#ff6b3d","💧":"#5c9dff","⚡":"#ffd24a","🌑":"#9b5fd8","🌿":"#5fd89b","❄️":"#5c9dff"};
+      const col = ELEM_COLORS2[lt.element] || "#ffd86b";
       const flash = document.getElementById("live-bt-flash");
-      if (st.lastTurn.crit) { flash.textContent = "💥 КРИТ!"; flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show"); }
-      else flash.textContent = "";
-      if (tg && tg.HapticFeedback && st.lastTurn.dmg > 0) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+      const overlay = document.getElementById("live-overlay");
+      const hitFlash = document.getElementById("live-hit-flash");
+      const elemFlash = document.getElementById("live-elem-flash");
+
+      // Снаряд
+      try { flyProjectileColored(sourceCrest, targetCrest, lt.element || "✨", col); } catch(e){}
+      setTimeout(function(){
+        try {
+          hitFlash.classList.remove("show"); void hitFlash.offsetWidth; hitFlash.classList.add("show");
+          if (lt.element) {
+            elemFlash.style.background = "radial-gradient(circle, " + col + "55, transparent 70%)";
+            elemFlash.classList.remove("show"); void elemFlash.offsetWidth; elemFlash.classList.add("show");
+          }
+          targetCrest.classList.remove("hit"); void targetCrest.offsetWidth; targetCrest.classList.add("hit");
+          spawnBurst(targetCrest, lt.crit ? "💥" : (lt.element || "✨"), "live-overlay");
+          if (lt.dmg > 0) {
+            spawnParticles(targetCrest, col, "live-overlay");
+            spawnDamage(targetCrest, (lt.crit ? "−"+lt.dmg+"!" : "−"+lt.dmg), lt.crit ? "crit" : (iAttacked ? "normal" : "player-dmg"), "live-overlay");
+          } else if (lt.heal > 0) {
+            spawnDamage(sourceCrest, "+"+lt.heal, "heal", "live-overlay");
+          }
+          if (lt.crit) {
+            flash.textContent = "💥 КРИТ!";
+            flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show");
+            overlay.classList.remove("shake"); void overlay.offsetWidth; overlay.classList.add("shake");
+          } else { flash.textContent = ""; }
+          if (tg && tg.HapticFeedback && lt.dmg > 0) { try { tg.HapticFeedback.impactOccurred(lt.crit ? "heavy" : "light"); } catch(e){} }
+        } catch(e){}
+      }, 380);
     }
 
     const turnEl = document.getElementById("live-turn");
