@@ -229,6 +229,22 @@
 
   /* Кнопка В бой */
   .battle-btn { background:linear-gradient(90deg,#ff5c5c33,#ff8a5c33); border-color:rgba(255,140,92,0.5); color:#ffcfa8; font-size:16px; }
+  .pvp-btn { background:linear-gradient(90deg,#9b5fd833,#5c9dff33); border-color:rgba(140,120,255,0.5); color:#cfc0ff; font-size:16px; }
+
+  /* PvP арена */
+  .pvp-fighters { display:flex; align-items:flex-start; gap:8px; margin-bottom:14px; }
+  .pvp-side { flex:1; text-align:center; }
+  .pvp-vs { font-size:26px; padding-top:30px; }
+  .pvp-crest {
+    width:70px; height:70px; margin:0 auto 6px; border-radius:50%; font-size:36px;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 30% 30%, #ffffff22, #ffffff08);
+    border:2px solid rgba(255,255,255,0.2);
+  }
+  .pvp-crest.hit { animation:hitReact 0.4s; }
+  .pvp-name { font-size:14px; font-weight:600; color:#f4f0e6; margin-bottom:6px; }
+  .pvp-hp-txt { font-size:11px; color:#b0a3d0; margin-top:3px; }
+  .pvp-fighters .bar-fill { transition:width 0.45s cubic-bezier(0.3,0.7,0.3,1); }
 
   /* Боевой оверлей */
   .battle-overlay {
@@ -501,7 +517,8 @@
   </div>
 
   <div class="actions">
-    <div class="act-btn battle-btn" onclick="openBattle()">⚔️ В БОЙ!</div>
+    <div class="act-btn battle-btn" onclick="openBattle()">⚔️ В БОЙ! (PvE)</div>
+    <div class="act-btn pvp-btn" onclick="openPvP()">🤺 ДУЭЛЬ С ИГРОКОМ</div>
     <div class="act-btn" id="act-feed" onclick="doAction('feedpet', this)">🍖 Покормить питомца</div>
     <div class="act-btn" id="act-daily" onclick="doAction('claimdaily', this)">🎁 Забрать бонус дня</div>
     <div class="act-btn" id="act-equip" onclick="doAction('equipbest', this)">⚡ Надеть лучшее снаряжение</div>
@@ -638,6 +655,37 @@
     <div class="bt-result" id="bt-result" style="display:none;"></div>
     <div class="bt-flee" id="bt-flee" onclick="fleeBattle()">🏃 Сбежать</div>
     </div><!-- /bt-scene -->
+  </div>
+</div>
+
+<div id="pvp-overlay" class="battle-overlay" style="display:none;">
+  <div class="battle-box">
+    <div id="pvp-select" style="display:none;">
+      <div class="lb-title" style="margin-bottom:4px;">🤺 Выбери соперника</div>
+      <div id="pvp-opp-list"><div class="lb-empty">Загрузка...</div></div>
+      <div class="bt-flee" onclick="closePvP()">✖️ Отмена</div>
+    </div>
+    <div id="pvp-arena" style="display:none;">
+      <div class="pvp-fighters">
+        <div class="pvp-side">
+          <div class="pvp-crest" id="pvp-you-crest">🧙</div>
+          <div class="pvp-name" id="pvp-you-name">Ты</div>
+          <div class="bar-track"><div class="bar-fill" id="pvp-you-hp" style="background:linear-gradient(90deg,#5cd87a,#8ae85c)"></div></div>
+          <div class="pvp-hp-txt" id="pvp-you-hp-txt"></div>
+        </div>
+        <div class="pvp-vs">⚔️</div>
+        <div class="pvp-side">
+          <div class="pvp-crest" id="pvp-foe-crest">🧙</div>
+          <div class="pvp-name" id="pvp-foe-name">Соперник</div>
+          <div class="bar-track"><div class="bar-fill" id="pvp-foe-hp" style="background:linear-gradient(90deg,#ff5c5c,#ff8a5c)"></div></div>
+          <div class="pvp-hp-txt" id="pvp-foe-hp-txt"></div>
+        </div>
+      </div>
+      <div class="bt-flash" id="pvp-flash"></div>
+      <div class="bt-log" id="pvp-log"></div>
+      <div class="bt-result" id="pvp-result" style="display:none;"></div>
+      <div class="bt-flee" id="pvp-close" onclick="closePvP()" style="display:none;">✖️ Закрыть</div>
+    </div>
   </div>
 </div>
 
@@ -1561,6 +1609,136 @@
     document.getElementById("battle-overlay").style.display = "none";
     if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeBattle); } catch(e){} }
     loadProfile();
+  }
+
+  // ── Асинхронный PvP ────────────────────────────────────────────────────
+  async function pvpReq(action, opponent) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/pvp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: initData, action: action, opponent: opponent || 0 })
+    });
+    return await resp.json();
+  }
+
+  function openPvP() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) return;
+    document.getElementById("pvp-overlay").style.display = "flex";
+    document.getElementById("pvp-select").style.display = "block";
+    document.getElementById("pvp-arena").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closePvP); } catch(e){} }
+    loadOpponents();
+  }
+
+  function closePvP() {
+    document.getElementById("pvp-overlay").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closePvP); } catch(e){} }
+    loadProfile();
+  }
+
+  async function loadOpponents() {
+    const box = document.getElementById("pvp-opp-list");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const d = await pvpReq("opponents");
+      if (!d.opponents || !d.opponents.length) {
+        box.innerHTML = '<div class="lb-empty">Нет доступных соперников.<br>Подожди, пока появятся другие игроки!</div>';
+        return;
+      }
+      box.innerHTML = d.opponents.map(function(o){
+        return '<div class="zone-card" onclick="startPvP(' + o.id + ')">' +
+                 '<span class="zone-emoji">' + o.house + '</span>' +
+                 '<div class="zone-info"><div class="zone-name">' + o.name + '</div>' +
+                 '<div class="zone-sub">Уровень ' + o.level + '</div></div>' +
+                 '<span class="zone-go">🤺</span></div>';
+      }).join("");
+    } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+
+  let pvpBusy = false;
+  async function startPvP(oppId) {
+    if (pvpBusy) return; pvpBusy = true;
+    document.getElementById("pvp-select").style.display = "none";
+    document.getElementById("pvp-arena").style.display = "block";
+    document.getElementById("pvp-result").style.display = "none";
+    document.getElementById("pvp-close").style.display = "none";
+    document.getElementById("pvp-flash").textContent = "";
+    document.getElementById("pvp-log").innerHTML = '<div>Дуэль начинается...</div>';
+    try {
+      const d = await pvpReq("fight", oppId);
+      if (!d.ok) { document.getElementById("pvp-log").innerHTML = '<div>Не удалось начать дуэль</div>'; pvpBusy = false; return; }
+      playReplay(d);
+    } catch (e) {
+      document.getElementById("pvp-log").innerHTML = '<div>Ошибка соединения</div>'; pvpBusy = false;
+    }
+  }
+
+  function playReplay(d) {
+    // Заголовки бойцов
+    document.getElementById("pvp-you-crest").textContent = d.you.house;
+    document.getElementById("pvp-you-name").textContent = d.you.name;
+    document.getElementById("pvp-foe-crest").textContent = d.foe.house;
+    document.getElementById("pvp-foe-name").textContent = d.foe.name;
+    document.getElementById("pvp-you-hp").style.width = "100%";
+    document.getElementById("pvp-foe-hp").style.width = "100%";
+    document.getElementById("pvp-you-hp-txt").textContent = d.you.maxHp + "/" + d.you.maxHp;
+    document.getElementById("pvp-foe-hp-txt").textContent = d.foe.maxHp + "/" + d.foe.maxHp;
+    document.getElementById("pvp-log").innerHTML = "";
+
+    const replay = d.replay || [];
+    let i = 0;
+    const flash = document.getElementById("pvp-flash");
+    const logBox = document.getElementById("pvp-log");
+
+    function step() {
+      if (i >= replay.length) { finishPvP(d); return; }
+      const t = replay[i]; i++;
+      const youCrest = document.getElementById("pvp-you-crest");
+      const foeCrest = document.getElementById("pvp-foe-crest");
+      const attacker = (t.by === 1) ? d.you.name : d.foe.name;
+      const targetCrest = (t.by === 1) ? foeCrest : youCrest;
+
+      // Бары
+      document.getElementById("pvp-you-hp").style.width = (t.hp1 / d.you.maxHp * 100) + "%";
+      document.getElementById("pvp-foe-hp").style.width = (t.hp2 / d.foe.maxHp * 100) + "%";
+      document.getElementById("pvp-you-hp-txt").textContent = t.hp1 + "/" + d.you.maxHp;
+      document.getElementById("pvp-foe-hp-txt").textContent = t.hp2 + "/" + d.foe.maxHp;
+
+      // Анимация удара
+      targetCrest.classList.remove("hit"); void targetCrest.offsetWidth; targetCrest.classList.add("hit");
+      if (t.crit) { flash.textContent = "💥 КРИТ!"; flash.classList.remove("show"); void flash.offsetWidth; flash.classList.add("show"); }
+      else { flash.textContent = ""; }
+
+      // Лог
+      const dmgTxt = t.dmg > 0 ? ("−" + t.dmg) : (t.heal > 0 ? ("+" + t.heal) : "промах");
+      const line = document.createElement("div");
+      line.innerHTML = (t.by === 1 ? "🟢 " : "🔴 ") + attacker + ": " + t.element + t.spell + " (" + dmgTxt + ")";
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+      while (logBox.children.length > 5) logBox.removeChild(logBox.firstChild);
+
+      if (tg && tg.HapticFeedback && t.dmg > 0) { try { tg.HapticFeedback.impactOccurred(t.crit ? "heavy" : "light"); } catch(e){} }
+      setTimeout(step, 750);
+    }
+    setTimeout(step, 500);
+  }
+
+  function finishPvP(d) {
+    const r = document.getElementById("pvp-result");
+    r.style.display = "block";
+    if (d.youWon) {
+      r.style.color = "#9be8c0";
+      r.innerHTML = "🏆 ПОБЕДА!<br><span style='font-size:14px;'>+" +
+        (d.reward ? d.reward.xp : 0) + " XP, +" + (d.reward ? d.reward.gold : 0) + " 💰" +
+        (d.eloChange ? " • " + (d.eloChange >= 0 ? "+" : "") + d.eloChange + " ELO" : "") + "</span>";
+    } else {
+      r.style.color = "#ffb0b0";
+      r.innerHTML = "💀 Поражение<br><span style='font-size:14px;'>" +
+        (d.eloChange ? (d.eloChange >= 0 ? "+" : "") + d.eloChange + " ELO" : "") + "</span>";
+    }
+    document.getElementById("pvp-close").style.display = "block";
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(d.youWon ? "success" : "error"); } catch(e){} }
+    pvpBusy = false;
   }
 
   // Генерация звёзд на фоне
