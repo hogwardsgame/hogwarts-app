@@ -222,13 +222,6 @@
       radial-gradient(ellipse at 70% 80%, rgba(80,50,20,0.05), transparent 50%);
   }
   .card > * { position: relative; z-index: 1; }
-  /* 3D-наклон карточки по гироскопу */
-  .card {
-    transform: perspective(900px) rotateX(var(--tiltX, 0deg)) rotateY(var(--tiltY, 0deg));
-    transition: transform 0.25s ease-out;
-  }
-  /* во время прокрутки наклон замораживается — плавный скролл */
-  body.scrolling .card { transition: none; --tiltX: 0deg !important; --tiltY: 0deg !important; }
   /* Большой герб-водяной знак факультета за профилем */
   .house-watermark {
     position: fixed; top: 45%; left: 50%;
@@ -438,6 +431,31 @@
   @keyframes sparkFly {
     0%   { opacity: 1; transform: translate(0,0) scale(1); }
     100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.2); }
+  }
+  /* Всплеск награды по центру экрана */
+  .reward-pop {
+    position: fixed; left: 50%; top: 40%; z-index: 9998;
+    transform: translate(-50%,-50%); pointer-events: none; text-align: center;
+    font-family: "Cinzel", Georgia, serif; font-weight: 800;
+    font-size: 30px; color: #ffe9a8;
+    text-shadow: 0 0 24px rgba(255,216,107,0.7), 0 2px 8px rgba(0,0,0,0.6);
+    animation: rewardPop 1.8s cubic-bezier(0.2,0.9,0.3,1) forwards;
+  }
+  @keyframes rewardPop {
+    0%   { opacity: 0; transform: translate(-50%,-30%) scale(0.5); }
+    18%  { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
+    32%  { transform: translate(-50%,-50%) scale(1); }
+    78%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%,-90%) scale(0.95); }
+  }
+  .reward-coin {
+    position: fixed; z-index: 9997; pointer-events: none; font-size: 22px;
+    animation: coinBurst 1.3s cubic-bezier(0.2,0.8,0.4,1) forwards;
+  }
+  @keyframes coinBurst {
+    0%   { opacity: 0; transform: translate(0,0) scale(0.4) rotate(0deg); }
+    20%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--cx), var(--cy)) scale(1) rotate(var(--cr)); }
   }
 
   /* Модалка чужого профиля */
@@ -2547,7 +2565,7 @@
       box.innerHTML = '<div class="explore-event"><div class="explore-result" style="color:#d8cdf0;">'+(d.msg||'')+'</div>' +
         (rewards.length ? '<div class="explore-result" style="color:#9be8c0;font-weight:600;">'+rewards.join(" • ")+'</div>' : '') +
         '<div class="action-btn" onclick="loadExplore()">🗺️ К локациям</div></div>';
-      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+      if (d.ok && (d.xp || d.gold)) showReward(rewards.join("<br>"));
     } catch (e) {} finally { exploreBusy = false; }
   }
 
@@ -2579,7 +2597,7 @@
   }
   async function claimCollection(cid) {
     if (collBusy) return; collBusy = true;
-    try { const d = await collReq("claim", cid); if (d.ok) loadCollections(); showMsg("coll-msg", d); } catch(e){} finally { collBusy = false; }
+    try { const d = await collReq("claim", cid); if (d.ok) { showReward("🎁 Награда!"); loadCollections(); } showMsg("coll-msg", d); } catch(e){} finally { collBusy = false; }
   }
 
   // ── Титулы ─────────────────────────────────────────────────────────────
@@ -3090,7 +3108,7 @@
       if (d.correct) {
         res.style.color = "#9be8c0";
         res.innerHTML = "✅ Верно! +" + d.xp + " XP, +" + d.gold + " 💰";
-        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+        showReward("+" + d.xp + " XP<br>+" + d.gold + " 💰");
       } else {
         res.style.color = "#ffb0b0";
         res.innerHTML = "❌ Неверно" + (d.hint ? "<br><span style='font-size:12px;color:#c9b8e8;'>💡 " + d.hint + "</span>" : "");
@@ -4273,34 +4291,38 @@
     }
   }
 
+  // Эффект награды: всплывающий текст + монетки-искры
+  function showReward(text) {
+    const pop = document.createElement("div");
+    pop.className = "reward-pop";
+    pop.innerHTML = text;
+    document.body.appendChild(pop);
+    // монетки разлетаются от центра
+    const cx = window.innerWidth / 2, cy = window.innerHeight * 0.4;
+    for (let i = 0; i < 14; i++) {
+      const coin = document.createElement("div");
+      coin.className = "reward-coin";
+      coin.textContent = Math.random() > 0.5 ? "✨" : "🪙";
+      coin.style.left = cx + "px"; coin.style.top = cy + "px";
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 80 + Math.random() * 120;
+      coin.style.setProperty("--cx", Math.cos(ang) * dist + "px");
+      coin.style.setProperty("--cy", (Math.sin(ang) * dist + 40) + "px");
+      coin.style.setProperty("--cr", (Math.random() * 720 - 360) + "deg");
+      coin.style.animationDelay = (Math.random() * 0.15) + "s";
+      document.body.appendChild(coin);
+      setTimeout(function(){ coin.remove(); }, 1500);
+    }
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    setTimeout(function(){ pop.remove(); }, 1900);
+  }
+
   // стартовая подсветка основной кнопки (профиль → Герой)
   syncMainbar();
 
-  // 3D-наклон карточек по гироскопу (мягко, с троттлингом)
-  (function() {
-    let lastTilt = 0;
-    function handleTilt(e) {
-      const now = Date.now();
-      if (now - lastTilt < 60) return;  // не чаще ~16 раз/сек
-      lastTilt = now;
-      const g = Math.max(-18, Math.min(18, e.gamma || 0));
-      const b = Math.max(-18, Math.min(18, (e.beta || 0) - 45));
-      const tiltY = (g / 18) * 4;
-      const tiltX = (-b / 18) * 3;
-      // только видимый экран, без перебора всех
-      const active = document.querySelector(".screen[style*='block'], .screen:not([style])");
-      const card = active ? active.querySelector(".card") : null;
-      if (card) {
-        card.style.setProperty("--tiltX", tiltX.toFixed(1) + "deg");
-        card.style.setProperty("--tiltY", tiltY.toFixed(1) + "deg");
-      }
-    }
-    if (window.DeviceOrientationEvent) {
-      window.addEventListener("deviceorientation", handleTilt, true);
-    }
-  })();
+  // Гасим transition наклона во время прокрутки уже не нужно — наклон убран
 
-  // Гасим наклон во время прокрутки — плавный скролл
+  // Плавная прокрутка: лёгкий флаг при скролле (для будущих эффектов)
   (function() {
     let scrollTimer = null;
     window.addEventListener("scroll", function() {
