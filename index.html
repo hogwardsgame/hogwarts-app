@@ -1046,6 +1046,22 @@
   </div>
 </div><!-- /screen-settings -->
 
+<div id="screen-triwizard" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏆 Триволшебный турнир</div>
+    <div class="divider"></div>
+    <div id="tw-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-triwizard -->
+
+<div id="screen-war" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">⚔️ Война факультетов</div>
+    <div class="divider"></div>
+    <div id="war-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-war -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -1244,6 +1260,12 @@
   </div>
   <div class="tab" id="tab-settings" onclick="switchTab('settings')">
     <div class="tab-ico">⚙️</div><div class="tab-label">Настройки</div>
+  </div>
+  <div class="tab" id="tab-triwizard" onclick="switchTab('triwizard')">
+    <div class="tab-ico">🏆</div><div class="tab-label">Триволшебный</div>
+  </div>
+  <div class="tab" id="tab-war" onclick="switchTab('war')">
+    <div class="tab-ico">⚔️</div><div class="tab-label">Война</div>
   </div>
 </div>
 
@@ -1455,7 +1477,7 @@
   let roomLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -1486,9 +1508,91 @@
     if (tab === "horcruxes" && !hxLoaded) { hxLoaded = true; loadHorcruxes(); }
     if (tab === "journal" && !journalLoaded) { journalLoaded = true; loadJournal(); }
     if (tab === "settings" && !settingsLoaded) { settingsLoaded = true; loadSettings(); }
+    if (tab === "triwizard" && !twLoaded) { twLoaded = true; loadTriwizard(); }
+    if (tab === "war" && !warLoaded) { warLoaded = true; loadWar(); }
   }
 
+  let twLoaded = false, warLoaded = false;
   let hxLoaded = false, journalLoaded = false, settingsLoaded = false;
+
+  // ── Триволшебный турнир ────────────────────────────────────────────────
+  let twBusy = false;
+  async function twReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/triwizard", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    return await resp.json();
+  }
+  function renderTriwizard(d) {
+    const box = document.getElementById("tw-content");
+    let html = "";
+    if (d.result) {
+      html += '<div class="explore-event"><div class="explore-result" style="color:#d8cdf0;">'+d.result.msg+'</div>' +
+              '<div class="explore-result" style="color:#9be8c0;font-weight:600;">+'+d.result.xp+' XP • +'+d.result.gold+' 💰 • +'+d.result.score+' очков</div></div>';
+    }
+    if (!d.registered) {
+      html += '<div class="ev-hint">Зарегистрируйся и пройди 3 испытания. Каждое — выбор стратегии и очки турнира.</div>';
+      html += '<div class="action-btn purple" onclick="twRegister()">✍️ Зарегистрироваться</div>';
+    } else {
+      html += '<div class="bank-card"><div class="big-num" style="margin:0;">🏆 '+d.score+' очков</div></div>';
+      html += d.trials.map(function(tr){
+        if (tr.done) return '<div class="quest-card done"><div class="quest-name">✅ '+tr.name+'</div><div class="quest-reward" style="color:#9be8c0;">Пройдено</div></div>';
+        if (tr.locked) return '<div class="quest-card"><div class="quest-name">🔒 '+tr.name+'</div><div class="quest-reward" style="color:#ff9b9b;">С '+tr.minLevel+' уровня</div></div>';
+        return '<div class="quest-card"><div class="quest-name">'+tr.name+'</div>' +
+               '<div class="quest-reward" style="color:#c9b8e8;">'+tr.desc+'</div>' +
+               tr.options.map(function(o,i){ return '<div class="explore-opt" onclick="twChoice('+tr.idx+','+i+')">'+o+'</div>'; }).join("") + '</div>';
+      }).join("");
+    }
+    if (d.top && d.top.length) {
+      html += '<div class="sec-title">🏅 Таблица турнира</div>' + d.top.map(function(t){
+        const medal = t.place===1?"🥇":t.place===2?"🥈":t.place===3?"🥉":("#"+t.place);
+        return '<div class="lg-row"><span class="lg-place">'+medal+'</span><span style="font-size:16px;">'+t.house+'</span><div class="lg-name">'+t.name+'<div class="lg-wl">'+t.trials+'/3 испытаний</div></div><span class="lg-elo">'+t.score+'</span></div>';
+      }).join("");
+    }
+    html += '<div class="pet-msg" id="tw-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadTriwizard() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("tw-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderTriwizard(await twReq("status")); } catch (e) { document.getElementById("tw-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function twRegister() {
+    if (twBusy) return; twBusy = true;
+    try { const d = await twReq("register"); renderTriwizard(d); const m=document.getElementById("tw-msg"); if(m&&d.msg){m.style.color=d.ok?"#9be8c0":"#ffb0b0";m.textContent=d.msg;} } catch(e){} finally { twBusy = false; }
+  }
+  async function twChoice(trial, choice) {
+    if (twBusy) return; twBusy = true;
+    try {
+      const d = await twReq("choice", { trial: trial, choice: choice });
+      renderTriwizard(d);
+      if (d.result && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { twBusy = false; }
+  }
+
+  // ── Война факультетов ──────────────────────────────────────────────────
+  async function loadWar() {
+    const box = document.getElementById("war-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/war", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) });
+      const d = await resp.json();
+      let html = '<div class="ev-hint">Факультеты соревнуются за очки. Зарабатывай баллы в боях и заданиях — они идут твоему дому.</div>';
+      html += '<div class="sec-title">Положение факультетов</div>';
+      html += (d.houses||[]).map(function(h,i){
+        const lead = i===0?'👑 ':'';
+        return '<div class="quest-card"><div class="quest-name">'+lead+h.emoji+' '+h.name+' — '+h.points+' 🏆</div>' +
+               '<div class="quest-bar-track"><div class="quest-bar-fill" style="width:'+h.pct+'%;background:linear-gradient(90deg,#ffd86b,#ffb05c);"></div></div></div>';
+      }).join("");
+      if (d.top && d.top.length) {
+        html += '<div class="sec-title">🏅 Топ вкладчиков</div>' + d.top.map(function(t){
+          const medal = t.place===1?"🥇":t.place===2?"🥈":t.place===3?"🥉":("#"+t.place);
+          return '<div class="lg-row"><span class="lg-place">'+medal+'</span><span style="font-size:16px;">'+t.house+'</span><span class="lg-name">'+t.name+'</span><span class="lg-elo">'+t.points+'</span></div>';
+        }).join("");
+      }
+      box.innerHTML = html;
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
 
   // ── Крестражи ──────────────────────────────────────────────────────────
   let hxBusy = false;
