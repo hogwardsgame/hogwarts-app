@@ -409,6 +409,24 @@
   .submenu.show .submenu-item:nth-child(10){animation-delay:.30s}
   /* отступ снизу для контента под новый бар */
   .screen { padding-bottom: 96px; }
+
+  /* ── Режим производительности: отключаем всё тяжёлое ── */
+  body.perf-mode .candles,
+  body.perf-mode .magic-dust,
+  body.perf-mode .fog,
+  body.perf-mode .house-watermark,
+  body.perf-mode .touch-spark,
+  body.perf-mode .reward-coin,
+  body.perf-mode #stars { display: none !important; }
+  body.perf-mode .card { animation: none !important; backdrop-filter: none !important; }
+  body.perf-mode .card::before { animation: none !important; display: none !important; }
+  body.perf-mode .card::after { display: none !important; }
+  body.perf-mode .screen.appearing { animation: none !important; }
+  body.perf-mode .mainbtn.active::before { animation: none !important; }
+  body.perf-mode .act-btn::after, body.perf-mode .action-btn::after { display: none !important; }
+  body.perf-mode .reward-pop { animation-duration: 0.8s !important; }
+  body.perf-mode .submenu .submenu-item { animation: none !important; opacity: 1 !important; transform: none !important; }
+  body.perf-mode .vignette { display: none !important; }
   /* Аппарация — появление экрана с дымкой */
   .screen.appearing { animation: apparate 0.45s cubic-bezier(0.2,0.8,0.2,1); }
   @keyframes apparate {
@@ -2239,7 +2257,7 @@
     try {
       const d = await aucReq("sell", { invId: invId, price: price, hours: hours });
       if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
-      if (d.ok) { if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} } loadAuctionSell(); }
+      if (d.ok) { inventoryLoaded = false; if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} } loadAuctionSell(); }
     } catch (e) {} finally { aucBusy = false; }
   }
   let hxLoaded = false, journalLoaded = false, settingsLoaded = false;
@@ -2406,6 +2424,10 @@
       '<div class="live-block-row" style="padding:12px;border-radius:11px;background:rgba(255,255,255,0.04);">' +
       '<span style="font-size:13px;color:#d8cdf0;">Случайные приглашения на дуэль</span>' +
       '<div class="live-toggle'+(d.pvpBlock?' blocked':'')+'" onclick="togglePvpBlock('+(d.pvpBlock?'true':'false')+')">'+(d.pvpBlock?'🔒 Заблок.':'🔓 Разреш.')+'</div></div>' +
+      '<div class="sec-title">Производительность</div>' +
+      '<div class="live-block-row" style="padding:12px;border-radius:11px;background:rgba(255,255,255,0.04);">' +
+      '<span style="font-size:13px;color:#d8cdf0;">⚡ Режим производительности<br><span style="font-size:11px;color:#9d8fc0;">отключает эффекты для слабых телефонов</span></span>' +
+      '<div class="live-toggle'+(isPerfMode()?' blocked':'')+'" onclick="togglePerfMode()">'+(isPerfMode()?'🚀 Вкл.':'✨ Выкл.')+'</div></div>' +
       '<div class="pet-msg" id="settings-msg"></div>';
   }
   async function loadSettings() {
@@ -2419,6 +2441,24 @@
   async function togglePvpBlock(current) {
     if (settingsBusy) return; settingsBusy = true;
     try { await settingsReq("set_pvp_block", { blocked: !current }); renderSettings(await settingsReq("get")); if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} } } catch(e){} finally { settingsBusy = false; }
+  }
+
+  // ── Режим производительности (для слабых телефонов) ────────────────────
+  function isPerfMode() {
+    try { return localStorage.getItem("perfMode") === "1"; } catch(e) { return window._perfMode === true; }
+  }
+  function applyPerfMode() {
+    if (isPerfMode()) document.body.classList.add("perf-mode");
+    else document.body.classList.remove("perf-mode");
+  }
+  function togglePerfMode() {
+    const next = !isPerfMode();
+    try { localStorage.setItem("perfMode", next ? "1" : "0"); } catch(e) { window._perfMode = next; }
+    applyPerfMode();
+    renderSettings({ wizardName: document.getElementById("name") ? document.getElementById("name").textContent : "", userId: "", lang: "ru", pvpBlock: false });
+    // перечитываем настройки чтобы сохранить остальные поля
+    settingsReq("get").then(renderSettings).catch(function(){});
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("medium"); } catch(e){} }
   }
 
   // ── Хогсмид ────────────────────────────────────────────────────────────
@@ -2519,7 +2559,7 @@
   }
   async function roomBuy(uid) {
     if (roomBusy) return; roomBusy = true;
-    try { const d = await roomReq("buy", { upgradeId: uid }); renderRoom(d); showMsg("room-msg", d); } catch(e){} finally { roomBusy = false; }
+    try { const d = await roomReq("buy", { upgrade: uid }); renderRoom(d); showMsg("room-msg", d); if (d.ok) showReward("✅ Куплено!"); } catch(e){} finally { roomBusy = false; }
   }
 
   // ── Исследование ───────────────────────────────────────────────────────
@@ -2749,7 +2789,7 @@
     if (wandBusy) return; wandBusy = true;
     try {
       const d = await wandReq("craft", core);
-      if (d.ok) { renderWand(await wandReq("info")); }
+      if (d.ok) { showReward("🪄 Палочка создана!"); inventoryLoaded = false; loadProfile(); renderWand(await wandReq("info")); }
       const msg = document.getElementById("wand-msg");
       if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
       if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
@@ -3262,7 +3302,7 @@
       const d = await potReq("brew", rid);
       msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
       if (d.recipes) renderPotions(d);
-      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+      if (d.ok) { inventoryLoaded = false; loadProfile(); }
     } catch (e) {} finally { potBusy = false; }
   }
 
@@ -3273,6 +3313,7 @@
       const d = await potReq("collect");
       msg.style.color = d.ok ? "#9be8c0" : "#b0a3d0"; msg.textContent = d.msg || "";
       if (d.recipes) renderPotions(d);
+      if (d.ok) { showReward("⚗️ Зелья готовы!"); inventoryLoaded = false; }
     } catch (e) {} finally { potBusy = false; }
   }
 
@@ -4244,9 +4285,12 @@
     starsBox.appendChild(s);
   }
 
-  // Парящие свечи Большого зала
+  // Применяем режим производительности при загрузке
+  applyPerfMode();
+
+  // Парящие свечи Большого зала (не в режиме производительности)
   const candlesBox = document.getElementById("candles");
-  if (candlesBox) {
+  if (candlesBox && !isPerfMode()) {
     for (let i = 0; i < 9; i++) {
       const c = document.createElement("div");
       c.className = "candle";
@@ -4258,9 +4302,9 @@
     }
   }
 
-  // Плывущая магическая пыльца
+  // Плывущая магическая пыльца (не в режиме производительности)
   const dustBox = document.getElementById("magic-dust");
-  if (dustBox) {
+  if (dustBox && !isPerfMode()) {
     for (let i = 0; i < 22; i++) {
       const d = document.createElement("div");
       d.className = "dust";
@@ -4275,8 +4319,9 @@
     }
   }
 
-  // Искры при касании экрана — магия под пальцем
+  // Искры при касании экрана — магия под пальцем (не в режиме производительности)
   document.addEventListener("touchstart", function(e) {
+    if (isPerfMode()) return;
     const t = e.touches[0];
     if (!t) return;
     spawnSparkle(t.clientX, t.clientY);
@@ -4301,6 +4346,9 @@
     pop.className = "reward-pop";
     pop.innerHTML = text;
     document.body.appendChild(pop);
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    setTimeout(function(){ pop.remove(); }, 1900);
+    if (isPerfMode()) return;  // без монеток на слабых телефонах
     // монетки разлетаются от центра
     const cx = window.innerWidth / 2, cy = window.innerHeight * 0.4;
     for (let i = 0; i < 14; i++) {
@@ -4317,8 +4365,6 @@
       document.body.appendChild(coin);
       setTimeout(function(){ coin.remove(); }, 1500);
     }
-    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
-    setTimeout(function(){ pop.remove(); }, 1900);
   }
 
   // стартовая подсветка основной кнопки (профиль → Герой)
