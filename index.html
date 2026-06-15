@@ -52,6 +52,18 @@
     font-family: "Cinzel Decorative", "Cinzel", Georgia, "Times New Roman", serif !important;
     font-weight: 900 !important;
   }
+  /* Шрифт фильма на статах, кнопках, метках, золоте */
+  .stat .val, .stat .cap, .bar-label, .gold-banner, .house, .rank,
+  .act-btn, .action-btn, .pp-stat-val, .pp-stat-lbl, .pp-house, .pp-title,
+  .tab-label, .mainbtn-label, .submenu-item-label, .lg-place, .lg-elo,
+  .quest-name, .subject-name, .big-num, .league-elo, .league-sub,
+  body.fonts-ready .stat .val, body.fonts-ready .act-btn {
+    font-family: "Cinzel", Georgia, "Times New Roman", serif !important;
+  }
+  /* числа покрупнее с лёгким золотым свечением */
+  .stat .val, .big-num, .gold-banner {
+    letter-spacing: 0.4px;
+  }
 
   /* ── Загрузочный экран: сова с письмом ── */
   #loader {
@@ -220,8 +232,11 @@
   }
   @keyframes glow { 0%,100% { box-shadow: 0 0 20px rgba(255,216,107,0.2);} 50% { box-shadow: 0 0 36px rgba(255,216,107,0.45);} }
 
-  .name { text-align: center; font-size: 25px; font-weight: 700; letter-spacing: 0.5px;
-          color: #ffe9a8; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  .name { text-align: center; font-size: 28px; font-weight: 700; letter-spacing: 0.5px;
+          background: linear-gradient(180deg, #fff4cf 0%, #ffe9a8 40%, #e8b860 75%, #c89838 100%);
+          -webkit-background-clip: text; background-clip: text;
+          -webkit-text-fill-color: transparent;
+          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)) drop-shadow(0 0 16px rgba(255,216,107,0.3)); }
   .house { text-align: center; font-size: 15px; color: #c9b8e8; margin-top: 4px; margin-bottom: 4px; }
   .rank  { text-align: center; font-size: 14px; color: #ffd86b; margin-bottom: 20px; font-weight: 600; }
 
