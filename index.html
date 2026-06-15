@@ -118,6 +118,92 @@
   .tab-ico { font-size: 20px; }
   .tab-label { font-size: 10px; margin-top: 2px; }
 
+  /* ── Старый таббар скрыт, используем группировку ── */
+  .tabbar { display: none !important; }
+
+  /* Нижняя панель из 4 основных кнопок */
+  .mainbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+    display: flex; justify-content: space-around; gap: 6px;
+    background: rgba(15, 10, 28, 0.96);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255,216,107,0.28);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+  .mainbtn {
+    flex: 1; text-align: center; padding: 8px 4px; border-radius: 14px;
+    cursor: pointer; color: #9d8fc0; transition: all 0.25s;
+    position: relative;
+  }
+  .mainbtn.active {
+    background: rgba(255,216,107,0.16); color: #ffe9a8;
+    transform: translateY(-2px);
+  }
+  .mainbtn-ico { font-size: 24px; transition: transform 0.25s; }
+  .mainbtn.active .mainbtn-ico { transform: scale(1.18); }
+  .mainbtn-label { font-size: 11px; margin-top: 3px; font-weight: 600; }
+
+  /* Выезжающая панель подгрупп */
+  .submenu-backdrop {
+    position: fixed; inset: 0; z-index: 25;
+    background: rgba(0,0,0,0); backdrop-filter: blur(0px);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s, backdrop-filter 0.3s;
+  }
+  .submenu-backdrop.show {
+    background: rgba(5,2,15,0.55); backdrop-filter: blur(3px);
+    opacity: 1; pointer-events: auto;
+  }
+  .submenu {
+    position: fixed; left: 0; right: 0; z-index: 28;
+    bottom: calc(70px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(28,20,48,0.98), rgba(18,12,34,0.98));
+    border-top: 1px solid rgba(255,216,107,0.3);
+    border-radius: 22px 22px 0 0;
+    padding: 18px 16px 22px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    transform: translateY(120%); transition: transform 0.38s cubic-bezier(0.16,1,0.3,1);
+    max-height: 60vh; overflow-y: auto;
+  }
+  .submenu.show { transform: translateY(0); }
+  .submenu-title {
+    font-size: 16px; font-weight: 700; color: #ffe9a8; text-align: center;
+    margin-bottom: 16px; letter-spacing: 0.3px;
+  }
+  .submenu-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  }
+  .submenu-item {
+    text-align: center; padding: 12px 6px; border-radius: 16px; cursor: pointer;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    color: #d8cdf0; transition: all 0.2s;
+    opacity: 0; transform: translateY(14px) scale(0.9);
+  }
+  .submenu.show .submenu-item {
+    animation: subPop 0.42s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  .submenu-item:active { background: rgba(140,120,255,0.2); transform: scale(0.94); }
+  .submenu-item.active {
+    background: rgba(255,216,107,0.16); border-color: rgba(255,216,107,0.45); color: #ffe9a8;
+  }
+  .submenu-item-ico { font-size: 26px; }
+  .submenu-item-label { font-size: 11px; margin-top: 5px; line-height: 1.1; }
+  @keyframes subPop {
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  /* каскад появления */
+  .submenu.show .submenu-item:nth-child(1){animation-delay:.03s}
+  .submenu.show .submenu-item:nth-child(2){animation-delay:.06s}
+  .submenu.show .submenu-item:nth-child(3){animation-delay:.09s}
+  .submenu.show .submenu-item:nth-child(4){animation-delay:.12s}
+  .submenu.show .submenu-item:nth-child(5){animation-delay:.15s}
+  .submenu.show .submenu-item:nth-child(6){animation-delay:.18s}
+  .submenu.show .submenu-item:nth-child(7){animation-delay:.21s}
+  .submenu.show .submenu-item:nth-child(8){animation-delay:.24s}
+  .submenu.show .submenu-item:nth-child(9){animation-delay:.27s}
+  .submenu.show .submenu-item:nth-child(10){animation-delay:.30s}
+  /* отступ снизу для контента под новый бар */
+  .screen { padding-bottom: 96px; }
+
   /* Зелья */
   .pot-card {
     background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
@@ -1284,6 +1370,27 @@
   </div>
 </div>
 
+<div class="submenu-backdrop" id="submenu-backdrop" onclick="closeSubmenu()"></div>
+<div class="submenu" id="submenu">
+  <div class="submenu-title" id="submenu-title"></div>
+  <div class="submenu-grid" id="submenu-grid"></div>
+</div>
+
+<div class="mainbar">
+  <div class="mainbtn" id="main-battle" onclick="openSubmenu('battle')">
+    <div class="mainbtn-ico">⚔️</div><div class="mainbtn-label">Бой</div>
+  </div>
+  <div class="mainbtn" id="main-hero" onclick="openSubmenu('hero')">
+    <div class="mainbtn-ico">🧙</div><div class="mainbtn-label">Герой</div>
+  </div>
+  <div class="mainbtn" id="main-world" onclick="openSubmenu('world')">
+    <div class="mainbtn-ico">🏰</div><div class="mainbtn-label">Мир</div>
+  </div>
+  <div class="mainbtn" id="main-study" onclick="openSubmenu('study')">
+    <div class="mainbtn-ico">📚</div><div class="mainbtn-label">Занятия</div>
+  </div>
+</div>
+
 <script>
   // ── Telegram Web App init ──────────────────────────────────────────────
   const tg = window.Telegram ? window.Telegram.WebApp : null;
@@ -1491,7 +1598,84 @@
   let bmLoaded = false;
   let roomLoaded = false;
   let myName = fallbackName;
+  // ── Группировка вкладок в 4 основные категории ─────────────────────────
+  const TAB_GROUPS = {
+    battle: { title: "⚔️ Сражения", tabs: [
+      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["teambattle","🛡️","Бой 3×3"],
+      ["tournament","🏅","Турнир"], ["worldboss","🐲","Босс"], ["triwizard","🏆","Триволшеб."],
+      ["war","⚔️","Война"], ["league","📊","Лига"],
+    ]},
+    hero: { title: "🧙 Герой", tabs: [
+      ["profile","🧙","Профиль"], ["inventory","🎒","Сумка"], ["pet","🐾","Питомец"],
+      ["wandcraft","🪄","Палочка"], ["collections","📦","Коллекции"], ["titles","🎭","Титулы"],
+      ["ach","🏅","Награды"], ["journal","📖","Журнал"],
+    ]},
+    world: { title: "🏰 Мир", tabs: [
+      ["explore","🗺️","Карта"], ["hogsmeade","🏘️","Хогсмид"], ["shop","🛒","Магазин"],
+      ["blackmarket","🕯️","Рынок"], ["auction","🔨","Аукцион"], ["bank","🏦","Банк"],
+      ["room","🏠","Комната"], ["squad","🛡️","Отряд"], ["trade","💸","Перевод"],
+      ["horcruxes","💎","Крестражи"],
+    ]},
+    study: { title: "📚 Занятия", tabs: [
+      ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"], ["quests","📜","Задания"],
+      ["events","🎉","События"], ["cup","🏰","Кубок"], ["rating","🏆","Рейтинг"],
+      ["settings","⚙️","Настройки"],
+    ]},
+  };
+  // какая группа содержит вкладку
+  function groupOfTab(tab) {
+    for (const g in TAB_GROUPS) {
+      if (TAB_GROUPS[g].tabs.some(function(t){ return t[0] === tab; })) return g;
+    }
+    return null;
+  }
+
+  let currentGroup = null;
+  function openSubmenu(group) {
+    const g = TAB_GROUPS[group];
+    if (!g) return;
+    currentGroup = group;
+    document.getElementById("submenu-title").textContent = g.title;
+    const grid = document.getElementById("submenu-grid");
+    grid.innerHTML = g.tabs.map(function(t){
+      const isActive = (currentTab === t[0]);
+      return '<div class="submenu-item'+(isActive?' active':'')+'" onclick="pickTab(\''+t[0]+'\')">' +
+             '<div class="submenu-item-ico">'+t[1]+'</div>' +
+             '<div class="submenu-item-label">'+t[2]+'</div></div>';
+    }).join("");
+    // подсветка основной кнопки
+    ["battle","hero","world","study"].forEach(function(m){
+      document.getElementById("main-"+m).classList.toggle("active", m === group);
+    });
+    document.getElementById("submenu-backdrop").classList.add("show");
+    // reflow для перезапуска анимации
+    const sm = document.getElementById("submenu");
+    sm.classList.remove("show"); void sm.offsetWidth; sm.classList.add("show");
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+  }
+  function closeSubmenu() {
+    document.getElementById("submenu").classList.remove("show");
+    document.getElementById("submenu-backdrop").classList.remove("show");
+    // снять подсветку с основной кнопки, вернуть к активной вкладке
+    syncMainbar();
+  }
+  function pickTab(tab) {
+    if (tab === "battle") { closeSubmenu(); openBattle(); return; }   // бой — это оверлей
+    if (tab === "pvp") { closeSubmenu(); openPvP(); return; }      // дуэль — оверлей
+    switchTab(tab);
+    closeSubmenu();
+  }
+  // подсветить основную кнопку, соответствующую активной вкладке
+  function syncMainbar() {
+    const g = groupOfTab(currentTab);
+    ["battle","hero","world","study"].forEach(function(m){
+      document.getElementById("main-"+m).classList.toggle("active", m === g);
+    });
+  }
+
+  let currentTab = "profile";
   function switchTab(tab) {
+    currentTab = tab;
     ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
@@ -1526,6 +1710,7 @@
     if (tab === "triwizard" && !twLoaded) { twLoaded = true; loadTriwizard(); }
     if (tab === "war" && !warLoaded) { warLoaded = true; loadWar(); }
     if (tab === "auction" && !auctionLoaded) { auctionLoaded = true; aucSwitch('buy'); }
+    syncMainbar();
   }
 
   let auctionLoaded = false, aucMode = "buy", aucBusy = false;
@@ -3599,6 +3784,9 @@
     s.style.animationDelay = (Math.random()*3) + "s";
     starsBox.appendChild(s);
   }
+
+  // стартовая подсветка основной кнопки (профиль → Герой)
+  syncMainbar();
 </script>
 </body>
 </html>
