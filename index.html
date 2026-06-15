@@ -707,6 +707,28 @@
   }
   .explore-opt:active { background:rgba(140,120,255,0.22); }
   .explore-result { text-align:center; padding:14px; font-size:14px; }
+
+  /* Хогсмид / Чёрный рынок магазины */
+  .shop-section-title { font-size:15px; font-weight:700; color:#ffe9a8; margin:14px 0 4px; }
+  .shop-section-desc { font-size:12px; color:#b0a3d0; margin-bottom:8px; }
+  .bm-card {
+    padding:13px; border-radius:12px; margin-bottom:9px;
+    background:rgba(155,95,216,0.08); border:1px solid rgba(155,95,216,0.25);
+  }
+  .bm-name { font-size:14px; font-weight:600; color:#e8dcff; }
+  .bm-desc { font-size:12px; color:#b0a3d0; margin:3px 0 8px; }
+  .room-stat {
+    display:flex; justify-content:space-around; padding:12px; border-radius:12px; margin-bottom:12px;
+    background:rgba(255,216,107,0.08); border:1px solid rgba(255,216,107,0.25);
+  }
+  .room-stat div { text-align:center; }
+  .room-stat .big { font-size:18px; font-weight:700; color:#ffe9a8; }
+  .room-stat .cap { font-size:11px; color:#b0a3d0; }
+  .upgrade-card {
+    display:flex; align-items:center; gap:11px; padding:12px; margin-bottom:8px; border-radius:11px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
+  }
+  .upgrade-card.owned { border-color:rgba(107,232,155,0.4); background:rgba(107,232,155,0.07); }
 </style>
 </head>
 <body>
@@ -972,6 +994,34 @@
   </div>
 </div><!-- /screen-titles -->
 
+<div id="screen-hogsmeade" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏘️ Хогсмид</div>
+    <div class="shop-gold" id="hm-gold">💰 —</div>
+    <div class="divider"></div>
+    <div id="hm-content"><div class="lb-empty">Загрузка...</div></div>
+    <div class="pet-msg" id="hm-msg"></div>
+  </div>
+</div><!-- /screen-hogsmeade -->
+
+<div id="screen-blackmarket" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🕯️ Чёрный рынок</div>
+    <div class="shop-gold" id="bm-gold">💰 —</div>
+    <div class="divider"></div>
+    <div id="bm-content"><div class="lb-empty">Загрузка...</div></div>
+    <div class="pet-msg" id="bm-msg"></div>
+  </div>
+</div><!-- /screen-blackmarket -->
+
+<div id="screen-room" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🏠 Моя комната</div>
+    <div class="divider"></div>
+    <div id="room-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-room -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -1152,6 +1202,15 @@
   </div>
   <div class="tab" id="tab-titles" onclick="switchTab('titles')">
     <div class="tab-ico">🎭</div><div class="tab-label">Титулы</div>
+  </div>
+  <div class="tab" id="tab-hogsmeade" onclick="switchTab('hogsmeade')">
+    <div class="tab-ico">🏘️</div><div class="tab-label">Хогсмид</div>
+  </div>
+  <div class="tab" id="tab-blackmarket" onclick="switchTab('blackmarket')">
+    <div class="tab-ico">🕯️</div><div class="tab-label">Рынок</div>
+  </div>
+  <div class="tab" id="tab-room" onclick="switchTab('room')">
+    <div class="tab-ico">🏠</div><div class="tab-label">Комната</div>
   </div>
 </div>
 
@@ -1358,9 +1417,12 @@
   let exploreLoaded = false;
   let collLoaded = false;
   let titlesLoaded = false;
+  let hmLoaded = false;
+  let bmLoaded = false;
+  let roomLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -1385,6 +1447,107 @@
     if (tab === "explore" && !exploreLoaded) { exploreLoaded = true; loadExplore(); }
     if (tab === "collections" && !collLoaded) { collLoaded = true; loadCollections(); }
     if (tab === "titles" && !titlesLoaded) { titlesLoaded = true; loadTitles(); }
+    if (tab === "hogsmeade" && !hmLoaded) { hmLoaded = true; loadHogsmeade(); }
+    if (tab === "blackmarket" && !bmLoaded) { bmLoaded = true; loadBlackmarket(); }
+    if (tab === "room" && !roomLoaded) { roomLoaded = true; loadRoom(); }
+  }
+
+  // ── Хогсмид ────────────────────────────────────────────────────────────
+  let hmBusy = false;
+  async function hmReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/hogsmeade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    return await resp.json();
+  }
+  function renderHogsmeade(d) {
+    document.getElementById("hm-gold").textContent = "💰 " + (d.gold!=null?d.gold:"—") + " галлеонов";
+    const box = document.getElementById("hm-content");
+    if (!d.shops || !d.shops.length) { box.innerHTML='<div class="lb-empty">Магазины пусты</div>'; return; }
+    box.innerHTML = d.shops.map(function(s){
+      return '<div class="shop-section-title">'+s.name+'</div><div class="shop-section-desc">'+s.desc+'</div>' +
+        s.items.map(function(it){
+          const btn = it.afford ? '<div class="shop-buy" onclick="buyHogsmeade(\''+it.id+'\','+it.price+')">'+it.price+' 💰</div>' : '<div class="shop-buy cant">'+it.price+' 💰</div>';
+          return '<div class="shop-row"><span class="shop-emoji">'+it.emoji+'</span><div class="shop-info"><div class="shop-name">'+it.rarity+' '+it.name+'</div><div class="shop-stock">x'+it.stock+'</div></div>'+btn+'</div>';
+        }).join("");
+    }).join("");
+  }
+  async function loadHogsmeade() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("hm-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderHogsmeade(await hmReq("list")); } catch (e) { document.getElementById("hm-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function buyHogsmeade(itemId, price) {
+    if (hmBusy) return; hmBusy = true;
+    try { const d = await hmReq("buy", { itemId: itemId, price: price }); if (d.ok) renderHogsmeade(await hmReq("list")); showMsg("hm-msg", d); } catch(e){} finally { hmBusy = false; }
+  }
+
+  // ── Чёрный рынок ───────────────────────────────────────────────────────
+  let bmBusy = false;
+  async function bmReq(action, itemId) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/blackmarket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, itemId: itemId || "" }) });
+    return await resp.json();
+  }
+  function renderBlackmarket(d) {
+    document.getElementById("bm-gold").textContent = "💰 " + (d.gold!=null?d.gold:"—") + " галлеонов";
+    const box = document.getElementById("bm-content");
+    if (!d.items || !d.items.length) { box.innerHTML='<div class="lb-empty">Рынок пуст</div>'; return; }
+    box.innerHTML = '<div class="ev-hint">Редкие тёмные артефакты. Ротация: '+(d.nextRotation||'скоро')+'. Один экземпляр на ротацию.</div>' +
+      d.items.map(function(it){
+        let btn;
+        if (it.bought) btn = '<div class="shop-buy cant">✅ Куплено</div>';
+        else if (it.afford) btn = '<div class="shop-buy" onclick="buyBlackmarket(\''+it.id+'\')">'+it.price+' 💰</div>';
+        else btn = '<div class="shop-buy cant">'+it.price+' 💰</div>';
+        return '<div class="bm-card"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:24px;">'+it.emoji+'</span><div style="flex:1;"><div class="bm-name">'+it.name+'</div></div>'+btn+'</div><div class="bm-desc">'+it.desc+'</div></div>';
+      }).join("");
+  }
+  async function loadBlackmarket() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("bm-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderBlackmarket(await bmReq("list")); } catch (e) { document.getElementById("bm-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function buyBlackmarket(itemId) {
+    if (bmBusy) return; bmBusy = true;
+    try { const d = await bmReq("buy", itemId); if (d.ok) renderBlackmarket(await bmReq("list")); showMsg("bm-msg", d); } catch(e){} finally { bmBusy = false; }
+  }
+
+  // ── Комната ────────────────────────────────────────────────────────────
+  let roomBusy = false;
+  async function roomReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    return await resp.json();
+  }
+  function renderRoom(d) {
+    const box = document.getElementById("room-content");
+    let html = '<div class="room-stat"><div><div class="big">+'+d.goldPerHour+'</div><div class="cap">💰/час</div></div>' +
+               '<div><div class="big">+'+d.xpPerHour+'</div><div class="cap">XP/час</div></div></div>';
+    if (d.pendingGold > 0 || d.pendingXp > 0) {
+      html += '<div class="action-btn green" onclick="roomCollect()">📥 Собрать: +'+d.pendingGold+' 💰, +'+d.pendingXp+' XP</div>';
+    } else {
+      html += '<div class="ev-hint">Доход копится со временем. Купи улучшения, чтобы он рос.</div>';
+    }
+    html += '<div class="sec-title" style="margin-top:12px;">Улучшения</div>';
+    html += d.upgrades.map(function(u){
+      const rate = (u.goldPerHour?'+'+u.goldPerHour+' 💰/ч ':'') + (u.xpPerHour?'+'+u.xpPerHour+' XP/ч':'');
+      let btn;
+      if (u.owned) btn = '<span style="color:#9be8c0;font-size:13px;">✅</span>';
+      else btn = '<div class="shop-buy" onclick="roomBuy(\''+u.id+'\')">'+u.price+' 💰</div>';
+      return '<div class="upgrade-card'+(u.owned?' owned':'')+'"><div style="flex:1;"><div style="color:#f4f0e6;font-size:14px;">'+u.name+'</div><div style="font-size:12px;color:#9be8c0;">'+rate+'</div></div>'+btn+'</div>';
+    }).join("") + '<div style="text-align:center;font-size:12px;color:#b0a3d0;margin-top:8px;">У тебя: 💰 '+d.gold+'</div><div class="pet-msg" id="room-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadRoom() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("room-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderRoom(await roomReq("info")); } catch (e) { document.getElementById("room-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function roomCollect() {
+    if (roomBusy) return; roomBusy = true;
+    try { const d = await roomReq("collect"); renderRoom(d); showMsg("room-msg", d); if (d.ok && tg && tg.HapticFeedback){try{tg.HapticFeedback.notificationOccurred("success");}catch(e){}} } catch(e){} finally { roomBusy = false; }
+  }
+  async function roomBuy(uid) {
+    if (roomBusy) return; roomBusy = true;
+    try { const d = await roomReq("buy", { upgradeId: uid }); renderRoom(d); showMsg("room-msg", d); } catch(e){} finally { roomBusy = false; }
   }
 
   // ── Исследование ───────────────────────────────────────────────────────
