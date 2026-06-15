@@ -33,6 +33,65 @@
   }
   @keyframes twinkle { 0%,100% { opacity: 0; transform: scale(0.5);} 50% { opacity: 0.9; transform: scale(1);} }
 
+  /* ── Магическая атмосфера Хогвартса ── */
+  /* Виньетка по краям — глубина */
+  .vignette {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 35%, transparent 40%, rgba(5,2,15,0.55) 100%);
+  }
+  /* Плывущий магический туман */
+  .fog {
+    position: fixed; inset: -50% 0; z-index: 0; pointer-events: none; opacity: 0.5;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 30%, rgba(120,90,200,0.12), transparent 60%),
+      radial-gradient(ellipse 50% 35% at 80% 60%, rgba(90,140,220,0.10), transparent 60%),
+      radial-gradient(ellipse 55% 30% at 50% 80%, rgba(160,120,255,0.08), transparent 60%);
+    animation: fogDrift 28s ease-in-out infinite alternate;
+  }
+  @keyframes fogDrift {
+    0%   { transform: translate(0,0) scale(1); }
+    50%  { transform: translate(-3%,2%) scale(1.08); }
+    100% { transform: translate(3%,-2%) scale(1.04); }
+  }
+  /* Парящие свечи Большого зала */
+  .candles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .candle {
+    position: absolute; width: 4px; height: 16px; border-radius: 2px;
+    background: linear-gradient(to top, rgba(255,180,80,0.0), rgba(255,220,150,0.85));
+    animation: candleFloat 12s ease-in-out infinite;
+  }
+  .candle::before {
+    content: ""; position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+    width: 7px; height: 12px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: radial-gradient(circle at 50% 70%, #fff3c0, #ffb347 55%, rgba(255,120,40,0.2) 100%);
+    box-shadow: 0 0 12px 4px rgba(255,180,80,0.55), 0 0 28px 8px rgba(255,140,40,0.25);
+    animation: flameFlicker 1.6s ease-in-out infinite;
+  }
+  @keyframes candleFloat {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-14px); }
+  }
+  @keyframes flameFlicker {
+    0%,100% { transform: translateX(-50%) scaleY(1) scaleX(1); opacity: 1; }
+    25%     { transform: translateX(-50%) scaleY(1.15) scaleX(0.9); opacity: 0.85; }
+    50%     { transform: translateX(-52%) scaleY(0.95) scaleX(1.05); opacity: 1; }
+    75%     { transform: translateX(-48%) scaleY(1.1) scaleX(0.92); opacity: 0.9; }
+  }
+  /* Плывущие магические частицы (пыльца/искры) */
+  .magic-dust { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  .dust {
+    position: absolute; width: 3px; height: 3px; border-radius: 50%;
+    background: radial-gradient(circle, #ffe9a8, rgba(255,216,107,0.2));
+    box-shadow: 0 0 6px 2px rgba(255,216,107,0.4);
+    animation: dustRise linear infinite;
+  }
+  @keyframes dustRise {
+    0%   { transform: translateY(0) translateX(0); opacity: 0; }
+    10%  { opacity: 0.9; }
+    90%  { opacity: 0.7; }
+    100% { transform: translateY(-110vh) translateX(20px); opacity: 0; }
+  }
+
   .card {
     position: relative; z-index: 1;
     width: 100%; max-width: 420px;
@@ -41,10 +100,25 @@
     border: 1px solid rgba(255, 216, 107, 0.35);
     border-radius: 22px;
     padding: 28px 22px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
-    animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06),
+                inset 0 0 60px rgba(255,216,107,0.03);
+    animation: materialize 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+    overflow: hidden;
   }
+  /* мерцающая золотая линия по верхнему краю карточки */
+  .card::before {
+    content: ""; position: absolute; top: 0; left: -100%; right: 0; height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,216,107,0.9), transparent);
+    animation: shimmerLine 5s ease-in-out infinite;
+  }
+  @keyframes shimmerLine { 0% { left: -100%; } 60%,100% { left: 100%; } }
   @keyframes rise { from { opacity: 0; transform: translateY(30px);} to { opacity: 1; transform: translateY(0);} }
+  @keyframes materialize {
+    0%   { opacity: 0; transform: translateY(24px) scale(0.97); filter: blur(8px); }
+    60%  { filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
 
   .crest {
     width: 92px; height: 92px; margin: 0 auto 14px;
@@ -203,6 +277,29 @@
   .submenu.show .submenu-item:nth-child(10){animation-delay:.30s}
   /* отступ снизу для контента под новый бар */
   .screen { padding-bottom: 96px; }
+  /* Аппарация — появление экрана с дымкой */
+  .screen.appearing { animation: apparate 0.45s cubic-bezier(0.2,0.8,0.2,1); }
+  @keyframes apparate {
+    0%   { opacity: 0; transform: translateY(10px) scale(0.985); filter: blur(6px); }
+    100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  }
+  /* Свечение активной основной кнопки */
+  .mainbtn.active::before {
+    content: ""; position: absolute; inset: 0; border-radius: 14px; z-index: -1;
+    box-shadow: 0 0 22px rgba(255,216,107,0.4); animation: mbGlow 2.4s ease-in-out infinite;
+  }
+  @keyframes mbGlow { 0%,100%{opacity:0.6;} 50%{opacity:1;} }
+  /* Искры под касанием */
+  .touch-spark {
+    position: fixed; width: 6px; height: 6px; border-radius: 50%; z-index: 9999;
+    background: radial-gradient(circle, #fff3c0, #ffb347 60%, transparent);
+    box-shadow: 0 0 8px 2px rgba(255,200,100,0.7);
+    pointer-events: none; animation: sparkFly 0.7s ease-out forwards;
+  }
+  @keyframes sparkFly {
+    0%   { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.2); }
+  }
 
   /* Модалка чужого профиля */
   .pubprofile-backdrop {
@@ -329,12 +426,30 @@
   /* Кнопки действий */
   .actions { margin-top:16px; display:flex; flex-direction:column; gap:8px; }
   .act-btn {
+    position: relative; overflow: hidden;
     text-align:center; padding:12px; border-radius:12px; cursor:pointer;
     font-size:14px; font-weight:600; color:#ffe9a8;
     background:rgba(255,216,107,0.12); border:1px solid rgba(255,216,107,0.3);
-    transition:background 0.15s;
+    transition: background 0.15s, box-shadow 0.25s, transform 0.12s;
+    box-shadow: 0 0 0 rgba(255,216,107,0);
   }
-  .act-btn:active { background:rgba(255,216,107,0.25); }
+  .act-btn:hover { box-shadow: 0 0 18px rgba(255,216,107,0.3); }
+  .act-btn:active { background:rgba(255,216,107,0.28); transform: scale(0.97); }
+  /* магическая вспышка-волна при нажатии */
+  .act-btn::after, .action-btn::after {
+    content: ""; position: absolute; left: 50%; top: 50%;
+    width: 0; height: 0; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,240,180,0.5), transparent 70%);
+    transform: translate(-50%,-50%); pointer-events: none;
+  }
+  .act-btn:active::after, .action-btn:active::after {
+    animation: ripple 0.5s ease-out;
+  }
+  @keyframes ripple {
+    0%   { width: 0; height: 0; opacity: 0.8; }
+    100% { width: 260px; height: 260px; opacity: 0; }
+  }
+  .action-btn { position: relative; overflow: hidden; }
   .act-msg { text-align:center; font-size:13px; color:#9be8c0; min-height:16px; margin-top:2px; }
 
   /* Кубок факультетов */
@@ -853,6 +968,10 @@
 </style>
 </head>
 <body>
+<div class="vignette"></div>
+<div class="fog"></div>
+<div class="candles" id="candles"></div>
+<div class="magic-dust" id="magic-dust"></div>
 <div class="stars" id="stars"></div>
 
 <div id="screen-profile" class="screen">
@@ -1769,7 +1888,13 @@
   function switchTab(tab) {
     currentTab = tab;
     ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction"].forEach(function(t) {
-      document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
+      const scr = document.getElementById("screen-" + t);
+      if (t === tab) {
+        scr.style.display = "block";
+        scr.classList.remove("appearing"); void scr.offsetWidth; scr.classList.add("appearing");
+      } else {
+        scr.style.display = "none";
+      }
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
     if (tab === "rating" && !ratingLoaded) { ratingLoaded = true; loadLeaderboard("level"); }
@@ -3876,6 +4001,57 @@
     s.style.top = Math.random()*100 + "%";
     s.style.animationDelay = (Math.random()*3) + "s";
     starsBox.appendChild(s);
+  }
+
+  // Парящие свечи Большого зала
+  const candlesBox = document.getElementById("candles");
+  if (candlesBox) {
+    for (let i = 0; i < 9; i++) {
+      const c = document.createElement("div");
+      c.className = "candle";
+      c.style.left = (8 + Math.random() * 84) + "%";
+      c.style.top = (8 + Math.random() * 45) + "%";
+      c.style.animationDelay = (Math.random() * 12) + "s";
+      c.style.animationDuration = (10 + Math.random() * 6) + "s";
+      candlesBox.appendChild(c);
+    }
+  }
+
+  // Плывущая магическая пыльца
+  const dustBox = document.getElementById("magic-dust");
+  if (dustBox) {
+    for (let i = 0; i < 22; i++) {
+      const d = document.createElement("div");
+      d.className = "dust";
+      d.style.left = (Math.random() * 100) + "%";
+      d.style.bottom = "-10px";
+      const dur = 9 + Math.random() * 10;
+      d.style.animationDuration = dur + "s";
+      d.style.animationDelay = (Math.random() * dur) + "s";
+      const sz = 2 + Math.random() * 2.5;
+      d.style.width = sz + "px"; d.style.height = sz + "px";
+      dustBox.appendChild(d);
+    }
+  }
+
+  // Искры при касании экрана — магия под пальцем
+  document.addEventListener("touchstart", function(e) {
+    const t = e.touches[0];
+    if (!t) return;
+    spawnSparkle(t.clientX, t.clientY);
+  }, { passive: true });
+  function spawnSparkle(x, y) {
+    for (let i = 0; i < 5; i++) {
+      const sp = document.createElement("div");
+      sp.className = "touch-spark";
+      sp.style.left = x + "px"; sp.style.top = y + "px";
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 18 + Math.random() * 26;
+      sp.style.setProperty("--sx", Math.cos(ang) * dist + "px");
+      sp.style.setProperty("--sy", Math.sin(ang) * dist + "px");
+      document.body.appendChild(sp);
+      setTimeout(function(){ sp.remove(); }, 700);
+    }
   }
 
   // стартовая подсветка основной кнопки (профиль → Герой)
