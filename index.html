@@ -687,6 +687,26 @@
   .core-card.has { border-color:rgba(140,120,255,0.4); cursor:pointer; }
   .core-card.has:active { background:rgba(140,120,255,0.14); }
   .core-card.no { opacity:0.4; }
+
+  /* Исследование */
+  .explore-zone {
+    display:flex; align-items:center; gap:12px; padding:13px; margin-bottom:8px; border-radius:12px; cursor:pointer;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+  }
+  .explore-zone:active { background:rgba(107,180,255,0.14); }
+  .explore-zone.locked { opacity:0.4; pointer-events:none; }
+  .explore-event {
+    padding:16px; border-radius:14px; margin-bottom:12px;
+    background:rgba(107,180,255,0.08); border:1px solid rgba(107,180,255,0.25);
+  }
+  .explore-ev-title { font-size:17px; font-weight:700; color:#a8d4ff; margin-bottom:8px; }
+  .explore-ev-desc { font-size:14px; color:#d8cdf0; line-height:1.4; margin-bottom:14px; }
+  .explore-opt {
+    padding:12px; border-radius:11px; margin-bottom:8px; cursor:pointer; font-size:14px; color:#e8dcff;
+    background:rgba(140,120,255,0.1); border:1px solid rgba(140,120,255,0.25);
+  }
+  .explore-opt:active { background:rgba(140,120,255,0.22); }
+  .explore-result { text-align:center; padding:14px; font-size:14px; }
 </style>
 </head>
 <body>
@@ -928,6 +948,30 @@
   </div>
 </div><!-- /screen-bank -->
 
+<div id="screen-explore" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🗺️ Исследование</div>
+    <div class="divider"></div>
+    <div id="explore-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-explore -->
+
+<div id="screen-collections" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">📦 Коллекции</div>
+    <div class="divider"></div>
+    <div id="coll-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-collections -->
+
+<div id="screen-titles" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🎭 Титулы</div>
+    <div class="divider"></div>
+    <div id="titles-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-titles -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -1099,6 +1143,15 @@
   </div>
   <div class="tab" id="tab-bank" onclick="switchTab('bank')">
     <div class="tab-ico">🏦</div><div class="tab-label">Банк</div>
+  </div>
+  <div class="tab" id="tab-explore" onclick="switchTab('explore')">
+    <div class="tab-ico">🗺️</div><div class="tab-label">Карта</div>
+  </div>
+  <div class="tab" id="tab-collections" onclick="switchTab('collections')">
+    <div class="tab-ico">📦</div><div class="tab-label">Коллекции</div>
+  </div>
+  <div class="tab" id="tab-titles" onclick="switchTab('titles')">
+    <div class="tab-ico">🎭</div><div class="tab-label">Титулы</div>
   </div>
 </div>
 
@@ -1302,9 +1355,12 @@
   let tradeLoaded = false;
   let wandLoaded = false;
   let bankLoaded = false;
+  let exploreLoaded = false;
+  let collLoaded = false;
+  let titlesLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -1326,6 +1382,118 @@
     if (tab === "trade" && !tradeLoaded) { tradeLoaded = true; loadTrade(); }
     if (tab === "wandcraft" && !wandLoaded) { wandLoaded = true; loadWandcraft(); }
     if (tab === "bank" && !bankLoaded) { bankLoaded = true; loadBank(); }
+    if (tab === "explore" && !exploreLoaded) { exploreLoaded = true; loadExplore(); }
+    if (tab === "collections" && !collLoaded) { collLoaded = true; loadCollections(); }
+    if (tab === "titles" && !titlesLoaded) { titlesLoaded = true; loadTitles(); }
+  }
+
+  // ── Исследование ───────────────────────────────────────────────────────
+  let exploreBusy = false;
+  async function exploreReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/explore", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    return await resp.json();
+  }
+  async function loadExplore() {
+    const box = document.getElementById("explore-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const d = await exploreReq("zones");
+      if (!d.zones || !d.zones.length) { box.innerHTML='<div class="lb-empty">Нет локаций</div>'; return; }
+      box.innerHTML = '<div class="ev-hint">Исследуй локации — случайные события, выборы и награды. Чем чаще ходишь, тем больше находишь.</div>' +
+        d.zones.map(function(z){
+          if (z.locked) return '<div class="explore-zone locked"><span style="font-size:26px;">'+z.emoji+'</span><div style="flex:1;"><div style="color:#f4f0e6;">'+z.name+'</div><div style="font-size:12px;color:#ff9b9b;">🔒 С '+z.minLevel+' уровня</div></div></div>';
+          return '<div class="explore-zone" onclick="exploreZone(\''+z.id+'\')"><span style="font-size:26px;">'+z.emoji+'</span><div style="flex:1;"><div style="color:#f4f0e6;">'+z.name+'</div><div style="font-size:12px;color:#b0a3d0;">Посещений: '+z.visits+'</div></div><span>🔍</span></div>';
+        }).join("");
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function exploreZone(zoneId) {
+    if (exploreBusy) return; exploreBusy = true;
+    const box = document.getElementById("explore-content");
+    box.innerHTML = '<div class="lb-empty">🎲 Происходит что-то...</div>';
+    try {
+      const d = await exploreReq("event", { zone: zoneId });
+      if (!d.hasEvent) { box.innerHTML = '<div class="lb-empty">'+(d.msg||'Нет событий')+'</div>'; exploreBusy=false; return; }
+      box.innerHTML = '<div class="explore-event"><div class="explore-ev-title">🎲 '+d.title+'</div>' +
+        '<div class="explore-ev-desc">'+d.desc+'</div>' +
+        d.options.map(function(o,i){
+          return '<div class="explore-opt" onclick="exploreChoice(\''+zoneId+'\','+d.eventIdx+','+i+')">'+o+'</div>';
+        }).join("") + '</div>';
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; } finally { exploreBusy = false; }
+  }
+  async function exploreChoice(zoneId, evIdx, choice) {
+    if (exploreBusy) return; exploreBusy = true;
+    try {
+      const d = await exploreReq("choice", { zone: zoneId, eventIdx: evIdx, choice: choice });
+      const box = document.getElementById("explore-content");
+      let rewards = [];
+      if (d.xp) rewards.push("+"+d.xp+" XP");
+      if (d.gold) rewards.push("+"+d.gold+" 💰");
+      if (d.item) rewards.push(d.item);
+      box.innerHTML = '<div class="explore-event"><div class="explore-result" style="color:#d8cdf0;">'+(d.msg||'')+'</div>' +
+        (rewards.length ? '<div class="explore-result" style="color:#9be8c0;font-weight:600;">'+rewards.join(" • ")+'</div>' : '') +
+        '<div class="action-btn" onclick="loadExplore()">🗺️ К локациям</div></div>';
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { exploreBusy = false; }
+  }
+
+  // ── Коллекции ──────────────────────────────────────────────────────────
+  let collBusy = false;
+  async function collReq(action, collection) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/collections", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, collection: collection || "" }) });
+    return await resp.json();
+  }
+  async function loadCollections() {
+    const box = document.getElementById("coll-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const d = await collReq("list");
+      if (!d.collections || !d.collections.length) { box.innerHTML='<div class="lb-empty">Нет коллекций</div>'; return; }
+      box.innerHTML = d.collections.map(function(c){
+        const pct = Math.min(100, c.have/c.total*100);
+        let btn = "";
+        if (c.claimed) btn = '<div class="quest-prog" style="color:#9be8c0;">✅ Награда получена</div>';
+        else if (c.done) btn = '<div class="action-btn green" style="margin-top:8px;" onclick="claimCollection(\''+c.id+'\')">🎁 Забрать награду</div>';
+        return '<div class="quest-card'+(c.claimed?' done':'')+'"><div class="quest-name">'+c.title+'</div>' +
+               '<div class="quest-reward">'+c.desc+'</div>' +
+               '<div class="quest-bar-track"><div class="quest-bar-fill" style="width:'+pct+'%"></div></div>' +
+               '<div class="quest-prog">'+c.have+' / '+c.total+' • Награда: +'+c.rewardXp+' XP, +'+c.rewardGold+' 💰'+(c.rewardTitle?', титул «'+c.rewardTitle+'»':'')+'</div>' +
+               btn + '</div>';
+      }).join("") + '<div class="pet-msg" id="coll-msg"></div>';
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function claimCollection(cid) {
+    if (collBusy) return; collBusy = true;
+    try { const d = await collReq("claim", cid); if (d.ok) loadCollections(); showMsg("coll-msg", d); } catch(e){} finally { collBusy = false; }
+  }
+
+  // ── Титулы ─────────────────────────────────────────────────────────────
+  let titleBusy = false;
+  async function titleReq(action, titleId) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/titles", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, titleId: (titleId!==undefined?titleId:"") }) });
+    return await resp.json();
+  }
+  async function loadTitles() {
+    const box = document.getElementById("titles-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const d = await titleReq("list");
+      if (!d.titles || !d.titles.length) { box.innerHTML='<div class="lb-empty">У тебя пока нет титулов.<br>Получай их за достижения, коллекции и победы!</div>'; return; }
+      box.innerHTML = '<div class="ev-hint">Выбери активный титул — он будет виден в профиле.</div>' +
+        d.titles.map(function(t){
+          return '<div class="subject-card'+(t.active?'':'')+'" onclick="setTitle(\''+t.id+'\')" style="'+(t.active?'border-color:rgba(255,216,107,0.5);background:rgba(255,216,107,0.1);':'')+'">' +
+                 '<span class="subject-emoji">'+t.emoji+'</span>' +
+                 '<div style="flex:1;"><div class="subject-name">'+t.rarity+' '+t.name+'</div>' +
+                 (t.active?'<div style="font-size:12px;color:#9be8c0;">✅ Активен</div>':'<div class="subject-teacher">нажми чтобы выбрать</div>')+'</div></div>';
+        }).join("") + '<div class="pet-msg" id="titles-msg"></div>';
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function setTitle(tid) {
+    if (titleBusy) return; titleBusy = true;
+    try { const d = await titleReq("set", tid); if (d.ok) loadTitles(); showMsg("titles-msg", d); } catch(e){} finally { titleBusy = false; }
   }
 
   // ── Отряд ──────────────────────────────────────────────────────────────
