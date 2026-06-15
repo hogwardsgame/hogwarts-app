@@ -2221,7 +2221,8 @@
       if (!d.items || !d.items.length) { box.innerHTML='<div class="ev-hint">Нет предметов для продажи. Расходники и квестовые предметы продавать нельзя.</div>'; return; }
       box.innerHTML = '<div class="ev-hint">Выбери предмет, укажи цену и срок — он уйдёт на аукцион.</div>' +
         d.items.map(function(it){
-          return '<div class="quest-card"><div class="quest-name">'+it.rarity+' '+it.emoji+' '+it.name+'</div>' +
+          const rar = it.rarity ? it.rarity + ' ' : '';
+          return '<div class="quest-card"><div class="quest-name">'+rar+it.emoji+' '+it.name+'</div>' +
                  '<div class="input-row" style="margin-top:8px;"><input class="gold-input" id="sell-price-'+it.invId+'" placeholder="Цена 💰" inputmode="numeric"></div>' +
                  '<div class="input-row"><div class="action-btn" style="flex:1;font-size:13px;" onclick="sellItem('+it.invId+',1)">1ч</div>' +
                  '<div class="action-btn" style="flex:1;font-size:13px;" onclick="sellItem('+it.invId+',6)">6ч</div>' +
@@ -2433,10 +2434,12 @@
     const box = document.getElementById("hm-content");
     if (!d.shops || !d.shops.length) { box.innerHTML='<div class="lb-empty">Магазины пусты</div>'; return; }
     box.innerHTML = d.shops.map(function(s){
-      return '<div class="shop-section-title">'+s.name+'</div><div class="shop-section-desc">'+s.desc+'</div>' +
+      return '<div class="shop-section-title">'+s.name+'</div><div class="shop-section-desc">'+(s.desc||'')+'</div>' +
         s.items.map(function(it){
-          const btn = it.afford ? '<div class="shop-buy" onclick="buyHogsmeade(\''+it.id+'\','+it.price+')">'+it.price+' 💰</div>' : '<div class="shop-buy cant">'+it.price+' 💰</div>';
-          return '<div class="shop-row"><span class="shop-emoji">'+it.emoji+'</span><div class="shop-info"><div class="shop-name">'+it.rarity+' '+it.name+'</div><div class="shop-stock">x'+it.stock+'</div></div>'+btn+'</div>';
+          const canAfford = (d.gold != null) && (d.gold >= it.price);
+          const btn = canAfford ? '<div class="shop-buy" onclick="buyHogsmeade(\''+it.id+'\','+it.price+')">'+it.price+' 💰</div>' : '<div class="shop-buy cant">'+it.price+' 💰</div>';
+          const rar = it.rarity ? it.rarity + ' ' : '';
+          return '<div class="shop-row"><span class="shop-emoji">'+it.emoji+'</span><div class="shop-info"><div class="shop-name">'+rar+it.name+'</div><div class="shop-stock">x'+it.stock+'</div></div>'+btn+'</div>';
         }).join("");
     }).join("");
   }
@@ -3138,7 +3141,7 @@
         ? '<div class="shop-buy" onclick="buyItem(' + it.rowId + ')">' + it.price + ' 💰</div>'
         : '<div class="shop-buy cant">' + it.price + ' 💰</div>';
       return '<div class="shop-row"><span class="shop-emoji">' + it.emoji + '</span>' +
-             '<div class="shop-info"><div class="shop-name">' + it.rarity + ' ' + it.name + '</div>' +
+             '<div class="shop-info"><div class="shop-name">' + (it.rarity ? it.rarity + ' ' : '') + it.name + '</div>' +
              '<div class="shop-stock">В наличии: ' + stock + '</div></div>' + btn + '</div>';
     }).join("");
   }
@@ -3435,7 +3438,7 @@
       box.innerHTML = data.items.map(function(it) {
         return '<div class="inv-row">' +
                  '<div class="inv-emoji">' + it.emoji + '</div>' +
-                 '<div class="inv-name">' + it.rarity + ' ' + it.name + '</div>' +
+                 '<div class="inv-name">' + (it.rarity ? it.rarity + ' ' : '') + it.name + '</div>' +
                  '<div class="inv-qty">×' + it.qty + '</div>' +
                '</div>';
       }).join("");
