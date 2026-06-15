@@ -233,6 +233,11 @@
   .pp-stat-val { font-size:17px; font-weight:700; color:#f4f0e6; }
   .pp-stat-lbl { font-size:11px; color:#b0a3d0; margin-top:2px; }
   .pp-clickable { cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px; }
+  .pp-equip {
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    padding:9px 12px; margin-bottom:5px; border-radius:10px; font-size:13px; color:#e8dcff;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.06);
+  }
 
   /* Зелья */
   .pot-card {
@@ -1735,7 +1740,18 @@
         '<div class="pp-stat"><div class="pp-stat-val">'+d.winrate+'</div><div class="pp-stat-lbl">Винрейт</div></div>' +
         '</div>';
       if (d.division) html += '<div class="pp-stat" style="margin-bottom:10px;"><div class="pp-stat-val">'+d.division+'</div><div class="pp-stat-lbl">'+d.elo+' ELO • '+d.pvpWins+'W / '+d.pvpLosses+'L</div></div>';
-      if (d.pet) html += '<div class="pp-stat" style="margin-bottom:4px;"><div class="pp-stat-val">'+d.pet.emoji+' '+d.pet.name+'</div><div class="pp-stat-lbl">Питомец • ур.'+d.pet.level+'</div></div>';
+      // Снаряжение
+      if (d.equipment && d.equipment.length) {
+        html += '<div class="sec-title" style="margin-top:6px;">⚔️ Снаряжение</div>';
+        html += d.equipment.map(function(e){
+          return '<div class="pp-equip"><span>'+e.emoji+' '+e.name+'</span><span style="color:#9be8c0;">'+e.slot+(e.bonus?' +'+e.bonus:'')+'</span></div>';
+        }).join("");
+      }
+      // Палочка
+      if (d.wand) {
+        html += '<div class="pp-equip" style="margin-top:6px;"><span>🪄 Палочка</span><span style="color:#c9b8e8;">'+d.wand.wood+' / '+d.wand.core+'</span></div>';
+      }
+      if (d.pet) html += '<div class="pp-stat" style="margin-top:8px;margin-bottom:4px;"><div class="pp-stat-val">'+d.pet.emoji+' '+d.pet.name+'</div><div class="pp-stat-lbl">Питомец • ур.'+d.pet.level+'</div></div>';
       box.innerHTML = html;
       if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
     } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
