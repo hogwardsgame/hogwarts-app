@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Cinzel+Decorative:wght@700;900&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     height: 100%;
@@ -38,16 +39,17 @@
 
   /* ── Магический шрифт заголовков (как в фильмах) ── */
   .name, .lb-title, .pp-name, .pet-name, .live-title,
-  .league-div, .tour-status, .wb-name, .ev-title, .submenu-title {
-    font-family: "Cinzel", Georgia, serif !important;
+  .league-div, .tour-status, .wb-name, .ev-title, .submenu-title,
+  body.fonts-ready .name, body.fonts-ready .lb-title {
+    font-family: "Cinzel", "Cinzel Decorative", Georgia, "Times New Roman", serif !important;
     letter-spacing: 0.6px;
     text-shadow: 0 0 18px rgba(255,216,107,0.25);
   }
   .name {
-    font-family: "Cinzel Decorative", "Cinzel", Georgia, serif !important;
+    font-family: "Cinzel Decorative", "Cinzel", Georgia, "Times New Roman", serif !important;
     font-weight: 900 !important;
   }
-  .sec-title { font-family: "Cinzel", Georgia, serif !important; letter-spacing: 0.4px; }
+  .sec-title { font-family: "Cinzel", Georgia, "Times New Roman", serif !important; letter-spacing: 0.4px; }
 
   /* ── Загрузочный экран: сова с письмом ── */
   #loader {
@@ -1647,6 +1649,23 @@
 </div>
 
 <script>
+  // ── Гарантируем применение волшебного шрифта ───────────────────────────
+  (function() {
+    if (document.fonts && document.fonts.load) {
+      Promise.all([
+        document.fonts.load('700 20px "Cinzel"'),
+        document.fonts.load('900 26px "Cinzel Decorative"')
+      ]).then(function() {
+        // шрифт загружен — помечаем body, заголовки перерисуются
+        document.body.classList.add("fonts-ready");
+      }).catch(function(){});
+      // подстраховка: через 2.5с всё равно ставим флаг
+      setTimeout(function(){ document.body.classList.add("fonts-ready"); }, 2500);
+    } else {
+      document.body.classList.add("fonts-ready");
+    }
+  })();
+
   // ── Загрузочный экран: звёзды на небе + скрытие ────────────────────────
   (function() {
     const sky = document.getElementById("loader-sky");
