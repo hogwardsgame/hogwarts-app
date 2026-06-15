@@ -205,6 +205,29 @@
     animation: materialize 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
     overflow: hidden;
   }
+  /* Пергаментная текстура поверх карточки */
+  .card::after {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    border-radius: 22px; opacity: 0.5; mix-blend-mode: overlay;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,230,180,0.018) 0px, rgba(255,230,180,0.018) 1px, transparent 1px, transparent 3px),
+      repeating-linear-gradient(90deg, rgba(120,90,40,0.015) 0px, rgba(120,90,40,0.015) 1px, transparent 1px, transparent 4px),
+      radial-gradient(ellipse at 30% 20%, rgba(255,220,160,0.04), transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(80,50,20,0.05), transparent 50%);
+  }
+  .card > * { position: relative; z-index: 1; }
+  /* Большой герб-водяной знак факультета за профилем */
+  .house-watermark {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 320px; z-index: 0; pointer-events: none;
+    opacity: 0.05; filter: blur(1px) grayscale(0.3);
+    animation: wmFloat 9s ease-in-out infinite;
+  }
+  @keyframes wmFloat {
+    0%,100% { transform: translate(-50%,-50%) scale(1) rotate(-2deg); opacity: 0.045; }
+    50%     { transform: translate(-50%,-52%) scale(1.04) rotate(2deg); opacity: 0.07; }
+  }
   /* мерцающая золотая линия по верхнему краю карточки */
   .card::before {
     content: ""; position: absolute; top: 0; left: -100%; right: 0; height: 1px;
@@ -1090,6 +1113,7 @@
 
 <div id="screen-profile" class="screen">
 <div class="card">
+  <div class="house-watermark" id="house-watermark">🐍</div>
   <div class="crest" id="crest">🦁</div>
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
@@ -1775,12 +1799,14 @@
     document.body.style.backgroundAttachment = "fixed";
     document.documentElement.style.setProperty("--accent", th.accent);
     document.documentElement.style.setProperty("--glow", th.glow);
-    // Применяем акцент к ключевым элементам
-    document.getElementById("name").style.color = th.accent;
+    // Имя оставляем с золотым градиентом (не перебиваем цветом факультета)
     document.getElementById("rank").style.color = th.accent;
     const crest = document.getElementById("crest");
     crest.style.borderColor = th.accent + "88";
     crest.style.boxShadow = "0 0 30px " + th.glow + "44";
+    // Большой герб-водяной знак под факультет
+    const wm = document.getElementById("house-watermark");
+    if (wm) { wm.textContent = emoji; }
   }
 
   function render(data) {
