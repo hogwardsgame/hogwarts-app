@@ -427,6 +427,127 @@
   body.perf-mode .reward-pop { animation-duration: 0.8s !important; }
   body.perf-mode .submenu .submenu-item { animation: none !important; opacity: 1 !important; transform: none !important; }
   body.perf-mode .vignette { display: none !important; }
+
+  /* ══ АРЕНА (2D-бой с ИИ) ══ */
+  .arena-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; flex-direction: column;
+    background: #0a0518; overflow: hidden;
+  }
+  .arena-bg {
+    position: absolute; inset: 0; z-index: 0; opacity: 0.5;
+    background: radial-gradient(ellipse at 50% 25%, #2a1a4e 0%, #0a0518 75%);
+  }
+  .arena-topbar {
+    position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 8px;
+  }
+  .arena-turn {
+    font-family: "Cinzel", serif; font-size: 15px; font-weight: 700; color: #ffe9a8;
+    text-shadow: 0 0 12px rgba(255,216,107,0.5);
+  }
+  .arena-close {
+    width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; cursor: pointer;
+  }
+  .arena-field {
+    position: relative; z-index: 2; flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-around;
+    padding: 10px 0;
+  }
+  .arena-fighter { text-align: center; position: relative; transition: transform 0.15s; }
+  .arena-fighter.hit { animation: arenaHit 0.4s; }
+  @keyframes arenaHit { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-12px);} 75%{transform:translateX(12px);} }
+  .af-avatar {
+    font-size: 72px; line-height: 1; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6));
+    animation: afIdle 3s ease-in-out infinite;
+  }
+  .arena-fighter.foe .af-avatar { animation: afIdleFoe 3s ease-in-out infinite; }
+  @keyframes afIdle { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+  @keyframes afIdleFoe { 0%,100%{transform:translateY(0) scaleX(-1);} 50%{transform:translateY(-6px) scaleX(-1);} }
+  .af-name { font-family:"Cinzel",serif; font-size: 14px; color: #f4f0e6; margin: 4px 0 6px; }
+  .af-bar {
+    position: relative; width: 200px; max-width: 70vw; height: 20px; margin: 4px auto;
+    background: rgba(0,0,0,0.45); border-radius: 10px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .af-bar-fill { height: 100%; width: 100%; transition: width 0.45s cubic-bezier(0.2,0.8,0.2,1); border-radius: 10px; }
+  .af-bar.hp .af-bar-fill { background: linear-gradient(90deg,#ff5c5c,#ff8a5c); }
+  .af-bar.mana .af-bar-fill { background: linear-gradient(90deg,#5c9dff,#5cd8ff); }
+  .af-bar-txt {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+  .af-effects { display: flex; gap: 4px; justify-content: center; min-height: 22px; margin-bottom: 2px; }
+  .af-effect {
+    font-size: 16px; animation: effPulse 1.2s ease-in-out infinite;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.4));
+  }
+  @keyframes effPulse { 0%,100%{transform:scale(1);opacity:0.85;} 50%{transform:scale(1.15);opacity:1;} }
+  .arena-vs { font-size: 22px; opacity: 0.4; z-index: 1; }
+
+  .arena-log {
+    position: relative; z-index: 3; text-align: center;
+    min-height: 24px; font-size: 13px; color: #d8cdf0; padding: 4px 16px;
+    font-family: "Cinzel", serif;
+  }
+  .arena-abilities {
+    position: relative; z-index: 3;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(15,10,28,0.92); border-top: 1px solid rgba(255,216,107,0.2);
+  }
+  .arena-ab {
+    position: relative; aspect-ratio: 1; border-radius: 13px; cursor: pointer;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: all 0.15s; overflow: hidden;
+  }
+  .arena-ab:active { transform: scale(0.92); }
+  .arena-ab.disabled { opacity: 0.4; pointer-events: none; }
+  .arena-ab-ico { font-size: 26px; line-height: 1; }
+  .arena-ab-mana { font-size: 10px; color: #7fc4ff; margin-top: 2px; font-weight: 700; }
+  .arena-ab-cd {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 800; color: #fff;
+  }
+  .arena-ab-lvl {
+    position: absolute; top: 3px; right: 5px; font-size: 9px; color: #ffd86b; font-weight: 700;
+  }
+  /* Летящий снаряд */
+  .arena-projectile {
+    position: fixed; z-index: 250; font-size: 38px; pointer-events: none;
+    filter: drop-shadow(0 0 10px currentColor);
+  }
+  /* Урон-цифры */
+  .arena-dmg {
+    position: fixed; z-index: 251; font-family:"Cinzel",serif; font-weight: 800; font-size: 30px;
+    pointer-events: none; animation: arenaDmg 1s ease-out forwards;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+  }
+  @keyframes arenaDmg {
+    0%{opacity:0;transform:translateY(0) scale(0.5);}
+    25%{opacity:1;transform:translateY(-18px) scale(1.2);}
+    100%{opacity:0;transform:translateY(-55px) scale(1);}
+  }
+  .arena-flash { position: fixed; inset: 0; z-index: 249; pointer-events: none; opacity: 0; }
+  .arena-flash.show { animation: arenaFlash 0.3s; }
+  @keyframes arenaFlash { 0%{opacity:0;} 40%{opacity:0.5;} 100%{opacity:0;} }
+  /* Экран результата */
+  .arena-result {
+    position: fixed; inset: 0; z-index: 260; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(5,2,15,0.88); backdrop-filter: blur(6px); text-align: center;
+  }
+  .arena-result.show { display: flex; animation: arenaFlash 0.5s; }
+  .arena-result-title {
+    font-family:"Cinzel Decorative",serif; font-weight: 900; font-size: 38px;
+    margin-bottom: 14px; text-shadow: 0 0 30px currentColor;
+  }
+  .arena-result-reward { font-size: 16px; color: #ffe9a8; font-family:"Cinzel",serif; margin-bottom: 24px; }
+  body.perf-mode .af-avatar { animation: none !important; }
+  body.perf-mode .arena-fighter.hit { animation-duration: 0.2s; }
   /* Аппарация — появление экрана с дымкой */
   .screen.appearing { animation: apparate 0.45s cubic-bezier(0.2,0.8,0.2,1); }
   @keyframes apparate {
@@ -1204,6 +1325,7 @@
   <div class="actions">
     <div class="act-btn battle-btn" onclick="openBattle()">⚔️ В БОЙ! (PvE)</div>
     <div class="act-btn pvp-btn" onclick="openPvP()">🤺 ДУЭЛЬ С ИГРОКОМ</div>
+    <div class="act-btn" style="background:rgba(180,108,255,0.15);border-color:rgba(180,108,255,0.4);color:#d8b0ff;" onclick="chooseArenaDifficulty()">🏟️ АРЕНА ЗАКЛИНАНИЙ (ИИ)</div>
     <div class="act-btn" id="act-feed" onclick="doAction('feedpet', this)">🍖 Покормить питомца</div>
     <div class="act-btn" id="act-daily" onclick="doAction('claimdaily', this)">🎁 Забрать бонус дня</div>
     <div class="act-btn" id="act-equip" onclick="doAction('equipbest', this)">⚡ Надеть лучшее снаряжение</div>
@@ -1506,6 +1628,45 @@
 <div class="pubprofile-modal" id="pubprofile-modal">
   <div id="pubprofile-body"><div class="lb-empty">Загрузка...</div></div>
   <div class="action-btn" style="margin-top:14px;" onclick="closePubProfile()">Закрыть</div>
+</div>
+
+<div id="arena-overlay" class="arena-overlay" style="display:none;">
+  <div class="arena-bg" id="arena-bg"></div>
+  <div class="arena-topbar">
+    <div class="arena-turn" id="arena-turn">Твой ход</div>
+    <div class="arena-close" onclick="closeArena()">✕</div>
+  </div>
+
+  <div class="arena-field">
+    <!-- Враг (ИИ) сверху -->
+    <div class="arena-fighter foe" id="arena-foe">
+      <div class="af-effects" id="foe-effects"></div>
+      <div class="af-avatar" id="foe-avatar">🧙‍♂️</div>
+      <div class="af-name" id="foe-name">Тёмный маг</div>
+      <div class="af-bar hp"><div class="af-bar-fill" id="foe-hp-bar"></div><span class="af-bar-txt" id="foe-hp-txt">100/100</span></div>
+    </div>
+
+    <div class="arena-vs" id="arena-vs">⚔️</div>
+
+    <!-- Игрок снизу -->
+    <div class="arena-fighter you" id="arena-you">
+      <div class="af-effects" id="you-effects"></div>
+      <div class="af-avatar" id="you-avatar">🧙</div>
+      <div class="af-name" id="you-name">Ты</div>
+      <div class="af-bar hp"><div class="af-bar-fill" id="you-hp-bar"></div><span class="af-bar-txt" id="you-hp-txt">100/100</span></div>
+      <div class="af-bar mana"><div class="af-bar-fill" id="you-mana-bar"></div><span class="af-bar-txt" id="you-mana-txt">100/100</span></div>
+    </div>
+  </div>
+
+  <div class="arena-log" id="arena-log"></div>
+
+  <div class="arena-abilities" id="arena-abilities"></div>
+
+  <div class="arena-result" id="arena-result">
+    <div class="arena-result-title" id="arena-result-title">🏆 ПОБЕДА!</div>
+    <div class="arena-result-reward" id="arena-result-reward"></div>
+    <div class="action-btn" style="width:200px;" onclick="closeArena()">Завершить</div>
+  </div>
 </div>
 
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
@@ -4365,6 +4526,349 @@
       document.body.appendChild(coin);
       setTimeout(function(){ coin.remove(); }, 1500);
     }
+  }
+
+  // ══════════════ АРЕНА: 2D-бой с ИИ ══════════════
+  const ARENA_ABILITIES_DATA = {
+    fireball:    { name:"Огненный шар", emoji:"🔥", type:"damage",  mana:30, cd:0, dmg:28, color:"#ff7a3c" },
+    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", type:"control", mana:35, cd:2, dmg:18, slow:1, color:"#5cd8ff" },
+    lightning:   { name:"Молния", emoji:"⚡", type:"damage",  mana:18, cd:0, dmg:16, color:"#c77dff" },
+    shield:      { name:"Щит", emoji:"🛡️", type:"shield",  mana:25, cd:2, shield:30, color:"#ffd86b" },
+    heal:        { name:"Лечение", emoji:"💚", type:"heal",    mana:35, cd:3, heal:32, color:"#9be8c0" },
+    dark_magic:  { name:"Тёмная магия", emoji:"☠️", type:"poison",  mana:30, cd:1, dmg:14, poison:8, pturns:3, color:"#b56cff" },
+    stone_skin:  { name:"Каменная кожа", emoji:"🪨", type:"shield",  mana:28, cd:3, shield:22, heal:8, color:"#b08d5c" },
+    wind_blade:  { name:"Ветряной клинок", emoji:"🌀", type:"damage",  mana:22, cd:1, dmg:20, crit:0.15, color:"#9bffb0" },
+    sun_ray:     { name:"Солнечный луч", emoji:"☀️", type:"damage",  mana:40, cd:2, dmg:34, color:"#ffe96b" },
+    poison_cloud:{ name:"Ядовитое облако", emoji:"🟢", type:"poison",  mana:32, cd:2, dmg:10, poison:12, pturns:4, color:"#7fff5c" },
+  };
+
+  let arenaState = null;
+  let arenaBusy = false;
+  let myAbilities = {}; // {id: level}
+
+  function chooseArenaDifficulty() {
+    const html =
+      '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:16px;">🏟️ Выбери противника</div>' +
+      '<div class="action-btn green" style="margin-bottom:8px;" onclick="startArena(\'easy\')">🧌 Лёгкий — Ученик</div>' +
+      '<div class="action-btn" style="margin-bottom:8px;" onclick="startArena(\'normal\')">🧙‍♂️ Средний — Тёмный маг</div>' +
+      '<div class="action-btn red" onclick="startArena(\'hard\')">🦹 Сложный — Пожиратель смерти<br><span style="font-size:11px;opacity:0.8;">шанс на зелье улучшения</span></div>';
+    document.getElementById("pubprofile-body").innerHTML = html;
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
+  }
+  function startArena(diff) {
+    closePubProfile();
+    openArena(diff);
+  }
+
+  async function openArena(difficulty) {
+    difficulty = difficulty || "normal";
+    // загружаем уровни умений игрока
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const d = await resp.json();
+      myAbilities = {};
+      (d.abilities || []).forEach(function(a){ myAbilities[a.id] = a.level; });
+    } catch(e) { myAbilities = {}; }
+    // если умений нет — даём все на 1 ур
+    if (Object.keys(myAbilities).length === 0) {
+      Object.keys(ARENA_ABILITIES_DATA).forEach(function(id){ myAbilities[id] = 1; });
+    }
+
+    // характеристики бойцов по сложности
+    const diffCfg = {
+      easy:   { hp: 90,  name:"Ученик-тёмный маг", avatar:"🧌", ai:0.5 },
+      normal: { hp: 130, name:"Тёмный маг", avatar:"🧙‍♂️", ai:0.75 },
+      hard:   { hp: 180, name:"Пожиратель смерти", avatar:"🦹", ai:1.0 },
+    }[difficulty];
+
+    arenaState = {
+      difficulty: difficulty,
+      you:  { hp: 150, maxHp: 150, mana: 60, maxMana: 100, shield: 0, poison: 0, poisonTurns: 0, slow: 0, cooldowns: {} },
+      foe:  { hp: diffCfg.hp, maxHp: diffCfg.hp, mana: 100, maxMana: 100, shield: 0, poison: 0, poisonTurns: 0, slow: 0, cooldowns: {} },
+      turn: "you", over: false, aiSkill: diffCfg.ai,
+    };
+    document.getElementById("foe-name").textContent = diffCfg.name;
+    document.getElementById("foe-avatar").textContent = diffCfg.avatar;
+    document.getElementById("arena-overlay").style.display = "flex";
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeArena); } catch(e){} }
+    renderArena();
+    arenaLog("⚔️ Бой начался! Выбери заклинание.");
+  }
+
+  function closeArena() {
+    document.getElementById("arena-overlay").style.display = "none";
+    document.getElementById("arena-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeArena); } catch(e){} }
+    arenaState = null;
+    loadProfile();
+  }
+
+  function arenaLog(text) {
+    const el = document.getElementById("arena-log");
+    if (el) el.textContent = text;
+  }
+
+  function renderArena() {
+    if (!arenaState) return;
+    const s = arenaState;
+    // полоски
+    setBar("you-hp-bar", "you-hp-txt", s.you.hp, s.you.maxHp);
+    setBar("you-mana-bar", "you-mana-txt", s.you.mana, s.you.maxMana);
+    setBar("foe-hp-bar", "foe-hp-txt", s.foe.hp, s.foe.maxHp);
+    // эффекты
+    renderEffects("you-effects", s.you);
+    renderEffects("foe-effects", s.foe);
+    document.getElementById("arena-turn").textContent = s.turn === "you" ? "⚡ Твой ход" : "🌀 Ход врага...";
+    renderAbilities();
+  }
+
+  function setBar(barId, txtId, val, max) {
+    val = Math.max(0, Math.round(val));
+    const pct = Math.max(0, Math.min(100, val / max * 100));
+    const bar = document.getElementById(barId);
+    const txt = document.getElementById(txtId);
+    if (bar) bar.style.width = pct + "%";
+    if (txt) txt.textContent = val + "/" + max;
+  }
+
+  function renderEffects(elId, fighter) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    let html = "";
+    if (fighter.shield > 0) html += '<span class="af-effect" title="Щит">🛡️</span>';
+    if (fighter.poisonTurns > 0) html += '<span class="af-effect" title="Яд">☠️</span>';
+    if (fighter.slow > 0) html += '<span class="af-effect" title="Замедление">❄️</span>';
+    el.innerHTML = html;
+  }
+
+  function renderAbilities() {
+    const box = document.getElementById("arena-abilities");
+    if (!box || !arenaState) return;
+    const s = arenaState;
+    box.innerHTML = Object.keys(ARENA_ABILITIES_DATA).map(function(id){
+      const ab = ARENA_ABILITIES_DATA[id];
+      const lvl = myAbilities[id] || 1;
+      const cd = s.you.cooldowns[id] || 0;
+      const noMana = s.you.mana < ab.mana;
+      const disabled = (s.turn !== "you" || s.over || cd > 0 || noMana) ? " disabled" : "";
+      let inner = '<div class="arena-ab-ico">'+ab.emoji+'</div><div class="arena-ab-mana">'+ab.mana+'💧</div>' +
+                  '<div class="arena-ab-lvl">'+lvl+'</div>';
+      if (cd > 0) inner += '<div class="arena-ab-cd">'+cd+'</div>';
+      return '<div class="arena-ab'+disabled+'" onclick="useAbility(\''+id+'\')">'+inner+'</div>';
+    }).join("");
+  }
+
+  // урон с учётом уровня (+4% за уровень)
+  function abilityValue(base, lvl) { return Math.round(base * (1 + (lvl - 1) * 0.04)); }
+
+  async function useAbility(id) {
+    if (!arenaState || arenaState.over || arenaState.turn !== "you" || arenaBusy) return;
+    const ab = ARENA_ABILITIES_DATA[id];
+    const s = arenaState;
+    if (s.you.mana < ab.mana || (s.you.cooldowns[id] || 0) > 0) return;
+    arenaBusy = true;
+    s.you.mana -= ab.mana;
+    if (ab.cd) s.you.cooldowns[id] = ab.cd + 1;
+    await castAbility("you", "foe", id, myAbilities[id] || 1);
+    renderArena();
+    if (checkArenaEnd()) { arenaBusy = false; return; }
+    // ход врага
+    s.turn = "foe";
+    renderArena();
+    setTimeout(async function(){ await aiTurn(); arenaBusy = false; }, 800);
+  }
+
+  // выполнить заклинание (универсально для игрока и ИИ)
+  async function castAbility(casterKey, targetKey, id, lvl) {
+    const ab = ARENA_ABILITIES_DATA[id];
+    const s = arenaState;
+    const caster = s[casterKey], target = s[targetKey];
+    const casterEl = document.getElementById(casterKey === "you" ? "arena-you" : "arena-foe");
+    const targetEl = document.getElementById(targetKey === "you" ? "arena-you" : "arena-foe");
+
+    arenaLog((casterKey === "you" ? "Ты применяешь " : "Враг применяет ") + ab.emoji + " " + ab.name);
+
+    // анимация снаряда (если урон/контроль/яд)
+    if (ab.type === "damage" || ab.type === "control" || ab.type === "poison") {
+      await flyArenaProjectile(casterEl, targetEl, ab.emoji, ab.color);
+    }
+
+    // эффект применения
+    if (ab.type === "shield") {
+      caster.shield += abilityValue(ab.shield, lvl);
+      if (ab.heal) caster.hp = Math.min(caster.maxHp, caster.hp + abilityValue(ab.heal, lvl));
+    } else if (ab.type === "heal") {
+      caster.hp = Math.min(caster.maxHp, caster.hp + abilityValue(ab.heal, lvl));
+      spawnArenaText(casterEl, "+" + abilityValue(ab.heal, lvl), "#9be8c0");
+    } else {
+      // урон
+      let dmg = abilityValue(ab.dmg, lvl);
+      // замедление снижает урон атакующего
+      if (caster.slow > 0) { dmg = Math.round(dmg * 0.6); caster.slow = 0; }
+      // крит
+      let crit = false;
+      if (ab.crit && Math.random() < ab.crit) { dmg = Math.round(dmg * 1.8); crit = true; }
+      // щит цели
+      if (target.shield > 0) {
+        const absorbed = Math.min(target.shield, dmg);
+        target.shield -= absorbed; dmg -= absorbed;
+      }
+      target.hp = Math.max(0, target.hp - dmg);
+      // визуал попадания
+      targetEl.classList.add("hit");
+      setTimeout(function(){ targetEl.classList.remove("hit"); }, 400);
+      flashArena(ab.color);
+      spawnArenaText(targetEl, "-" + dmg + (crit ? "!" : ""), crit ? "#ffd86b" : "#ff8a8a");
+      if (crit) arenaLog("💥 Критический удар! -" + dmg);
+      // эффекты
+      if (ab.slow) { target.slow = ab.slow; }
+      if (ab.poison) { target.poison = abilityValue(ab.poison, lvl); target.poisonTurns = ab.pturns; }
+    }
+    renderArena();
+    await sleep(350);
+  }
+
+  // ход ИИ
+  async function aiTurn() {
+    const s = arenaState;
+    if (!s || s.over) return;
+    // тик ядов и щитов в начале хода врага (яд на игроке тикает в конце его хода — упростим: тикаем тут на обоих)
+    tickEffects();
+    if (checkArenaEnd()) return;
+    // восстановление маны
+    s.foe.mana = Math.min(s.foe.maxMana, s.foe.mana + 22);
+    s.you.mana = Math.min(s.you.maxMana, s.you.mana + 18);
+    // ИИ выбирает умение
+    const choice = aiChoose();
+    if (choice) {
+      if (ARENA_ABILITIES_DATA[choice].cd) s.foe.cooldowns[choice] = ARENA_ABILITIES_DATA[choice].cd + 1;
+      s.foe.mana -= ARENA_ABILITIES_DATA[choice].mana;
+      await castAbility("foe", "you", choice, Math.max(1, Math.round((s.aiSkill) * 3)));
+    } else {
+      arenaLog("Враг копит силы...");
+      await sleep(500);
+    }
+    // уменьшаем кулдауны
+    decrCooldowns(s.foe); decrCooldowns(s.you);
+    renderArena();
+    if (checkArenaEnd()) return;
+    s.turn = "you";
+    renderArena();
+  }
+
+  function aiChoose() {
+    const s = arenaState;
+    const avail = Object.keys(ARENA_ABILITIES_DATA).filter(function(id){
+      const ab = ARENA_ABILITIES_DATA[id];
+      return (s.foe.cooldowns[id] || 0) <= 0 && s.foe.mana >= ab.mana;
+    });
+    if (!avail.length) return null;
+    // умный выбор: лечится если мало HP, иначе бьёт
+    if (s.foe.hp < s.foe.maxHp * 0.35 && avail.indexOf("heal") >= 0 && Math.random() < s.aiSkill) return "heal";
+    if (s.foe.shield <= 0 && avail.indexOf("shield") >= 0 && Math.random() < s.aiSkill * 0.4) return "shield";
+    // предпочитает урон
+    const dmgMoves = avail.filter(function(id){ return ARENA_ABILITIES_DATA[id].type === "damage" || ARENA_ABILITIES_DATA[id].type === "poison"; });
+    const pool = dmgMoves.length ? dmgMoves : avail;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function tickEffects() {
+    const s = arenaState;
+    ["you","foe"].forEach(function(k){
+      const f = s[k];
+      if (f.poisonTurns > 0) {
+        f.hp = Math.max(0, f.hp - f.poison);
+        const el = document.getElementById(k === "you" ? "arena-you" : "arena-foe");
+        spawnArenaText(el, "-" + f.poison, "#7fff5c");
+        f.poisonTurns--;
+        if (f.poisonTurns <= 0) f.poison = 0;
+      }
+    });
+    renderArena();
+  }
+
+  function decrCooldowns(fighter) {
+    Object.keys(fighter.cooldowns).forEach(function(id){
+      if (fighter.cooldowns[id] > 0) fighter.cooldowns[id]--;
+    });
+  }
+
+  function checkArenaEnd() {
+    const s = arenaState;
+    if (!s || s.over) return s && s.over;
+    if (s.foe.hp <= 0) { endArena(true); return true; }
+    if (s.you.hp <= 0) { endArena(false); return true; }
+    return false;
+  }
+
+  async function endArena(won) {
+    arenaState.over = true;
+    renderArena();
+    // награда с бэкенда
+    let rewardMsg = "";
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, won: won, difficulty: arenaState.difficulty }) });
+      const d = await resp.json();
+      rewardMsg = d.msg || "";
+    } catch(e) {}
+    const res = document.getElementById("arena-result");
+    const title = document.getElementById("arena-result-title");
+    const reward = document.getElementById("arena-result-reward");
+    title.textContent = won ? "🏆 ПОБЕДА!" : "☠️ ПОРАЖЕНИЕ";
+    title.style.color = won ? "#ffd86b" : "#ff6b6b";
+    reward.textContent = rewardMsg;
+    res.classList.add("show");
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won ? "success" : "error"); } catch(e){} }
+    inventoryLoaded = false;
+  }
+
+  // ── анимации арены ──
+  function sleep(ms) { return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  function flyArenaProjectile(fromEl, toEl, emoji, color) {
+    return new Promise(function(resolve){
+      if (isPerfMode()) { resolve(); return; }
+      const fr = fromEl.getBoundingClientRect();
+      const tr = toEl.getBoundingClientRect();
+      const p = document.createElement("div");
+      p.className = "arena-projectile";
+      p.textContent = emoji; p.style.color = color;
+      p.style.left = (fr.left + fr.width/2 - 19) + "px";
+      p.style.top = (fr.top + fr.height/2 - 19) + "px";
+      document.body.appendChild(p);
+      const dx = (tr.left + tr.width/2) - (fr.left + fr.width/2);
+      const dy = (tr.top + tr.height/2) - (fr.top + fr.height/2);
+      p.animate([
+        { transform: "translate(0,0) scale(0.6)", opacity: 0.6 },
+        { transform: "translate("+dx*0.5+"px,"+dy*0.5+"px) scale(1.3)", opacity: 1, offset: 0.6 },
+        { transform: "translate("+dx+"px,"+dy+"px) scale(0.8)", opacity: 0.9 }
+      ], { duration: 480, easing: "cubic-bezier(0.4,0,0.6,1)" });
+      setTimeout(function(){ p.remove(); resolve(); }, 480);
+    });
+  }
+
+  function spawnArenaText(el, text, color) {
+    const r = el.getBoundingClientRect();
+    const d = document.createElement("div");
+    d.className = "arena-dmg"; d.textContent = text; d.style.color = color;
+    d.style.left = (r.left + r.width/2 - 20) + "px";
+    d.style.top = (r.top + 10) + "px";
+    document.body.appendChild(d);
+    setTimeout(function(){ d.remove(); }, 1000);
+  }
+
+  function flashArena(color) {
+    if (isPerfMode()) return;
+    let f = document.getElementById("arena-flash-el");
+    if (!f) {
+      f = document.createElement("div"); f.id = "arena-flash-el"; f.className = "arena-flash";
+      document.body.appendChild(f);
+    }
+    f.style.background = "radial-gradient(circle, " + color + "55, transparent 70%)";
+    f.classList.remove("show"); void f.offsetWidth; f.classList.add("show");
   }
 
   // стартовая подсветка основной кнопки (профиль → Герой)
