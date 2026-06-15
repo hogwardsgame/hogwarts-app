@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Паспорт волшебника</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -32,6 +35,87 @@
     background: #ffd86b; opacity: 0; animation: twinkle 3s infinite ease-in-out;
   }
   @keyframes twinkle { 0%,100% { opacity: 0; transform: scale(0.5);} 50% { opacity: 0.9; transform: scale(1);} }
+
+  /* ── Магический шрифт заголовков (как в фильмах) ── */
+  .name, .lb-title, .pp-name, .pet-name, .live-title,
+  .league-div, .tour-status, .wb-name, .ev-title, .submenu-title {
+    font-family: "Cinzel", Georgia, serif !important;
+    letter-spacing: 0.6px;
+    text-shadow: 0 0 18px rgba(255,216,107,0.25);
+  }
+  .name {
+    font-family: "Cinzel Decorative", "Cinzel", Georgia, serif !important;
+    font-weight: 900 !important;
+  }
+  .sec-title { font-family: "Cinzel", Georgia, serif !important; letter-spacing: 0.4px; }
+
+  /* ── Загрузочный экран: сова с письмом ── */
+  #loader {
+    position: fixed; inset: 0; z-index: 99999;
+    background: radial-gradient(ellipse at 50% 40%, #1a1238 0%, #0a0518 80%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity 0.8s ease, visibility 0.8s;
+  }
+  #loader.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+  .loader-sky { position: absolute; inset: 0; overflow: hidden; }
+  .loader-star {
+    position: absolute; width: 2px; height: 2px; border-radius: 50%;
+    background: #fff; opacity: 0; animation: twinkle 2.5s infinite;
+  }
+  /* Луна */
+  .loader-moon {
+    position: absolute; top: 14%; right: 16%;
+    width: 70px; height: 70px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 38%, #fff7e0, #ffe9a8 55%, #d4b86a 100%);
+    box-shadow: 0 0 50px 16px rgba(255,233,168,0.35);
+    opacity: 0; animation: moonRise 1.4s ease 0.2s forwards;
+  }
+  @keyframes moonRise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  /* Летящая сова с письмом */
+  .owl {
+    position: absolute; font-size: 52px; left: -80px; top: 42%;
+    filter: drop-shadow(0 6px 14px rgba(0,0,0,0.5));
+    animation: owlFly 3.2s cubic-bezier(0.4,0,0.5,1) forwards;
+  }
+  .owl-flap { display: inline-block; animation: owlBob 0.4s ease-in-out infinite; }
+  @keyframes owlFly {
+    0%   { left: -80px; top: 46%; transform: scale(0.6) rotate(-6deg); opacity: 0; }
+    15%  { opacity: 1; }
+    50%  { left: 42%; top: 34%; transform: scale(1) rotate(3deg); }
+    100% { left: 44%; top: 40%; transform: scale(1.05) rotate(0deg); opacity: 1; }
+  }
+  @keyframes owlBob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-5px);} }
+  /* Письмо с печатью, проявляется после совы */
+  .letter {
+    position: relative; z-index: 2; margin-top: 90px;
+    width: 0; height: 0; opacity: 0;
+    animation: letterAppear 1s ease 2.6s forwards;
+    text-align: center;
+  }
+  @keyframes letterAppear {
+    from { opacity: 0; transform: translateY(20px) scale(0.7); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .letter-title {
+    font-family: "Cinzel Decorative","Cinzel",serif; font-weight: 900;
+    font-size: 26px; color: #ffe9a8; letter-spacing: 1px;
+    text-shadow: 0 0 24px rgba(255,216,107,0.5); white-space: nowrap;
+  }
+  .letter-sub {
+    font-family: "Cinzel",serif; font-size: 13px; color: #c9b8e8;
+    margin-top: 8px; letter-spacing: 2px;
+  }
+  .loader-seal {
+    margin-top: 18px; font-size: 40px;
+    animation: sealPulse 1.6s ease-in-out infinite; display: inline-block;
+  }
+  @keyframes sealPulse { 0%,100%{ transform: scale(1); filter: drop-shadow(0 0 8px rgba(255,80,80,0.5)); } 50%{ transform: scale(1.12); filter: drop-shadow(0 0 16px rgba(255,80,80,0.8)); } }
+  .loader-hint {
+    position: absolute; bottom: 12%; font-family: "Cinzel",serif;
+    font-size: 12px; color: #9d8fc0; letter-spacing: 1px;
+    opacity: 0; animation: fadeIn 0.8s ease 3s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 0.8; } }
 
   /* ── Магическая атмосфера Хогвартса ── */
   /* Виньетка по краям — глубина */
@@ -968,6 +1052,17 @@
 </style>
 </head>
 <body>
+<div id="loader">
+  <div class="loader-sky" id="loader-sky"></div>
+  <div class="loader-moon"></div>
+  <div class="owl"><span class="owl-flap">🦉</span><span style="font-size:24px;margin-left:-6px;">✉️</span></div>
+  <div class="letter">
+    <div class="letter-title">Hogwarts</div>
+    <div class="letter-sub">L E G A C Y · R P G</div>
+    <div class="loader-seal">🪄</div>
+  </div>
+  <div class="loader-hint">Совы доставляют твоё письмо...</div>
+</div>
 <div class="vignette"></div>
 <div class="fog"></div>
 <div class="candles" id="candles"></div>
@@ -1552,6 +1647,29 @@
 </div>
 
 <script>
+  // ── Загрузочный экран: звёзды на небе + скрытие ────────────────────────
+  (function() {
+    const sky = document.getElementById("loader-sky");
+    if (sky) {
+      for (let i = 0; i < 50; i++) {
+        const st = document.createElement("div");
+        st.className = "loader-star";
+        st.style.left = Math.random()*100 + "%";
+        st.style.top = Math.random()*100 + "%";
+        st.style.animationDelay = (Math.random()*2.5) + "s";
+        sky.appendChild(st);
+      }
+    }
+    // Показываем магию минимум 3.8с, затем растворяем
+    setTimeout(function() {
+      const ld = document.getElementById("loader");
+      if (ld) {
+        ld.classList.add("hide");
+        setTimeout(function(){ if (ld) ld.style.display = "none"; }, 850);
+      }
+    }, 3800);
+  })();
+
   // ── Telegram Web App init ──────────────────────────────────────────────
   const tg = window.Telegram ? window.Telegram.WebApp : null;
   if (tg) {
