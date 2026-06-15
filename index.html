@@ -21,7 +21,6 @@
     background: linear-gradient(160deg, #1a1033 0%, #2d1b4e 35%, #1f1238 70%, #0d0820 100%);
     background-size: cover;
     background-position: center;
-    background-attachment: fixed;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -139,6 +138,12 @@
     position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background: radial-gradient(ellipse at 50% 35%, transparent 40%, rgba(5,2,15,0.55) 100%);
   }
+  /* Фиксированный фон факультета (без attachment:fixed — для плавной прокрутки) */
+  .house-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-size: cover; background-position: center;
+    will-change: opacity; transition: opacity 0.6s;
+  }
   /* Плывущий магический туман */
   .fog {
     position: fixed; inset: -50% 0; z-index: 0; pointer-events: none; opacity: 0.5;
@@ -147,6 +152,7 @@
       radial-gradient(ellipse 50% 35% at 80% 60%, rgba(90,140,220,0.10), transparent 60%),
       radial-gradient(ellipse 55% 30% at 50% 80%, rgba(160,120,255,0.08), transparent 60%);
     animation: fogDrift 28s ease-in-out infinite alternate;
+    will-change: transform; transform: translateZ(0);
   }
   @keyframes fogDrift {
     0%   { transform: translate(0,0) scale(1); }
@@ -220,8 +226,9 @@
   .card {
     transform: perspective(900px) rotateX(var(--tiltX, 0deg)) rotateY(var(--tiltY, 0deg));
     transition: transform 0.25s ease-out;
-    transform-style: preserve-3d;
   }
+  /* во время прокрутки наклон замораживается — плавный скролл */
+  body.scrolling .card { transition: none; --tiltX: 0deg !important; --tiltY: 0deg !important; }
   /* Большой герб-водяной знак факультета за профилем */
   .house-watermark {
     position: fixed; top: 45%; left: 50%;
@@ -1111,6 +1118,7 @@
   </div>
   <div class="loader-hint">Совы доставляют твоё письмо...</div>
 </div>
+<div class="house-bg" id="house-bg"></div>
 <div class="vignette"></div>
 <div class="fog"></div>
 <div class="candles" id="candles"></div>
@@ -1798,11 +1806,13 @@
     const th = themes[emoji];
     if (!th) return; // неизвестный факультет — оставляем фон по умолчанию
     const BG_IMG = 'url("' + th.bg + '")';
-    // Градиент факультета поверх фоновой картинки факультета
-    document.body.style.background = th.bgOverlay + ", " + BG_IMG;
-    document.body.style.backgroundSize = "cover";
-    document.body.style.backgroundPosition = "center";
-    document.body.style.backgroundAttachment = "fixed";
+    // Фон факультета на фиксированный слой (плавная прокрутка)
+    const hbg = document.getElementById("house-bg");
+    if (hbg) {
+      hbg.style.background = th.bgOverlay + ", " + BG_IMG;
+      hbg.style.backgroundSize = "cover";
+      hbg.style.backgroundPosition = "center";
+    }
     document.documentElement.style.setProperty("--accent", th.accent);
     document.documentElement.style.setProperty("--glow", th.glow);
     // Имя оставляем с золотым градиентом (не перебиваем цветом факультета)
@@ -4266,29 +4276,38 @@
   // стартовая подсветка основной кнопки (профиль → Герой)
   syncMainbar();
 
-  // 3D-наклон карточек по гироскопу (мягко)
+  // 3D-наклон карточек по гироскопу (мягко, с троттлингом)
   (function() {
-    let enabled = true;
+    let lastTilt = 0;
     function handleTilt(e) {
-      if (!enabled) return;
-      // gamma: лево-право (-90..90), beta: вперёд-назад
+      const now = Date.now();
+      if (now - lastTilt < 60) return;  // не чаще ~16 раз/сек
+      lastTilt = now;
       const g = Math.max(-18, Math.min(18, e.gamma || 0));
-      const b = Math.max(-18, Math.min(18, (e.beta || 0) - 45)); // 45 — нейтральный наклон в руке
-      const tiltY = (g / 18) * 5;   // макс 5 градусов
-      const tiltX = (-b / 18) * 4;  // макс 4 градуса
-      document.querySelectorAll(".screen").forEach(function(s){
-        if (s.style.display !== "none") {
-          const card = s.querySelector(".card");
-          if (card) {
-            card.style.setProperty("--tiltX", tiltX.toFixed(1) + "deg");
-            card.style.setProperty("--tiltY", tiltY.toFixed(1) + "deg");
-          }
-        }
-      });
+      const b = Math.max(-18, Math.min(18, (e.beta || 0) - 45));
+      const tiltY = (g / 18) * 4;
+      const tiltX = (-b / 18) * 3;
+      // только видимый экран, без перебора всех
+      const active = document.querySelector(".screen[style*='block'], .screen:not([style])");
+      const card = active ? active.querySelector(".card") : null;
+      if (card) {
+        card.style.setProperty("--tiltX", tiltX.toFixed(1) + "deg");
+        card.style.setProperty("--tiltY", tiltY.toFixed(1) + "deg");
+      }
     }
     if (window.DeviceOrientationEvent) {
       window.addEventListener("deviceorientation", handleTilt, true);
     }
+  })();
+
+  // Гасим наклон во время прокрутки — плавный скролл
+  (function() {
+    let scrollTimer = null;
+    window.addEventListener("scroll", function() {
+      document.body.classList.add("scrolling");
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(function(){ document.body.classList.remove("scrolling"); }, 150);
+    }, { passive: true });
   })();
 </script>
 </body>
