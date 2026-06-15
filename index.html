@@ -1022,6 +1022,30 @@
   </div>
 </div><!-- /screen-room -->
 
+<div id="screen-horcruxes" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">💎 Крестражи</div>
+    <div class="divider"></div>
+    <div id="hx-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-horcruxes -->
+
+<div id="screen-journal" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">📖 Журнал</div>
+    <div class="divider"></div>
+    <div id="journal-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-journal -->
+
+<div id="screen-settings" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">⚙️ Настройки</div>
+    <div class="divider"></div>
+    <div id="settings-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-settings -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -1211,6 +1235,15 @@
   </div>
   <div class="tab" id="tab-room" onclick="switchTab('room')">
     <div class="tab-ico">🏠</div><div class="tab-label">Комната</div>
+  </div>
+  <div class="tab" id="tab-horcruxes" onclick="switchTab('horcruxes')">
+    <div class="tab-ico">💎</div><div class="tab-label">Крестражи</div>
+  </div>
+  <div class="tab" id="tab-journal" onclick="switchTab('journal')">
+    <div class="tab-ico">📖</div><div class="tab-label">Журнал</div>
+  </div>
+  <div class="tab" id="tab-settings" onclick="switchTab('settings')">
+    <div class="tab-ico">⚙️</div><div class="tab-label">Настройки</div>
   </div>
 </div>
 
@@ -1422,7 +1455,7 @@
   let roomLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -1450,6 +1483,109 @@
     if (tab === "hogsmeade" && !hmLoaded) { hmLoaded = true; loadHogsmeade(); }
     if (tab === "blackmarket" && !bmLoaded) { bmLoaded = true; loadBlackmarket(); }
     if (tab === "room" && !roomLoaded) { roomLoaded = true; loadRoom(); }
+    if (tab === "horcruxes" && !hxLoaded) { hxLoaded = true; loadHorcruxes(); }
+    if (tab === "journal" && !journalLoaded) { journalLoaded = true; loadJournal(); }
+    if (tab === "settings" && !settingsLoaded) { settingsLoaded = true; loadSettings(); }
+  }
+
+  let hxLoaded = false, journalLoaded = false, settingsLoaded = false;
+
+  // ── Крестражи ──────────────────────────────────────────────────────────
+  let hxBusy = false;
+  async function hxReq(action, horcrux) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/horcruxes", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, horcrux: horcrux || "" }) });
+    return await resp.json();
+  }
+  function renderHorcruxes(d) {
+    const box = document.getElementById("hx-content");
+    if (!d.horcruxes) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; return; }
+    let html = '<div class="bank-card"><div class="big-num" style="margin:0;">💎 '+d.destroyed+'/'+d.total+'</div>' +
+               '<div style="font-size:13px;color:#c9b8e8;">'+('🔴'.repeat(d.destroyed))+('⚫'.repeat(d.total-d.destroyed))+'</div></div>';
+    if (d.allDone) html += '<div class="ev-hint" style="color:#ff9b9b;">⚠️ Все крестражи уничтожены! Волдеморт смертен!</div>';
+    else html += '<div class="ev-hint">Найди и уничтожь все 7 крестражей. Поиск — общий для сервера.</div>';
+    html += d.horcruxes.map(function(h){
+      let statusLine, btn = "";
+      if (h.status === "destroyed") { statusLine = '<span style="color:#9be8c0;">✅ Уничтожен</span>'; }
+      else if (h.status === "found") {
+        statusLine = '<span style="color:#ffd86b;">🔍 Найден • нужно: '+h.need+'</span>';
+        btn = '<div class="action-btn red" style="margin-top:8px;" onclick="hxAction(\'destroy\',\''+h.id+'\')">💥 Уничтожить</div>';
+      } else {
+        statusLine = '<span style="color:#b0a3d0;">❓ '+h.hint+'</span>';
+        btn = '<div class="action-btn purple" style="margin-top:8px;" onclick="hxAction(\'search\',\''+h.id+'\')">🔍 Искать</div>';
+      }
+      return '<div class="quest-card"><div class="quest-name">'+h.emoji+' '+h.name+'</div>' +
+             '<div class="quest-reward" style="color:#c9b8e8;">📍 '+h.locName+'</div>' +
+             '<div style="font-size:12px;margin-top:4px;">'+statusLine+'</div>'+btn+'</div>';
+    }).join("");
+    html += '<div class="pet-msg" id="hx-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadHorcruxes() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("hx-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderHorcruxes(await hxReq("list")); } catch (e) { document.getElementById("hx-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function hxAction(action, hid) {
+    if (hxBusy) return; hxBusy = true;
+    try {
+      const d = await hxReq(action, hid);
+      renderHorcruxes(d);
+      const msg = document.getElementById("hx-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+    } catch (e) {} finally { hxBusy = false; }
+  }
+
+  // ── Журнал ─────────────────────────────────────────────────────────────
+  async function loadJournal() {
+    const box = document.getElementById("journal-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/journal", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) });
+      const d = await resp.json();
+      if (!d.entries || !d.entries.length) { box.innerHTML='<div class="lb-empty">Журнал пуст. Здесь будут появляться твои приключения!</div>'; return; }
+      box.innerHTML = d.entries.map(function(e){
+        return '<div class="tb-member" style="display:block;padding:11px;"><div>'+e.emoji+' <b>'+e.title+'</b></div>' +
+               (e.desc?'<div style="font-size:12px;color:#b0a3d0;margin-top:2px;">'+e.desc+'</div>':'') +
+               (e.extras?'<div style="font-size:12px;color:#9be8c0;margin-top:2px;">'+e.extras+'</div>':'') + '</div>';
+      }).join("");
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+
+  // ── Настройки ──────────────────────────────────────────────────────────
+  let settingsBusy = false;
+  async function settingsReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/settings", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    return await resp.json();
+  }
+  function renderSettings(d) {
+    const box = document.getElementById("settings-content");
+    box.innerHTML =
+      '<div class="bank-card"><div style="font-size:15px;color:#f4f0e6;">🧙 '+(d.wizardName||'')+'</div>' +
+      '<div style="font-size:12px;color:#b0a3d0;margin-top:4px;">Твой ID: <b>'+(d.userId||'')+'</b> (для дуэлей и переводов)</div></div>' +
+      '<div class="sec-title">Язык</div>' +
+      '<div class="input-row"><div class="action-btn'+(d.lang==='ru'?' green':'')+'" style="flex:1;" onclick="setLang(\'ru\')">🇷🇺 Русский</div>' +
+      '<div class="action-btn'+(d.lang==='en'?' green':'')+'" style="flex:1;" onclick="setLang(\'en\')">🇬🇧 English</div></div>' +
+      '<div class="sec-title">Приватность</div>' +
+      '<div class="live-block-row" style="padding:12px;border-radius:11px;background:rgba(255,255,255,0.04);">' +
+      '<span style="font-size:13px;color:#d8cdf0;">Случайные приглашения на дуэль</span>' +
+      '<div class="live-toggle'+(d.pvpBlock?' blocked':'')+'" onclick="togglePvpBlock('+(d.pvpBlock?'true':'false')+')">'+(d.pvpBlock?'🔒 Заблок.':'🔓 Разреш.')+'</div></div>' +
+      '<div class="pet-msg" id="settings-msg"></div>';
+  }
+  async function loadSettings() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("settings-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderSettings(await settingsReq("get")); } catch (e) { document.getElementById("settings-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function setLang(lang) {
+    if (settingsBusy) return; settingsBusy = true;
+    try { const d = await settingsReq("set_lang", { lang: lang }); renderSettings(await settingsReq("get")); const m=document.getElementById("settings-msg"); if(m&&d.msg){m.style.color="#9be8c0";m.textContent=d.msg;} } catch(e){} finally { settingsBusy = false; }
+  }
+  async function togglePvpBlock(current) {
+    if (settingsBusy) return; settingsBusy = true;
+    try { await settingsReq("set_pvp_block", { blocked: !current }); renderSettings(await settingsReq("get")); if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} } } catch(e){} finally { settingsBusy = false; }
   }
 
   // ── Хогсмид ────────────────────────────────────────────────────────────
