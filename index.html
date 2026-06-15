@@ -1624,6 +1624,14 @@
   </div>
 </div><!-- /screen-auction -->
 
+<div id="screen-abilities" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">⚡ Умения Арены</div>
+    <div class="divider"></div>
+    <div id="abilities-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-abilities -->
+
 <div class="pubprofile-backdrop" id="pubprofile-backdrop" onclick="closePubProfile()"></div>
 <div class="pubprofile-modal" id="pubprofile-modal">
   <div id="pubprofile-body"><div class="lb-empty">Загрузка...</div></div>
@@ -2177,7 +2185,8 @@
   // ── Группировка вкладок в 4 основные категории ─────────────────────────
   const TAB_GROUPS = {
     battle: { title: "⚔️ Сражения", tabs: [
-      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["teambattle","🛡️","Бой 3×3"],
+      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["arena","🏟️","Арена"],
+      ["abilities","⚡","Умения"], ["teambattle","🛡️","Бой 3×3"],
       ["tournament","🏅","Турнир"], ["worldboss","🐲","Босс"], ["triwizard","🏆","Триволшеб."],
       ["war","⚔️","Война"], ["league","📊","Лига"],
     ]},
@@ -2238,6 +2247,7 @@
   function pickTab(tab) {
     if (tab === "battle") { closeSubmenu(); openBattle(); return; }   // бой — это оверлей
     if (tab === "pvp") { closeSubmenu(); openPvP(); return; }      // дуэль — оверлей
+    if (tab === "arena") { closeSubmenu(); chooseArenaDifficulty(); return; }  // арена — оверлей
     switchTab(tab);
     closeSubmenu();
   }
@@ -2303,7 +2313,7 @@
   let currentTab = "profile";
   function switchTab(tab) {
     currentTab = tab;
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction","abilities"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
       if (t === tab) {
         scr.style.display = "block";
@@ -2343,7 +2353,55 @@
     if (tab === "triwizard" && !twLoaded) { twLoaded = true; loadTriwizard(); }
     if (tab === "war" && !warLoaded) { warLoaded = true; loadWar(); }
     if (tab === "auction" && !auctionLoaded) { auctionLoaded = true; aucSwitch('buy'); }
+    if (tab === "abilities") { loadAbilities(); }
     syncMainbar();
+  }
+
+  // ── Прокачка умений Арены ──────────────────────────────────────────────
+  let abilitiesBusy = false;
+  const ABILITY_TYPE_LABEL = { damage:"⚔️ Урон", shield:"🛡️ Защита", heal:"💚 Лечение", control:"❄️ Контроль", poison:"☠️ Яд" };
+  async function abReq(action, ability) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await fetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, ability: ability || "" }) });
+    return await resp.json();
+  }
+  function renderAbilitiesScreen(d) {
+    const box = document.getElementById("abilities-content");
+    if (!d.abilities) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; return; }
+    let html = '<div class="bank-card" style="text-align:center;"><div style="font-size:14px;color:#d8cdf0;">⚗️ Зелий улучшения: <b style="color:#ffd86b;">'+(d.potions||0)+'</b></div>' +
+               '<div style="font-size:11px;color:#9d8fc0;margin-top:4px;">Покупай в магазине. Тапни умение, чтобы влить зелье.</div></div>';
+    html += d.abilities.map(function(a){
+      const statsTxt = Object.keys(a.stats||{}).map(function(k){ return k+": "+a.stats[k]; }).join(" • ");
+      const xpBar = a.maxed ? 100 : (a.needed ? Math.round(a.xp / a.needed * 100) : 0);
+      const lvlColor = a.maxed ? "#ffd86b" : "#9be8c0";
+      const btn = (d.potions > 0 && !a.maxed)
+        ? '<div class="shop-buy" style="font-size:12px;" onclick="upgradeAbility(\''+a.id+'\')">⚗️ Влить</div>'
+        : (a.maxed ? '<div class="shop-buy cant" style="font-size:11px;">МАКС</div>' : '<div class="shop-buy cant" style="font-size:11px;">нет зелья</div>');
+      return '<div class="quest-card"><div style="display:flex;align-items:center;gap:10px;">' +
+             '<span style="font-size:30px;">'+a.emoji+'</span>' +
+             '<div style="flex:1;"><div class="quest-name">'+a.name+' <span style="color:'+lvlColor+';font-size:13px;">ур.'+a.level+'</span></div>' +
+             '<div style="font-size:11px;color:#b0a3d0;">'+(ABILITY_TYPE_LABEL[a.type]||'')+' • '+a.mana+'💧 • '+statsTxt+'</div></div>'+btn+'</div>' +
+             (a.maxed ? '' : '<div class="quest-bar-track" style="margin-top:8px;"><div class="quest-bar-fill" style="width:'+xpBar+'%;background:linear-gradient(90deg,#9be8c0,#5cd8ff);"></div></div>' +
+             '<div style="font-size:10px;color:#9d8fc0;text-align:right;margin-top:2px;">'+a.xp+' / '+a.needed+' XP</div>') +
+             '</div>';
+    }).join("");
+    html += '<div class="pet-msg" id="abilities-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadAbilities() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("abilities-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    try { renderAbilitiesScreen(await abReq("list")); } catch (e) { document.getElementById("abilities-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function upgradeAbility(id) {
+    if (abilitiesBusy) return; abilitiesBusy = true;
+    try {
+      const d = await abReq("upgrade", id);
+      renderAbilitiesScreen(d);
+      const msg = document.getElementById("abilities-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.result && d.result.leveledUp) { showReward("⭐ Уровень повышен!"); }
+      inventoryLoaded = false;
+    } catch (e) {} finally { abilitiesBusy = false; }
   }
 
   let auctionLoaded = false, aucMode = "buy", aucBusy = false;
@@ -2589,6 +2647,8 @@
       '<div class="live-block-row" style="padding:12px;border-radius:11px;background:rgba(255,255,255,0.04);">' +
       '<span style="font-size:13px;color:#d8cdf0;">⚡ Режим производительности<br><span style="font-size:11px;color:#9d8fc0;">отключает эффекты для слабых телефонов</span></span>' +
       '<div class="live-toggle'+(isPerfMode()?' blocked':'')+'" onclick="togglePerfMode()">'+(isPerfMode()?'🚀 Вкл.':'✨ Выкл.')+'</div></div>' +
+      '<div class="sec-title">Помощь</div>' +
+      '<div class="action-btn" onclick="showHowToPlay()">📖 Как играть — инструкция</div>' +
       '<div class="pet-msg" id="settings-msg"></div>';
   }
   async function loadSettings() {
@@ -2620,6 +2680,31 @@
     // перечитываем настройки чтобы сохранить остальные поля
     settingsReq("get").then(renderSettings).catch(function(){});
     if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("medium"); } catch(e){} }
+  }
+
+  // ── Инструкция по игре ─────────────────────────────────────────────────
+  function showHowToPlay() {
+    const html =
+      '<div style="text-align:left;max-height:65vh;overflow-y:auto;padding-right:4px;">' +
+      '<div style="font-family:Cinzel,serif;font-size:20px;color:#ffe9a8;text-align:center;margin-bottom:14px;">📖 Как играть</div>' +
+      '<div style="color:#ffd86b;font-weight:700;margin:10px 0 4px;">🧙 Твой герой</div>' +
+      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">Развивай персонажа: повышай уровень, собирай экипировку, создавай палочку, заводи питомца. Характеристики — в Профиле.</div>' +
+      '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">🏟️ Арена заклинаний</div>' +
+      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">Бой против ИИ. 10 умений со своей маной и кулдауном. Выбирай заклинания по очереди: огонь, лёд, щит, лечение, яд. Трать ману с умом — она копится по ходам. Побеждай ради золота и опыта.</div>' +
+      '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">⚡ Прокачка умений</div>' +
+      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">Купи в магазине ⚗️ Зелье улучшения. На вкладке «Умения» влей зелье в заклинание — оно получит опыт. Накопится — поднимется уровень (до 10). Выше уровень = сильнее заклинание.</div>' +
+      '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">⚔️ Типы умений</div>' +
+      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">⚔️ Урон — бьёт врага<br>🛡️ Защита — щит поглощает урон<br>💚 Лечение — восстанавливает HP<br>❄️ Контроль — замедляет врага<br>☠️ Яд — урон несколько ходов</div>' +
+      '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">🌍 Мир и занятия</div>' +
+      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">Исследуй карту, проходи уроки и задания, вари зелья, торгуй на аукционе и рынке, вступай в отряды, бейся с мировым боссом и на турнирах.</div>' +
+      '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">💰 Золото</div>' +
+      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">Зарабатывай в боях и заданиях. Трать в магазинах. Храни в банке под проценты.</div>' +
+      '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">⚡ Тормозит игра?</div>' +
+      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">В Настройках включи «Режим производительности».</div>' +
+      '</div>';
+    document.getElementById("pubprofile-body").innerHTML = html;
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
   }
 
   // ── Хогсмид ────────────────────────────────────────────────────────────
