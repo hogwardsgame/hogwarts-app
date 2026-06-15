@@ -204,6 +204,36 @@
   /* отступ снизу для контента под новый бар */
   .screen { padding-bottom: 96px; }
 
+  /* Модалка чужого профиля */
+  .pubprofile-backdrop {
+    position: fixed; inset: 0; z-index: 40;
+    background: rgba(5,2,15,0); backdrop-filter: blur(0px);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s, backdrop-filter 0.3s;
+  }
+  .pubprofile-backdrop.show {
+    background: rgba(5,2,15,0.6); backdrop-filter: blur(4px);
+    opacity: 1; pointer-events: auto;
+  }
+  .pubprofile-modal {
+    position: fixed; left: 50%; top: 50%; z-index: 42;
+    width: calc(100% - 48px); max-width: 360px;
+    transform: translate(-50%, -50%) scale(0.85);
+    background: linear-gradient(170deg, rgba(34,24,58,0.99), rgba(20,14,38,0.99));
+    border: 1px solid rgba(255,216,107,0.35); border-radius: 22px;
+    padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  }
+  .pubprofile-modal.show { opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  .pp-crest { text-align:center; font-size:56px; margin-bottom:6px; }
+  .pp-name { text-align:center; font-size:21px; font-weight:800; color:#ffe9a8; }
+  .pp-house { text-align:center; font-size:13px; color:#c9b8e8; margin-bottom:2px; }
+  .pp-title { text-align:center; font-size:13px; color:#9be8c0; margin-bottom:12px; }
+  .pp-stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px; }
+  .pp-stat { padding:10px; border-radius:11px; background:rgba(255,255,255,0.05); text-align:center; }
+  .pp-stat-val { font-size:17px; font-weight:700; color:#f4f0e6; }
+  .pp-stat-lbl { font-size:11px; color:#b0a3d0; margin-top:2px; }
+  .pp-clickable { cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:3px; }
+
   /* Зелья */
   .pot-card {
     background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);
@@ -1160,6 +1190,12 @@
   </div>
 </div><!-- /screen-auction -->
 
+<div class="pubprofile-backdrop" id="pubprofile-backdrop" onclick="closePubProfile()"></div>
+<div class="pubprofile-modal" id="pubprofile-modal">
+  <div id="pubprofile-body"><div class="lb-empty">Загрузка...</div></div>
+  <div class="action-btn" style="margin-top:14px;" onclick="closePubProfile()">Закрыть</div>
+</div>
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -1673,6 +1709,46 @@
     });
   }
 
+  // ── Просмотр чужого профиля (тап по нику в топах) ──────────────────────
+  async function openPubProfile(opts) {
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    const modal = document.getElementById("pubprofile-modal");
+    modal.classList.add("show");
+    const box = document.getElementById("pubprofile-body");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const payload = Object.assign({ initData: initData }, opts || {});
+      const resp = await fetch(API_URL + "/api/pubprofile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+      const d = await resp.json();
+      if (!d.found) { box.innerHTML = '<div class="lb-empty">Профиль не найден</div>'; return; }
+      let html = '<div class="pp-crest">'+d.houseEmoji+'</div>' +
+        '<div class="pp-name">'+d.name+'</div>' +
+        '<div class="pp-house">'+d.house+' • '+d.rank+'</div>' +
+        (d.title ? '<div class="pp-title">'+d.title+'</div>' : '<div style="height:6px;"></div>') +
+        '<div class="pp-stat-grid">' +
+        '<div class="pp-stat"><div class="pp-stat-val">'+d.level+'</div><div class="pp-stat-lbl">Уровень</div></div>' +
+        '<div class="pp-stat"><div class="pp-stat-val">❤️ '+d.maxHp+'</div><div class="pp-stat-lbl">Здоровье</div></div>' +
+        '<div class="pp-stat"><div class="pp-stat-val">⚔️ '+d.atk+'</div><div class="pp-stat-lbl">Атака</div></div>' +
+        '<div class="pp-stat"><div class="pp-stat-val">🛡️ '+d['def']+'</div><div class="pp-stat-lbl">Защита</div></div>' +
+        '<div class="pp-stat"><div class="pp-stat-val">💨 '+d.spd+'</div><div class="pp-stat-lbl">Скорость</div></div>' +
+        '<div class="pp-stat"><div class="pp-stat-val">'+d.winrate+'</div><div class="pp-stat-lbl">Винрейт</div></div>' +
+        '</div>';
+      if (d.division) html += '<div class="pp-stat" style="margin-bottom:10px;"><div class="pp-stat-val">'+d.division+'</div><div class="pp-stat-lbl">'+d.elo+' ELO • '+d.pvpWins+'W / '+d.pvpLosses+'L</div></div>';
+      if (d.pet) html += '<div class="pp-stat" style="margin-bottom:4px;"><div class="pp-stat-val">'+d.pet.emoji+' '+d.pet.name+'</div><div class="pp-stat-lbl">Питомец • ур.'+d.pet.level+'</div></div>';
+      box.innerHTML = html;
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+    } catch (e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+  function closePubProfile() {
+    document.getElementById("pubprofile-backdrop").classList.remove("show");
+    document.getElementById("pubprofile-modal").classList.remove("show");
+  }
+  // вызов по нику (безопасно экранируем кавычки)
+  function viewProfileByName(name) {
+    openPubProfile({ targetName: name });
+  }
+
   let currentTab = "profile";
   function switchTab(tab) {
     currentTab = tab;
@@ -1820,7 +1896,7 @@
     if (d.top && d.top.length) {
       html += '<div class="sec-title">🏅 Таблица турнира</div>' + d.top.map(function(t){
         const medal = t.place===1?"🥇":t.place===2?"🥈":t.place===3?"🥉":("#"+t.place);
-        return '<div class="lg-row"><span class="lg-place">'+medal+'</span><span style="font-size:16px;">'+t.house+'</span><div class="lg-name">'+t.name+'<div class="lg-wl">'+t.trials+'/3 испытаний</div></div><span class="lg-elo">'+t.score+'</span></div>';
+        return '<div class="lg-row"><span class="lg-place">'+medal+'</span><span style="font-size:16px;">'+t.house+'</span><div class="lg-name pp-clickable" onclick="viewProfileByName(\''+(t.name||'').replace(/'/g,"\\'")+'\')">'+t.name+'<div class="lg-wl">'+t.trials+'/3 испытаний</div></div><span class="lg-elo">'+t.score+'</span></div>';
       }).join("");
     }
     html += '<div class="pet-msg" id="tw-msg"></div>';
@@ -1861,7 +1937,7 @@
       if (d.top && d.top.length) {
         html += '<div class="sec-title">🏅 Топ вкладчиков</div>' + d.top.map(function(t){
           const medal = t.place===1?"🥇":t.place===2?"🥈":t.place===3?"🥉":("#"+t.place);
-          return '<div class="lg-row"><span class="lg-place">'+medal+'</span><span style="font-size:16px;">'+t.house+'</span><span class="lg-name">'+t.name+'</span><span class="lg-elo">'+t.points+'</span></div>';
+          return '<div class="lg-row"><span class="lg-place">'+medal+'</span><span style="font-size:16px;">'+t.house+'</span><span class="lg-name pp-clickable" onclick="viewProfileByName(\''+(t.name||'').replace(/'/g,"\\'")+'\')">'+t.name+'</span><span class="lg-elo">'+t.points+'</span></div>';
         }).join("");
       }
       box.innerHTML = html;
@@ -2421,7 +2497,7 @@
       if (d.hint) html += '<div class="ev-hint">'+d.hint+'</div>';
       if (d.top && d.top.length) {
         html += '<div class="sec-title">🏅 Топ по урону</div>' + d.top.map(function(t){
-          return '<div class="wb-top-row"><span class="lg-place">#'+t.place+'</span><span style="font-size:16px;">'+t.house+'</span><span class="lg-name">'+t.name+'</span><span class="lg-elo">'+t.damage.toLocaleString()+'</span></div>';
+          return '<div class="wb-top-row"><span class="lg-place">#'+t.place+'</span><span style="font-size:16px;">'+t.house+'</span><span class="lg-name pp-clickable" onclick="viewProfileByName(\''+(t.name||'').replace(/'/g,"\\'")+'\')">'+t.name+'</span><span class="lg-elo">'+t.damage.toLocaleString()+'</span></div>';
         }).join("");
       }
       box.innerHTML = html;
@@ -2561,7 +2637,7 @@
           return '<div class="lg-row' + (t.isMe?' me':'') + '">' +
                    '<span class="lg-place">' + medal + '</span>' +
                    '<span style="font-size:18px;">' + t.house + '</span>' +
-                   '<div class="lg-name">' + t.name + '<div class="lg-wl">' + t.division + ' • ' + t.wins + 'W/' + t.losses + 'L</div></div>' +
+                   '<div class="lg-name pp-clickable" onclick="viewProfileByName(\'' + (t.name||'').replace(/'/g,"\\'") + '\')">' + t.name + '<div class="lg-wl">' + t.division + ' • ' + t.wins + 'W/' + t.losses + 'L</div></div>' +
                    '<span class="lg-elo">' + t.elo + '</span></div>';
         }).join("");
       } else { topBox.innerHTML = '<div class="lb-empty">Пока нет дуэлянтов в рейтинге</div>'; }
@@ -3012,9 +3088,10 @@
       box.innerHTML = data.top.map(function(p) {
         const place = medals[p.place] || ("#" + p.place);
         const isMe = (p.name === myName) ? " me" : "";
+        const safeName = (p.name || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
         return '<div class="lb-row' + isMe + '">' +
                  '<div class="lb-place">' + place + '</div>' +
-                 '<div class="lb-name">' + p.house + ' ' + p.name + '</div>' +
+                 '<div class="lb-name pp-clickable" onclick="viewProfileByName(\'' + safeName + '\')">' + p.house + ' ' + p.name + '</div>' +
                  '<div class="lb-lvl">' + p.metric + '</div>' +
                '</div>';
       }).join("");
