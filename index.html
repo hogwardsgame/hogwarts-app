@@ -218,15 +218,15 @@
   .card > * { position: relative; z-index: 1; }
   /* Большой герб-водяной знак факультета за профилем */
   .house-watermark {
-    position: absolute; top: 50%; left: 50%;
+    position: fixed; top: 45%; left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 320px; z-index: 0; pointer-events: none;
-    opacity: 0.05; filter: blur(1px) grayscale(0.3);
+    font-size: 300px; z-index: 0; pointer-events: none;
+    opacity: 0.13; filter: blur(0.5px) drop-shadow(0 0 50px var(--glow, #9be8c0));
     animation: wmFloat 9s ease-in-out infinite;
   }
   @keyframes wmFloat {
-    0%,100% { transform: translate(-50%,-50%) scale(1) rotate(-2deg); opacity: 0.045; }
-    50%     { transform: translate(-50%,-52%) scale(1.04) rotate(2deg); opacity: 0.07; }
+    0%,100% { transform: translate(-50%,-50%) scale(1) rotate(-3deg); opacity: 0.11; }
+    50%     { transform: translate(-50%,-53%) scale(1.05) rotate(3deg); opacity: 0.17; }
   }
   /* мерцающая золотая линия по верхнему краю карточки */
   .card::before {
@@ -1112,8 +1112,8 @@
 <div class="stars" id="stars"></div>
 
 <div id="screen-profile" class="screen">
+<div class="house-watermark" id="house-watermark">🐍</div>
 <div class="card">
-  <div class="house-watermark" id="house-watermark">🐍</div>
   <div class="crest" id="crest">🦁</div>
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
