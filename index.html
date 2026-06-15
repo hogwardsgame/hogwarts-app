@@ -38,18 +38,20 @@
   @keyframes twinkle { 0%,100% { opacity: 0; transform: scale(0.5);} 50% { opacity: 0.9; transform: scale(1);} }
 
   /* ── Магический шрифт заголовков (как в фильмах) ── */
+  body.fonts-ready .name, body.fonts-ready .lb-title, body.fonts-ready .pp-name,
+  body.fonts-ready .pet-name, body.fonts-ready .live-title, body.fonts-ready .league-div,
+  body.fonts-ready .tour-status, body.fonts-ready .wb-name, body.fonts-ready .ev-title,
+  body.fonts-ready .submenu-title, body.fonts-ready .sec-title,
   .name, .lb-title, .pp-name, .pet-name, .live-title,
-  .league-div, .tour-status, .wb-name, .ev-title, .submenu-title,
-  body.fonts-ready .name, body.fonts-ready .lb-title {
+  .league-div, .tour-status, .wb-name, .ev-title, .submenu-title, .sec-title {
     font-family: "Cinzel", "Cinzel Decorative", Georgia, "Times New Roman", serif !important;
     letter-spacing: 0.6px;
     text-shadow: 0 0 18px rgba(255,216,107,0.25);
   }
-  .name {
+  body.fonts-ready .name, .name {
     font-family: "Cinzel Decorative", "Cinzel", Georgia, "Times New Roman", serif !important;
     font-weight: 900 !important;
   }
-  .sec-title { font-family: "Cinzel", Georgia, "Times New Roman", serif !important; letter-spacing: 0.4px; }
 
   /* ── Загрузочный экран: сова с письмом ── */
   #loader {
@@ -1649,21 +1651,25 @@
 </div>
 
 <script>
-  // ── Гарантируем применение волшебного шрифта ───────────────────────────
+  // ── Гарантированная загрузка волшебного шрифта через FontFace API ──────
   (function() {
-    if (document.fonts && document.fonts.load) {
-      Promise.all([
-        document.fonts.load('700 20px "Cinzel"'),
-        document.fonts.load('900 26px "Cinzel Decorative"')
-      ]).then(function() {
-        // шрифт загружен — помечаем body, заголовки перерисуются
+    try {
+      const cinzel = new FontFace("Cinzel",
+        "url(https://fonts.gstatic.com/s/cinzel/v23/8vIU7ww63mVu7gtR-kwKxNvkNOjw-tbnTYrvDE5ZdqU.woff2) format('woff2')",
+        { weight: "400 800" });
+      const cinzelDec = new FontFace("Cinzel Decorative",
+        "url(https://fonts.gstatic.com/s/cinzeldecorative/v16/daaCSScvJGqLYhG8nNt8KPPswUAPnh7URs1LaCyC.woff2) format('woff2')",
+        { weight: "700 900" });
+      Promise.all([cinzel.load(), cinzelDec.load()]).then(function(fonts) {
+        fonts.forEach(function(f){ document.fonts.add(f); });
         document.body.classList.add("fonts-ready");
-      }).catch(function(){});
-      // подстраховка: через 2.5с всё равно ставим флаг
-      setTimeout(function(){ document.body.classList.add("fonts-ready"); }, 2500);
-    } else {
+      }).catch(function(){
+        document.body.classList.add("fonts-ready");
+      });
+    } catch(e) {
       document.body.classList.add("fonts-ready");
     }
+    setTimeout(function(){ document.body.classList.add("fonts-ready"); }, 3000);
   })();
 
   // ── Загрузочный экран: звёзды на небе + скрытие ────────────────────────
