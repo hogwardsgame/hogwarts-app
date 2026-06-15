@@ -2439,7 +2439,7 @@
           const canAfford = (d.gold != null) && (d.gold >= it.price);
           const btn = canAfford ? '<div class="shop-buy" onclick="buyHogsmeade(\''+s.id+'\',\''+it.id+'\')">'+it.price+' 💰</div>' : '<div class="shop-buy cant">'+it.price+' 💰</div>';
           const rar = it.rarity ? it.rarity + ' ' : '';
-          return '<div class="shop-row"><span class="shop-emoji">'+it.emoji+'</span><div class="shop-info"><div class="shop-name">'+rar+it.name+'</div><div class="shop-stock">x'+it.stock+'</div></div>'+btn+'</div>';
+          return '<div class="shop-row"><span class="shop-emoji">'+it.emoji+'</span><div class="shop-info"><div class="shop-name">'+rar+it.name+'</div></div>'+btn+'</div>';
         }).join("");
     }).join("");
   }
@@ -2449,7 +2449,7 @@
   }
   async function buyHogsmeade(shopId, itemId) {
     if (hmBusy) return; hmBusy = true;
-    try { const d = await hmReq("buy", { shop: shopId, item: itemId }); if (d.ok) { showReward("✅ Куплено!"); renderHogsmeade(await hmReq("list")); } showMsg("hm-msg", d); } catch(e){} finally { hmBusy = false; }
+    try { const d = await hmReq("buy", { shop: shopId, item: itemId }); if (d.ok) { showReward("✅ Куплено!"); inventoryLoaded = false; loadProfile(); renderHogsmeade(await hmReq("list")); } showMsg("hm-msg", d); } catch(e){} finally { hmBusy = false; }
   }
 
   // ── Чёрный рынок ───────────────────────────────────────────────────────
@@ -2479,7 +2479,7 @@
   }
   async function buyBlackmarket(itemId) {
     if (bmBusy) return; bmBusy = true;
-    try { const d = await bmReq("buy", itemId); if (d.ok) { showReward("✅ Куплено!"); renderBlackmarket(await bmReq("list")); } showMsg("bm-msg", d); } catch(e){} finally { bmBusy = false; }
+    try { const d = await bmReq("buy", itemId); if (d.ok) { showReward("✅ Куплено!"); inventoryLoaded = false; loadProfile(); renderBlackmarket(await bmReq("list")); } showMsg("bm-msg", d); } catch(e){} finally { bmBusy = false; }
   }
 
   // ── Комната ────────────────────────────────────────────────────────────
@@ -3158,7 +3158,7 @@
       const d = await shopReq("buy", rowId);
       renderShop(d);
       msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
-      if (d.ok && tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+      if (d.ok) { showReward("✅ Куплено!"); inventoryLoaded = false; loadProfile(); }
     } catch (e) {} finally { shopBusy = false; }
   }
 
