@@ -2463,10 +2463,11 @@
     box.innerHTML = '<div class="ev-hint">Редкие тёмные артефакты. Ротация: '+(d.nextRotation||'скоро')+'. Один экземпляр на ротацию.</div>' +
       d.items.map(function(it){
         let btn;
+        const canAfford = (d.gold != null) && (d.gold >= it.price);
         if (it.bought) btn = '<div class="shop-buy cant">✅ Куплено</div>';
-        else if (it.afford) btn = '<div class="shop-buy" onclick="buyBlackmarket(\''+it.id+'\')">'+it.price+' 💰</div>';
+        else if (canAfford) btn = '<div class="shop-buy" onclick="buyBlackmarket(\''+it.id+'\')">'+it.price+' 💰</div>';
         else btn = '<div class="shop-buy cant">'+it.price+' 💰</div>';
-        return '<div class="bm-card"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:24px;">'+it.emoji+'</span><div style="flex:1;"><div class="bm-name">'+it.name+'</div></div>'+btn+'</div><div class="bm-desc">'+it.desc+'</div></div>';
+        return '<div class="bm-card"><div style="display:flex;align-items:center;gap:10px;"><span style="font-size:24px;">'+it.emoji+'</span><div style="flex:1;"><div class="bm-name">'+it.name+'</div>'+(it.rarity?'<div class="bm-desc">'+it.rarity+'</div>':'')+'</div>'+btn+'</div></div>';
       }).join("");
   }
   async function loadBlackmarket() {
