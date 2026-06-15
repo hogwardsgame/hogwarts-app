@@ -1062,6 +1062,18 @@
   </div>
 </div><!-- /screen-war -->
 
+<div id="screen-auction" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🔨 Аукцион</div>
+    <div class="divider"></div>
+    <div class="input-row">
+      <div class="action-btn" id="auc-tab-buy" style="flex:1;" onclick="aucSwitch('buy')">🛒 Купить</div>
+      <div class="action-btn purple" id="auc-tab-sell" style="flex:1;" onclick="aucSwitch('sell')">💰 Продать</div>
+    </div>
+    <div id="auction-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-auction -->
+
 <div id="battle-overlay" class="battle-overlay" style="display:none;">
   <div class="elem-flash" id="elem-flash"></div>
   <div class="hit-flash" id="hit-flash"></div>
@@ -1266,6 +1278,9 @@
   </div>
   <div class="tab" id="tab-war" onclick="switchTab('war')">
     <div class="tab-ico">⚔️</div><div class="tab-label">Война</div>
+  </div>
+  <div class="tab" id="tab-auction" onclick="switchTab('auction')">
+    <div class="tab-ico">🔨</div><div class="tab-label">Аукцион</div>
   </div>
 </div>
 
@@ -1477,7 +1492,7 @@
   let roomLoaded = false;
   let myName = fallbackName;
   function switchTab(tab) {
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction"].forEach(function(t) {
       document.getElementById("screen-" + t).style.display = (t === tab) ? "block" : "none";
       document.getElementById("tab-" + t).classList.toggle("active", t === tab);
     });
@@ -1510,9 +1525,83 @@
     if (tab === "settings" && !settingsLoaded) { settingsLoaded = true; loadSettings(); }
     if (tab === "triwizard" && !twLoaded) { twLoaded = true; loadTriwizard(); }
     if (tab === "war" && !warLoaded) { warLoaded = true; loadWar(); }
+    if (tab === "auction" && !auctionLoaded) { auctionLoaded = true; aucSwitch('buy'); }
   }
 
+  let auctionLoaded = false, aucMode = "buy", aucBusy = false;
   let twLoaded = false, warLoaded = false;
+  async function aucReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await fetch(API_URL + "/api/auction", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    return await resp.json();
+  }
+  function aucSwitch(mode) {
+    aucMode = mode;
+    document.getElementById("auc-tab-buy").className = "action-btn" + (mode==="buy"?" green":"");
+    document.getElementById("auc-tab-sell").className = "action-btn" + (mode==="sell"?" purple":"");
+    if (mode === "buy") loadAuctionBuy(); else loadAuctionSell();
+  }
+  async function loadAuctionBuy() {
+    const box = document.getElementById("auction-content");
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    box.innerHTML = '<div class="lb-empty">Загрузка лотов...</div>';
+    try {
+      const d = await aucReq("list");
+      if (!d.lots || !d.lots.length) { box.innerHTML='<div class="ev-hint">Пока нет активных лотов. Выставь что-нибудь на продажу!</div>'; return; }
+      box.innerHTML = '<div style="text-align:center;font-size:13px;color:#b0a3d0;margin-bottom:10px;">💰 У тебя: '+(d.gold||0)+'</div>' +
+        d.lots.map(function(l){
+          let tag = "";
+          if (l.isMine) tag = '<span style="font-size:11px;color:#b0a3d0;"> (твой лот)</span>';
+          else if (l.iLead) tag = '<span style="font-size:11px;color:#9be8c0;"> 👑 ты лидер</span>';
+          let btn = (l.isMine) ? '' :
+            '<div class="input-row" style="margin-top:8px;"><input class="gold-input" id="bid-'+l.id+'" placeholder="Ставка > '+l.price+'" inputmode="numeric">' +
+            '<div class="live-btn-sm" onclick="placeBid('+l.id+')">Ставка</div></div>';
+          return '<div class="quest-card"><div class="quest-name">'+l.rarity+' '+l.emoji+' '+l.name+tag+'</div>' +
+                 '<div class="quest-reward">💰 '+l.price+' • ⏰ '+l.timeLeft+'</div>'+btn+'</div>';
+        }).join("") + '<div class="pet-msg" id="auc-msg"></div>';
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function placeBid(lotId) {
+    if (aucBusy) return; aucBusy = true;
+    const inp = document.getElementById("bid-"+lotId);
+    const amt = parseInt(inp ? inp.value.trim() : "0") || 0;
+    const msg = document.getElementById("auc-msg");
+    if (amt < 1) { if(msg){msg.style.color="#ffb0b0";msg.textContent="Введи сумму ставки";} aucBusy=false; return; }
+    try {
+      const d = await aucReq("bid", { lotId: lotId, amount: amt });
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok) { if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} } loadAuctionBuy(); }
+    } catch (e) {} finally { aucBusy = false; }
+  }
+  async function loadAuctionSell() {
+    const box = document.getElementById("auction-content");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const d = await aucReq("mysellable");
+      if (!d.items || !d.items.length) { box.innerHTML='<div class="ev-hint">Нет предметов для продажи. Расходники и квестовые предметы продавать нельзя.</div>'; return; }
+      box.innerHTML = '<div class="ev-hint">Выбери предмет, укажи цену и срок — он уйдёт на аукцион.</div>' +
+        d.items.map(function(it){
+          return '<div class="quest-card"><div class="quest-name">'+it.rarity+' '+it.emoji+' '+it.name+'</div>' +
+                 '<div class="input-row" style="margin-top:8px;"><input class="gold-input" id="sell-price-'+it.invId+'" placeholder="Цена 💰" inputmode="numeric"></div>' +
+                 '<div class="input-row"><div class="action-btn" style="flex:1;font-size:13px;" onclick="sellItem('+it.invId+',1)">1ч</div>' +
+                 '<div class="action-btn" style="flex:1;font-size:13px;" onclick="sellItem('+it.invId+',6)">6ч</div>' +
+                 '<div class="action-btn" style="flex:1;font-size:13px;" onclick="sellItem('+it.invId+',24)">24ч</div></div></div>';
+        }).join("") + '<div class="pet-msg" id="auc-msg"></div>';
+    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function sellItem(invId, hours) {
+    if (aucBusy) return; aucBusy = true;
+    const inp = document.getElementById("sell-price-"+invId);
+    const price = parseInt(inp ? inp.value.trim() : "0") || 0;
+    const msg = document.getElementById("auc-msg");
+    if (price < 1) { if(msg){msg.style.color="#ffb0b0";msg.textContent="Укажи цену";} aucBusy=false; return; }
+    try {
+      const d = await aucReq("sell", { invId: invId, price: price, hours: hours });
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok) { if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} } loadAuctionSell(); }
+    } catch (e) {} finally { aucBusy = false; }
+  }
   let hxLoaded = false, journalLoaded = false, settingsLoaded = false;
 
   // ── Триволшебный турнир ────────────────────────────────────────────────
