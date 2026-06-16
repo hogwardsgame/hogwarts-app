@@ -671,6 +671,118 @@
     cursor: default; background: linear-gradient(165deg,#2a2440,#1a1630);
     display: flex; align-items: center; justify-content: center;
   }
+
+  /* ══ МАГИЧЕСКАЯ ДУЭЛЬ (сетка 4×4) ══ */
+  .duel-overlay {
+    position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
+    background: #0a0518; overflow: hidden;
+  }
+  .duel-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse at 50% 0%, #3a1a5e 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 100%, #1a2a5e 0%, transparent 55%),
+      #0a0518;
+  }
+  body.perf-mode .duel-bg { background: #14102a; }
+  .duel-topbar {
+    position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between;
+    padding: calc(8px + env(safe-area-inset-top)) 16px 6px;
+  }
+  .duel-phase { font-family:"Cinzel",serif; font-size: 15px; font-weight: 700; color: #ffe9a8; }
+  .duel-hpbar {
+    position: relative; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 4px 16px;
+  }
+  .duel-hp-name { font-size: 13px; color: #f4f0e6; white-space: nowrap; font-family:"Cinzel",serif; }
+  .duel-hp-track {
+    position: relative; flex: 1; height: 18px; background: rgba(0,0,0,0.45);
+    border-radius: 9px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
+  }
+  .duel-hp-fill { height: 100%; transition: width 0.4s; }
+  .duel-hpbar.foe .duel-hp-fill { background: linear-gradient(90deg,#ff5c5c,#ff8a5c); }
+  .duel-hpbar.you .duel-hp-fill { background: linear-gradient(90deg,#5cff8a,#5cd8ff); }
+  .duel-hp-txt { position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; text-shadow:0 1px 2px #000; }
+
+  .duel-grid {
+    position: relative; z-index: 2; align-self: center;
+    width: min(86vw, 360px); aspect-ratio: 1; margin: 8px 0;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+    gap: 5px; padding: 6px;
+    background: rgba(255,255,255,0.03); border-radius: 14px;
+    border: 1px solid rgba(255,216,107,0.15);
+  }
+  .duel-cell {
+    position: relative; border-radius: 9px; cursor: pointer;
+    background: rgba(120,110,160,0.1);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+  }
+  body:not(.perf-mode) .duel-cell {
+    background: linear-gradient(145deg, rgba(140,120,200,0.13), rgba(80,70,130,0.08));
+    box-shadow: inset 0 1px 3px rgba(255,255,255,0.05);
+  }
+  .duel-cell.move-target { box-shadow: inset 0 0 0 2px #5cff8a; background: rgba(92,255,138,0.12); }
+  .duel-cell.aim-target { box-shadow: inset 0 0 0 2px #ff6b6b; background: rgba(255,107,107,0.15); }
+  .duel-cell.aim-splash { background: rgba(255,107,107,0.07); }
+  .duel-fighter {
+    font-size: 30px; line-height: 1; z-index: 2;
+    transition: transform 0.4s cubic-bezier(0.3,0.9,0.4,1);
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
+  }
+  body.perf-mode .duel-fighter { transition: none; filter: none; }
+  .duel-fighter.you-piece { }
+  .duel-fighter.foe-piece { }
+  .duel-cell.hit-flash { animation: duelHitFlash 0.5s; }
+  @keyframes duelHitFlash { 0%,100%{background:rgba(255,107,107,0.1);} 40%{background:rgba(255,180,60,0.6);} }
+
+  .duel-log {
+    position: relative; z-index: 3; text-align: center; min-height: 22px;
+    font-size: 13px; color: #d8cdf0; font-family:"Cinzel",serif; padding: 2px 16px;
+  }
+  .duel-spells {
+    position: relative; z-index: 3; display: flex; gap: 7px; justify-content: center;
+    padding: 6px 12px; flex-wrap: wrap;
+  }
+  .duel-spell {
+    width: 56px; height: 60px; border-radius: 11px; cursor: pointer;
+    background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: all 0.15s; position: relative;
+  }
+  .duel-spell.selected { border-color: #ffd86b; box-shadow: 0 0 12px rgba(255,216,107,0.5); background: rgba(255,216,107,0.12); }
+  .duel-spell:active { transform: scale(0.93); }
+  .ds-emoji { font-size: 24px; }
+  .ds-lvl { position: absolute; top: 2px; right: 4px; font-size: 9px; color: #ffd86b; font-weight: 700; }
+
+  .duel-controls {
+    position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-around;
+    padding: 6px 16px calc(10px + env(safe-area-inset-bottom)); gap: 12px;
+  }
+  .duel-dpad { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dp-row { display: flex; gap: 4px; }
+  .dp-btn {
+    width: 46px; height: 46px; border-radius: 11px; cursor: pointer;
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; color: #d8cdf0;
+    transition: all 0.12s;
+  }
+  .dp-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.16); }
+  .dp-btn.selected { border-color: #5cff8a; color: #5cff8a; background: rgba(92,255,138,0.14); }
+  .dp-btn.stay { font-size: 12px; }
+  .duel-confirm {
+    flex: 1; max-width: 180px; text-align: center; padding: 14px 10px; border-radius: 13px; cursor: pointer;
+    background: rgba(255,216,107,0.16); border: 1px solid rgba(255,216,107,0.4);
+    color: #ffe9a8; font-weight: 700; font-family:"Cinzel",serif; font-size: 15px;
+  }
+  .duel-confirm.disabled { opacity: 0.4; pointer-events: none; }
+  .duel-confirm:active { background: rgba(255,216,107,0.28); }
+  /* летящий снаряд дуэли */
+  .duel-proj {
+    position: fixed; z-index: 250; font-size: 30px; pointer-events: none;
+    filter: drop-shadow(0 0 8px currentColor);
+  }
   .coll-count {
     position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: 800; color: #ffd86b;
     background: rgba(0,0,0,0.6); border-radius: 5px; padding: 0 4px;
@@ -1452,7 +1564,7 @@
   <div class="actions">
     <div class="act-btn battle-btn" onclick="openBattle()">⚔️ В БОЙ! (PvE)</div>
     <div class="act-btn pvp-btn" onclick="openPvP()">🤺 ДУЭЛЬ С ИГРОКОМ</div>
-    <div class="act-btn" style="background:rgba(108,180,255,0.15);border-color:rgba(108,180,255,0.4);color:#a8d0ff;" onclick="chooseCardsDifficulty()">🃏 КАРТОЧНАЯ ДУЭЛЬ (ИИ)</div>
+    <div class="act-btn" style="background:rgba(108,180,255,0.15);border-color:rgba(108,180,255,0.4);color:#a8d0ff;" onclick="chooseDuelDifficulty()">⚡ МАГИЧЕСКАЯ ДУЭЛЬ (ИИ)</div>
     <div class="act-btn" id="act-feed" onclick="doAction('feedpet', this)">🍖 Покормить питомца</div>
     <div class="act-btn" id="act-daily" onclick="doAction('claimdaily', this)">🎁 Забрать бонус дня</div>
     <div class="act-btn" id="act-equip" onclick="doAction('equipbest', this)">⚡ Надеть лучшее снаряжение</div>
@@ -1776,6 +1888,54 @@
   </div>
   <div id="deck-collection" style="position:relative;z-index:3;flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:8px 12px;align-content:start;"></div>
   <div class="cards-endturn" id="deck-save" onclick="saveDeck()">💾 Сохранить колоду</div>
+</div>
+
+<div id="duel-overlay" class="duel-overlay" style="display:none;">
+  <div class="duel-bg"></div>
+  <div class="duel-topbar">
+    <div class="duel-phase" id="duel-phase">Выбери ход</div>
+    <div class="arena-close" onclick="closeDuel()">✕</div>
+  </div>
+
+  <!-- HP противника -->
+  <div class="duel-hpbar foe">
+    <span class="duel-hp-name" id="duel-foe-name">🦹 Противник</span>
+    <div class="duel-hp-track"><div class="duel-hp-fill" id="duel-foe-hp"></div><span class="duel-hp-txt" id="duel-foe-hp-txt">100/100</span></div>
+  </div>
+
+  <!-- Игровое поле 4x4 -->
+  <div class="duel-grid" id="duel-grid"></div>
+
+  <!-- HP игрока -->
+  <div class="duel-hpbar you">
+    <span class="duel-hp-name" id="duel-you-name">🧙 Ты</span>
+    <div class="duel-hp-track"><div class="duel-hp-fill" id="duel-you-hp"></div><span class="duel-hp-txt" id="duel-you-hp-txt">100/100</span></div>
+  </div>
+
+  <div class="duel-log" id="duel-log"></div>
+
+  <!-- Выбор заклинания -->
+  <div class="duel-spells" id="duel-spells"></div>
+
+  <!-- Управление движением + подтверждение -->
+  <div class="duel-controls">
+    <div class="duel-dpad">
+      <div class="dp-btn up" onclick="duelMove('up')">▲</div>
+      <div class="dp-row">
+        <div class="dp-btn left" onclick="duelMove('left')">◀</div>
+        <div class="dp-btn stay" onclick="duelMove('stay')">●</div>
+        <div class="dp-btn right" onclick="duelMove('right')">▶</div>
+      </div>
+      <div class="dp-btn down" onclick="duelMove('down')">▼</div>
+    </div>
+    <div class="duel-confirm" id="duel-confirm" onclick="duelConfirm()">Подтвердить ход</div>
+  </div>
+
+  <div class="arena-result" id="duel-result">
+    <div class="arena-result-title" id="duel-result-title">🏆 ПОБЕДА!</div>
+    <div class="arena-result-reward" id="duel-result-reward"></div>
+    <div class="action-btn" style="width:200px;" onclick="closeDuel()">Завершить</div>
+  </div>
 </div>
 
 <div id="cards-overlay" class="cards-overlay" style="display:none;">
@@ -2242,6 +2402,7 @@
     document.getElementById("crest").textContent = data.houseEmoji;
     document.getElementById("rank").textContent  = data.rank;
     document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
+    try { window._profileMaxHp = data.maxHp; } catch(e){}
     document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
     document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
     animateNumber(document.getElementById("atk"), data.atk);
@@ -2370,7 +2531,7 @@
   // ── Группировка вкладок в 4 основные категории ─────────────────────────
   const TAB_GROUPS = {
     battle: { title: "⚔️ Сражения", tabs: [
-      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["cards","🃏","Карты"],
+      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["duel","⚡","Магдуэль"],
       ["abilities","⚡","Умения"], ["teambattle","🛡️","Бой 3×3"],
       ["tournament","🏅","Турнир"], ["worldboss","🐲","Босс"], ["triwizard","🏆","Триволшеб."],
       ["war","⚔️","Война"], ["league","📊","Лига"],
@@ -2433,7 +2594,8 @@
     if (tab === "battle") { closeSubmenu(); openBattle(); return; }   // бой — это оверлей
     if (tab === "pvp") { closeSubmenu(); openPvP(); return; }      // дуэль — оверлей
     if (tab === "arena") { closeSubmenu(); chooseArenaDifficulty(); return; }  // арена — оверлей
-    if (tab === "cards") { closeSubmenu(); chooseCardsDifficulty(); return; }  // карты — оверлей
+    if (tab === "cards") { closeSubmenu(); chooseDuelDifficulty(); return; }  // старая вкладка → дуэль
+    if (tab === "duel") { closeSubmenu(); chooseDuelDifficulty(); return; }  // магдуэль — оверлей
     switchTab(tab);
     closeSubmenu();
   }
@@ -5688,6 +5850,301 @@
   }
   function openDeckFromMenu() { closePubProfile(); openDeckBuilder(); }
   function startCards(diff) { closePubProfile(); openCards(diff); }
+
+  // ══════════════ МАГИЧЕСКАЯ ДУЭЛЬ (сетка 4×4) ══════════════
+  const DUEL_SPELLS = {
+    fireball:    { name:"Огненный шар", emoji:"🔥", dmg:18, color:"#ff7a3c" },
+    lightning:   { name:"Молния", emoji:"⚡", dmg:12, color:"#c77dff" },
+    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", dmg:14, color:"#5cd8ff" },
+    sun_ray:     { name:"Солнечный луч", emoji:"☀️", dmg:22, color:"#ffe96b" },
+    dark_magic:  { name:"Тёмная магия", emoji:"☠️", dmg:16, color:"#b56cff" },
+    wind_blade:  { name:"Ветряной клинок", emoji:"🌀", dmg:15, color:"#9bffb0" },
+  };
+  const GRID = 4;
+  let duelState = null;
+  let duelBusy = false;
+
+  async function chooseDuelDifficulty() {
+    const html =
+      '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:12px;">⚡ Магическая дуэль</div>' +
+      '<div style="font-size:12px;color:#b0a3d0;text-align:center;margin-bottom:14px;">Поле 4×4. Выбери заклинание, шаг и клетку для удара. Ходы разыгрываются одновременно — предугадай движение врага!</div>' +
+      '<div class="action-btn green" style="margin-bottom:8px;" onclick="startDuel(\'easy\')">🧌 Лёгкий</div>' +
+      '<div class="action-btn" style="margin-bottom:8px;" onclick="startDuel(\'normal\')">🧙‍♂️ Средний</div>' +
+      '<div class="action-btn red" onclick="startDuel(\'hard\')">🦹 Сложный</div>';
+    document.getElementById("pubprofile-body").innerHTML = html;
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
+  }
+  function startDuel(diff) { closePubProfile(); openDuel(diff); }
+
+  async function openDuel(difficulty) {
+    difficulty = difficulty || "normal";
+    // HP из профиля
+    let myHp = 100, myAbils = {};
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const d = await resp.json();
+      (d.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
+    } catch(e) {}
+    // hp из текущего профиля (глобальная переменная если есть)
+    try { if (window._profileMaxHp) myHp = window._profileMaxHp; } catch(e){}
+    // доступные заклинания — максимум 4 из тех что есть
+    let spellIds = Object.keys(myAbils);
+    if (spellIds.length === 0) spellIds = ["fireball","lightning","ice_chains","sun_ray"];
+    spellIds = spellIds.slice(0, 4);
+    const spellLevels = {};
+    spellIds.forEach(function(id){ spellLevels[id] = myAbils[id] || 1; });
+
+    const diffCfg = {
+      easy:   { hp: 80,  name:"🧌 Ученик", ai:0.3 },
+      normal: { hp: 110, name:"🧙‍♂️ Тёмный маг", ai:0.6 },
+      hard:   { hp: 150, name:"🦹 Пожиратель смерти", ai:0.85 },
+    }[difficulty];
+
+    duelState = {
+      difficulty: difficulty, aiSkill: diffCfg.ai,
+      you: { hp: myHp, maxHp: myHp, r: 3, c: 1 },   // игрок снизу
+      foe: { hp: diffCfg.hp, maxHp: diffCfg.hp, r: 0, c: 2 }, // враг сверху
+      spellIds: spellIds, spellLevels: spellLevels,
+      selSpell: spellIds[0], selMove: "stay", selAim: null,
+      over: false, phase: "choose",
+    };
+    document.getElementById("duel-foe-name").textContent = diffCfg.name;
+    document.getElementById("duel-overlay").style.display = "flex";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeDuel); } catch(e){} }
+    renderDuel();
+    duelLog("Выбери заклинание, шаг и клетку удара");
+  }
+
+  function closeDuel() {
+    document.getElementById("duel-overlay").style.display = "none";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeDuel); } catch(e){} }
+    duelState = null;
+    loadProfile();
+  }
+
+  function duelLog(t) { const el = document.getElementById("duel-log"); if (el) el.textContent = t; }
+
+  function renderDuel() {
+    const s = duelState; if (!s) return;
+    // HP
+    setBar("duel-you-hp", "duel-you-hp-txt", s.you.hp, s.you.maxHp);
+    setBar("duel-foe-hp", "duel-foe-hp-txt", s.foe.hp, s.foe.maxHp);
+    // сетка
+    const grid = document.getElementById("duel-grid");
+    const cells = [];
+    // куда шагнёт игрок (превью)
+    const preview = movedPos(s.you, s.selMove);
+    // область удара (превью)
+    const splash = s.selAim ? splashCells(s.selAim) : [];
+    let html = "";
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        let cls = "duel-cell";
+        if (preview.r === r && preview.c === c) cls += " move-target";
+        if (s.selAim && s.selAim.r === r && s.selAim.c === c) cls += " aim-target";
+        else if (splash.some(function(p){ return p.r===r && p.c===c; })) cls += " aim-splash";
+        let content = "";
+        if (s.you.r === r && s.you.c === c) content = '<span class="duel-fighter you-piece">🧙</span>';
+        if (s.foe.r === r && s.foe.c === c) content = '<span class="duel-fighter foe-piece">🦹</span>';
+        html += '<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'" onclick="duelAim('+r+','+c+')">'+content+'</div>';
+      }
+    }
+    grid.innerHTML = html;
+    // заклинания
+    const sp = document.getElementById("duel-spells");
+    sp.innerHTML = s.spellIds.map(function(id){
+      const spell = DUEL_SPELLS[id];
+      const sel = (s.selSpell === id) ? " selected" : "";
+      return '<div class="duel-spell'+sel+'" onclick="duelPickSpell(\''+id+'\')">' +
+             '<span class="ds-emoji">'+spell.emoji+'</span><span class="ds-lvl">'+(s.spellLevels[id]||1)+'</span></div>';
+    }).join("");
+    // dpad подсветка
+    document.querySelectorAll(".dp-btn").forEach(function(b){ b.classList.remove("selected"); });
+    const moveCls = { up:".dp-btn.up", down:".dp-btn.down", left:".dp-btn.left", right:".dp-btn.right", stay:".dp-btn.stay" }[s.selMove];
+    if (moveCls) { const el = document.querySelector(moveCls); if (el) el.classList.add("selected"); }
+    // кнопка подтверждения
+    const cf = document.getElementById("duel-confirm");
+    if (s.selAim && s.phase === "choose") cf.classList.remove("disabled");
+    else cf.classList.add("disabled");
+  }
+
+  function movedPos(fighter, move) {
+    let r = fighter.r, c = fighter.c;
+    if (move === "up") r--; if (move === "down") r++;
+    if (move === "left") c--; if (move === "right") c++;
+    r = Math.max(0, Math.min(GRID-1, r)); c = Math.max(0, Math.min(GRID-1, c));
+    return { r: r, c: c };
+  }
+  function splashCells(center) {
+    // крест: центр + 4 соседа
+    const out = [{r:center.r-1,c:center.c},{r:center.r+1,c:center.c},{r:center.r,c:center.c-1},{r:center.r,c:center.c+1}];
+    return out.filter(function(p){ return p.r>=0 && p.r<GRID && p.c>=0 && p.c<GRID; });
+  }
+
+  function duelPickSpell(id) {
+    if (!duelState || duelState.phase !== "choose") return;
+    duelState.selSpell = id;
+    renderDuel();
+  }
+  function duelMove(dir) {
+    if (!duelState || duelState.phase !== "choose") return;
+    duelState.selMove = (duelState.selMove === dir && dir !== "stay") ? "stay" : dir;
+    renderDuel();
+  }
+  function duelAim(r, c) {
+    if (!duelState || duelState.phase !== "choose") return;
+    duelState.selAim = { r: r, c: c };
+    duelLog("Цель: клетка ["+(r+1)+","+(c+1)+"]. Подтверди ход.");
+    renderDuel();
+  }
+
+  async function duelConfirm() {
+    const s = duelState;
+    if (!s || s.phase !== "choose" || !s.selAim || duelBusy) return;
+    duelBusy = true;
+    s.phase = "resolve";
+    document.getElementById("duel-confirm").classList.add("disabled");
+
+    // ИИ выбирает ход втайне
+    const aiChoice = aiDuelChoose();
+
+    // РОЗЫГРЫШ: оба двигаются одновременно
+    duelLog("⚔️ Розыгрыш хода...");
+    const youNew = movedPos(s.you, s.selMove);
+    const foeNew = movedPos(s.foe, aiChoice.move);
+    s.you.r = youNew.r; s.you.c = youNew.c;
+    s.foe.r = foeNew.r; s.foe.c = foeNew.c;
+    renderDuel();
+    await sleep(450);
+
+    // оба бьют по своим целям одновременно
+    await Promise.all([
+      resolveAttack("you", s.selSpell, s.selAim, s.foe),
+      resolveAttack("foe", aiChoice.spell, aiChoice.aim, s.you),
+    ]);
+
+    renderDuel();
+    await sleep(300);
+
+    if (checkDuelEnd()) { duelBusy = false; return; }
+    // новый ход
+    s.selAim = null; s.selMove = "stay"; s.phase = "choose";
+    renderDuel();
+    duelLog("Твой ход. Выбери заклинание, шаг и цель.");
+    duelBusy = false;
+  }
+
+  async function resolveAttack(casterKey, spellId, aim, target) {
+    const s = duelState;
+    const spell = DUEL_SPELLS[spellId];
+    if (!spell || !aim) return;
+    const casterPos = casterKey === "you" ? s.you : s.foe;
+    const lvl = casterKey === "you" ? (s.spellLevels[spellId] || 1) : Math.max(1, Math.round(s.aiSkill * 4));
+    // снаряд летит
+    await flyDuelProjectile(casterPos, aim, spell.emoji, spell.color);
+    // проверка попадания
+    const tr = target.r, tc = target.c;
+    let dmg = 0, kind = "";
+    if (aim.r === tr && aim.c === tc) {
+      // прямое попадание — крит
+      dmg = Math.round(spell.dmg * (1 + (lvl-1)*0.04) * 1.5);
+      kind = "crit";
+    } else {
+      // в области (крест)?
+      const splash = splashCells(aim);
+      if (splash.some(function(p){ return p.r===tr && p.c===tc; })) {
+        dmg = Math.round(spell.dmg * (1 + (lvl-1)*0.04) * 0.5);
+        kind = "splash";
+      }
+    }
+    // вспышка на клетке удара
+    flashDuelCell(aim.r, aim.c);
+    if (dmg > 0) {
+      target.hp = Math.max(0, target.hp - dmg);
+      const cellIdx = tr * GRID + tc;
+      const cell = document.querySelectorAll(".duel-cell")[cellIdx];
+      if (cell) spawnArenaText(cell, "-" + dmg + (kind==="crit"?"!":""), kind==="crit"?"#ffd86b":"#ff8a8a");
+      if (casterKey === "you") duelLog(kind==="crit" ? "💥 Критическое попадание! -"+dmg : "Задел врага: -"+dmg);
+    } else {
+      if (casterKey === "you") duelLog("💨 Мимо!");
+    }
+  }
+
+  function aiDuelChoose() {
+    const s = duelState;
+    const moves = ["up","down","left","right","stay"];
+    // ИИ двигается случайно, но "умный" чаще пытается уклониться
+    let move = moves[Math.floor(Math.random()*moves.length)];
+    // прицел: умный ИИ предсказывает, что игрок шагнёт; глупый бьёт по текущей клетке
+    let aimPos;
+    if (Math.random() < s.aiSkill) {
+      // предсказывает движение игрока (бьёт куда игрок может шагнуть)
+      const guess = ["up","down","left","right","stay"][Math.floor(Math.random()*5)];
+      aimPos = movedPos(s.you, guess);
+    } else {
+      aimPos = { r: s.you.r, c: s.you.c };
+    }
+    const spell = s.spellIds[Math.floor(Math.random()*s.spellIds.length)] || s.selSpell;
+    return { move: move, aim: aimPos, spell: spell };
+  }
+
+  function checkDuelEnd() {
+    const s = duelState;
+    if (!s || s.over) return s && s.over;
+    if (s.foe.hp <= 0) { endDuel(true); return true; }
+    if (s.you.hp <= 0) { endDuel(false); return true; }
+    return false;
+  }
+
+  async function endDuel(won) {
+    duelState.over = true;
+    let rewardMsg = "";
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, won: won, difficulty: duelState.difficulty }) });
+      const d = await resp.json();
+      rewardMsg = d.msg || "";
+    } catch(e) {}
+    document.getElementById("duel-result-title").textContent = won ? "🏆 ПОБЕДА!" : "☠️ ПОРАЖЕНИЕ";
+    document.getElementById("duel-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
+    document.getElementById("duel-result-reward").textContent = rewardMsg;
+    document.getElementById("duel-result").classList.add("show");
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won ? "success" : "error"); } catch(e){} }
+    inventoryLoaded = false;
+  }
+
+  function flyDuelProjectile(fromPos, toPos, emoji, color) {
+    return new Promise(function(resolve){
+      if (isPerfMode()) { resolve(); return; }
+      const cells = document.querySelectorAll(".duel-cell");
+      const fromCell = cells[fromPos.r*GRID + fromPos.c];
+      const toCell = cells[toPos.r*GRID + toPos.c];
+      if (!fromCell || !toCell) { resolve(); return; }
+      const fr = fromCell.getBoundingClientRect();
+      const tr = toCell.getBoundingClientRect();
+      const p = document.createElement("div");
+      p.className = "duel-proj"; p.textContent = emoji; p.style.color = color;
+      p.style.left = (fr.left+fr.width/2-15) + "px"; p.style.top = (fr.top+fr.height/2-15) + "px";
+      document.body.appendChild(p);
+      const dx = (tr.left+tr.width/2)-(fr.left+fr.width/2);
+      const dy = (tr.top+tr.height/2)-(fr.top+fr.height/2);
+      p.animate([
+        { transform:"translate(0,0) scale(0.7)", opacity:0.7 },
+        { transform:"translate("+dx+"px,"+dy+"px) scale(1.1)", opacity:1 }
+      ], { duration: 380, easing:"ease-out" });
+      setTimeout(function(){ p.remove(); resolve(); }, 380);
+    });
+  }
+  function flashDuelCell(r, c) {
+    const cells = document.querySelectorAll(".duel-cell");
+    const cell = cells[r*GRID + c];
+    if (cell) { cell.classList.remove("hit-flash"); void cell.offsetWidth; cell.classList.add("hit-flash"); }
+  }
+
 
   // стартовая подсветка основной кнопки (профиль → Герой)
   syncMainbar();
