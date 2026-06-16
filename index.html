@@ -2310,6 +2310,21 @@
   // ⚙️ АДРЕС API — публичный URL с Railway
   const API_URL = "https://hogwards-production.up.railway.app";
 
+  // Обёртка fetch с таймаутом — чтобы вкладки не висели вечно на "Загрузка..."
+  async function apiFetch(url, options, timeoutMs) {
+    timeoutMs = timeoutMs || 12000;
+    const ctrl = new AbortController();
+    const timer = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
+    try {
+      const resp = await fetch(url, Object.assign({}, options, { signal: ctrl.signal }));
+      clearTimeout(timer);
+      return resp;
+    } catch (e) {
+      clearTimeout(timer);
+      throw e;
+    }
+  }
+
   // Имя по умолчанию (если API недоступен — покажем хотя бы имя от Telegram)
   let fallbackName = "Волшебник";
   let userId = "—";
@@ -2980,7 +2995,7 @@
   async function settingsReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
     const payload = Object.assign({ initData: initData, action: action }, extra || {});
-    const resp = await fetch(API_URL + "/api/settings", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    const resp = await apiFetch(API_URL + "/api/settings", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
   function renderSettings(d) {
@@ -3005,7 +3020,12 @@
   }
   async function loadSettings() {
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("settings-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
-    try { renderSettings(await settingsReq("get")); } catch (e) { document.getElementById("settings-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+    document.getElementById("settings-content").innerHTML='<div class="lb-empty">Загрузка...</div>';
+    try {
+      renderSettings(await settingsReq("get"));
+    } catch (e) {
+      document.getElementById("settings-content").innerHTML='<div class="lb-empty">Не удалось загрузить.<br><div class="action-btn" style="margin-top:10px;" onclick="settingsLoaded=false;loadSettings();">🔄 Повторить</div></div>';
+    }
   }
   async function setLang(lang) {
     if (settingsBusy) return; settingsBusy = true;
@@ -3064,7 +3084,7 @@
   async function hmReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
     const payload = Object.assign({ initData: initData, action: action }, extra || {});
-    const resp = await fetch(API_URL + "/api/hogsmeade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    const resp = await apiFetch(API_URL + "/api/hogsmeade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
   function renderHogsmeade(d) {
@@ -3083,7 +3103,12 @@
   }
   async function loadHogsmeade() {
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("hm-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
-    try { renderHogsmeade(await hmReq("list")); } catch (e) { document.getElementById("hm-content").innerHTML='<div class="lb-empty">Ошибка</div>'; }
+    document.getElementById("hm-content").innerHTML='<div class="lb-empty">Загрузка...</div>';
+    try {
+      renderHogsmeade(await hmReq("list"));
+    } catch (e) {
+      document.getElementById("hm-content").innerHTML='<div class="lb-empty">Не удалось загрузить ('+(e && e.name ? e.name : 'ошибка')+').<br><div class="action-btn" style="margin-top:10px;" onclick="hmLoaded=false;loadHogsmeade();">🔄 Повторить</div></div>';
+    }
   }
   async function buyHogsmeade(shopId, itemId) {
     if (hmBusy) return; hmBusy = true;
@@ -3094,7 +3119,7 @@
   let bmBusy = false;
   async function bmReq(action, itemId) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await fetch(API_URL + "/api/blackmarket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, item: itemId || "", itemId: itemId || "" }) });
+    const resp = await apiFetch(API_URL + "/api/blackmarket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, item: itemId || "", itemId: itemId || "" }) });
     return await resp.json();
   }
   function renderBlackmarket(d) {
@@ -3763,7 +3788,7 @@
   let shopBusy = false;
   async function shopReq(action, rowId) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await fetch(API_URL + "/api/shop", {
+    const resp = await apiFetch(API_URL + "/api/shop", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData: initData, action: action, rowId: rowId || 0 })
     });
