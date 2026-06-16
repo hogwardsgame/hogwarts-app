@@ -634,6 +634,19 @@
   .hc-atk { font-size: 12px; font-weight: 800; color: #ffd86b; }
   .hc-hp { font-size: 12px; font-weight: 800; color: #ff8a8a; }
   .hc-type { font-size: 8px; color: #b0a3d0; margin-top: 2px; text-align:center; line-height:1.1; }
+  .hc-ability {
+    position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(20,12,38,0.95); border: 1px solid rgba(255,216,107,0.5);
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+  }
+  .bm-ability {
+    position: absolute; top: -5px; right: -5px; font-size: 13px;
+    background: rgba(20,12,38,0.9); border-radius: 50%; padding: 1px;
+  }
+  .board-minion.taunt { border-color: #ffae3c; box-shadow: 0 0 8px rgba(255,174,60,0.6); }
+  .board-minion.taunt::before {
+    content: "🛡️"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 13px;
+  }
   .cards-endturn {
     position: relative; z-index: 3; text-align: center; margin: 4px 16px calc(8px + env(safe-area-inset-bottom));
     padding: 11px; border-radius: 12px; cursor: pointer;
@@ -642,6 +655,22 @@
   }
   .cards-endturn.disabled { opacity: 0.4; pointer-events: none; }
   .cards-endturn:active { background: rgba(255,216,107,0.28); }
+  /* Конструктор колоды */
+  .coll-card {
+    position: relative; aspect-ratio: 0.78; border-radius: 9px; cursor: pointer;
+    background: linear-gradient(165deg,#42306a,#281a48); border: 2px solid #9aa0b5;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 4px 2px; transition: all 0.15s;
+  }
+  .coll-card:active { transform: scale(0.93); }
+  .coll-card.in-deck { box-shadow: 0 0 0 2px #9be8c0, 0 0 12px rgba(155,232,192,0.5); }
+  .coll-card.in-deck::after {
+    content: "✓"; position: absolute; top: 2px; right: 4px; color: #9be8c0; font-weight: 800; font-size: 13px;
+  }
+  .coll-count {
+    position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: 800; color: #ffd86b;
+    background: rgba(0,0,0,0.6); border-radius: 5px; padding: 0 4px;
+  }
   /* Аппарация — появление экрана с дымкой */
   .screen.appearing { animation: apparate 0.45s cubic-bezier(0.2,0.8,0.2,1); }
   @keyframes apparate {
@@ -1419,7 +1448,6 @@
   <div class="actions">
     <div class="act-btn battle-btn" onclick="openBattle()">⚔️ В БОЙ! (PvE)</div>
     <div class="act-btn pvp-btn" onclick="openPvP()">🤺 ДУЭЛЬ С ИГРОКОМ</div>
-    <div class="act-btn" style="background:rgba(180,108,255,0.15);border-color:rgba(180,108,255,0.4);color:#d8b0ff;" onclick="chooseArenaDifficulty()">🏟️ АРЕНА ЗАКЛИНАНИЙ (ИИ)</div>
     <div class="act-btn" style="background:rgba(108,180,255,0.15);border-color:rgba(108,180,255,0.4);color:#a8d0ff;" onclick="chooseCardsDifficulty()">🃏 КАРТОЧНАЯ ДУЭЛЬ (ИИ)</div>
     <div class="act-btn" id="act-feed" onclick="doAction('feedpet', this)">🍖 Покормить питомца</div>
     <div class="act-btn" id="act-daily" onclick="doAction('claimdaily', this)">🎁 Забрать бонус дня</div>
@@ -1731,6 +1759,19 @@
 <div class="pubprofile-modal" id="pubprofile-modal">
   <div id="pubprofile-body"><div class="lb-empty">Загрузка...</div></div>
   <div class="action-btn" style="margin-top:14px;" onclick="closePubProfile()">Закрыть</div>
+</div>
+
+<div id="deck-overlay" class="cards-overlay" style="display:none;">
+  <div class="cards-bg"></div>
+  <div class="cards-topbar">
+    <div class="cards-turn">🛠️ Колода <span id="deck-count">0/12</span></div>
+    <div class="arena-close" onclick="closeDeckBuilder()">✕</div>
+  </div>
+  <div style="position:relative;z-index:3;text-align:center;font-size:12px;color:#b0a3d0;padding:0 16px 6px;">
+    Выбери 12 карт. Тапни карту, чтобы добавить/убрать. Зелёная рамка = в колоде.
+  </div>
+  <div id="deck-collection" style="position:relative;z-index:3;flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:8px 12px;align-content:start;"></div>
+  <div class="cards-endturn" id="deck-save" onclick="saveDeck()">💾 Сохранить колоду</div>
 </div>
 
 <div id="cards-overlay" class="cards-overlay" style="display:none;">
@@ -2325,8 +2366,8 @@
   // ── Группировка вкладок в 4 основные категории ─────────────────────────
   const TAB_GROUPS = {
     battle: { title: "⚔️ Сражения", tabs: [
-      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["arena","🏟️","Арена"],
-      ["cards","🃏","Карты"], ["abilities","⚡","Умения"], ["teambattle","🛡️","Бой 3×3"],
+      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["cards","🃏","Карты"],
+      ["abilities","⚡","Умения"], ["teambattle","🛡️","Бой 3×3"],
       ["tournament","🏅","Турнир"], ["worldboss","🐲","Босс"], ["triwizard","🏆","Триволшеб."],
       ["war","⚔️","Война"], ["league","📊","Лига"],
     ]},
@@ -5098,36 +5139,123 @@
   }
 
   // ══════════════ КАРТОЧНЫЙ БОЙ ══════════════
-  // Карты-заклинания (из умений) + существа
+  // Заклинания. rarity: common/rare/epic/legendary
   const CARD_SPELLS = {
-    fireball:    { name:"Огненный шар", emoji:"🔥", kind:"spell", cost:3, effect:"damage", val:6, color:"#ff7a3c" },
-    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", kind:"spell", cost:2, effect:"damage", val:4, freeze:true, color:"#5cd8ff" },
-    lightning:   { name:"Молния", emoji:"⚡", kind:"spell", cost:1, effect:"damage", val:3, color:"#c77dff" },
-    shield:      { name:"Щит", emoji:"🛡️", kind:"spell", cost:2, effect:"armor", val:6, color:"#ffd86b" },
-    heal:        { name:"Лечение", emoji:"💚", kind:"spell", cost:2, effect:"heal", val:7, color:"#9be8c0" },
-    dark_magic:  { name:"Тёмная магия", emoji:"☠️", kind:"spell", cost:3, effect:"damage", val:5, color:"#b56cff" },
-    sun_ray:     { name:"Солнечный луч", emoji:"☀️", kind:"spell", cost:4, effect:"damage", val:8, color:"#ffe96b" },
-    poison_cloud:{ name:"Ядовитое облако", emoji:"🟢", kind:"spell", cost:3, effect:"damage_all", val:3, color:"#7fff5c" },
+    lightning:   { name:"Молния", emoji:"⚡", kind:"spell", cost:1, effect:"damage", val:3, rarity:"common", color:"#c77dff" },
+    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", kind:"spell", cost:2, effect:"damage", val:4, rarity:"common", color:"#5cd8ff" },
+    shield:      { name:"Щит", emoji:"🛡️", kind:"spell", cost:2, effect:"armor", val:6, rarity:"common", color:"#ffd86b" },
+    heal:        { name:"Лечение", emoji:"💚", kind:"spell", cost:2, effect:"heal", val:7, rarity:"common", color:"#9be8c0" },
+    fireball:    { name:"Огненный шар", emoji:"🔥", kind:"spell", cost:3, effect:"damage", val:6, rarity:"common", color:"#ff7a3c" },
+    dark_magic:  { name:"Тёмная магия", emoji:"☠️", kind:"spell", cost:3, effect:"damage", val:5, rarity:"rare", color:"#b56cff" },
+    poison_cloud:{ name:"Ядовитое облако", emoji:"🟢", kind:"spell", cost:3, effect:"damage_all", val:3, rarity:"rare", color:"#7fff5c" },
+    sun_ray:     { name:"Солнечный луч", emoji:"☀️", kind:"spell", cost:4, effect:"damage", val:8, rarity:"rare", color:"#ffe96b" },
+    blizzard:    { name:"Метель", emoji:"🌨️", kind:"spell", cost:5, effect:"damage_minions", val:4, rarity:"epic", color:"#aee4ff" },
+    meteor:      { name:"Метеор", emoji:"☄️", kind:"spell", cost:6, effect:"damage", val:12, rarity:"epic", color:"#ff5c3c" },
+    avada:       { name:"Авада Кедавра", emoji:"💀", kind:"spell", cost:8, effect:"execute", val:99, rarity:"legendary", color:"#33ff66" },
   };
+  // Существа. ability: charge(рывок), taunt(провокация), battlecry_heal, battlecry_dmg, deathrattle, lifesteal
   const CARD_MINIONS = {
-    fire_imp:    { name:"Огненный бес", emoji:"👹", kind:"minion", cost:2, atk:3, hp:2 },
-    ice_golem:   { name:"Ледяной голем", emoji:"🗿", kind:"minion", cost:4, atk:3, hp:6 },
-    phoenix:     { name:"Феникс", emoji:"🦅", kind:"minion", cost:5, atk:5, hp:4 },
-    shadow_wolf: { name:"Тёмный волк", emoji:"🐺", kind:"minion", cost:3, atk:4, hp:3 },
-    pixie:       { name:"Пикси", emoji:"🧚", kind:"minion", cost:1, atk:2, hp:1 },
-    dragon:      { name:"Дракончик", emoji:"🐉", kind:"minion", cost:6, atk:6, hp:6 },
-    troll:       { name:"Тролль", emoji:"🧌", kind:"minion", cost:4, atk:4, hp:5 },
+    pixie:       { name:"Пикси", emoji:"🧚", kind:"minion", cost:1, atk:2, hp:1, rarity:"common" },
+    fire_imp:    { name:"Огненный бес", emoji:"👹", kind:"minion", cost:2, atk:3, hp:2, rarity:"common", ability:"charge" },
+    shadow_wolf: { name:"Тёмный волк", emoji:"🐺", kind:"minion", cost:3, atk:4, hp:3, rarity:"common" },
+    stone_guard: { name:"Каменный страж", emoji:"🗿", kind:"minion", cost:3, atk:2, hp:6, rarity:"common", ability:"taunt" },
+    troll:       { name:"Тролль", emoji:"🧌", kind:"minion", cost:4, atk:4, hp:5, rarity:"rare", ability:"taunt" },
+    ice_golem:   { name:"Ледяной голем", emoji:"🥶", kind:"minion", cost:4, atk:3, hp:6, rarity:"rare", ability:"battlecry_dmg", abilityVal:2 },
+    healer:      { name:"Целительница", emoji:"🧝", kind:"minion", cost:3, atk:2, hp:4, rarity:"rare", ability:"battlecry_heal", abilityVal:5 },
+    phoenix:     { name:"Феникс", emoji:"🦅", kind:"minion", cost:5, atk:5, hp:4, rarity:"epic", ability:"deathrattle_summon" },
+    vampire:     { name:"Вампир", emoji:"🧛", kind:"minion", cost:5, atk:4, hp:5, rarity:"epic", ability:"lifesteal" },
+    dragon:      { name:"Дракончик", emoji:"🐉", kind:"minion", cost:6, atk:6, hp:6, rarity:"epic", ability:"charge" },
+    basilisk:    { name:"Василиск", emoji:"🐍", kind:"minion", cost:7, atk:7, hp:7, rarity:"legendary", ability:"poison_touch" },
+    dementor:    { name:"Дементор", emoji:"👻", kind:"minion", cost:6, atk:5, hp:5, rarity:"legendary", ability:"battlecry_dmg", abilityVal:4 },
   };
   const ALL_CARDS = Object.assign({}, CARD_SPELLS, CARD_MINIONS);
+  const RARITY_COLOR = { common:"#9aa0b5", rare:"#5c9dff", epic:"#b56cff", legendary:"#ffae3c" };
 
   let cardsState = null;
   let cardsBusy = false;
+  let savedDeck = []; // сохранённая колода игрока (массив id)
 
-  function buildDeck() {
-    // колода: каждое заклинание x2, каждое существо x2 — перемешать
+  // ── Конструктор колоды ──
+  let deckDraft = [];
+  async function openDeckBuilder() {
+    // загрузить сохранённую колоду
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const d = await resp.json();
+      deckDraft = (d.cards || []).filter(function(c){ return ALL_CARDS[c]; });
+    } catch(e) { deckDraft = []; }
+    document.getElementById("deck-overlay").style.display = "flex";
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeDeckBuilder); } catch(e){} }
+    renderCollection();
+  }
+  function closeDeckBuilder() {
+    document.getElementById("deck-overlay").style.display = "none";
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeDeckBuilder); } catch(e){} }
+  }
+  function renderCollection() {
+    const box = document.getElementById("deck-collection");
+    document.getElementById("deck-count").textContent = deckDraft.length + "/12";
+    // сортируем: сначала по стоимости
+    const ids = Object.keys(ALL_CARDS).sort(function(a,b){ return ALL_CARDS[a].cost - ALL_CARDS[b].cost; });
+    box.innerHTML = ids.map(function(cid){
+      const c = ALL_CARDS[cid];
+      const inDeck = deckDraft.indexOf(cid) >= 0;
+      const rarCol = RARITY_COLOR[c.rarity || "common"];
+      const count = deckDraft.filter(function(x){ return x === cid; }).length;
+      const stats = c.kind === "minion" ? '⚔'+c.atk+' ❤'+c.hp : spellTypeLabel(c);
+      return '<div class="coll-card'+(inDeck?' in-deck':'')+'" style="border-color:'+rarCol+';" onclick="toggleDeckCard(\''+cid+'\')">' +
+             '<div class="hc-cost" style="width:20px;height:20px;font-size:11px;">'+c.cost+'</div>' +
+             (count>0?'<div class="coll-count">'+count+'</div>':'') +
+             '<div style="font-size:24px;">'+c.emoji+'</div>' +
+             '<div style="font-size:8px;color:#f4f0e6;text-align:center;line-height:1.1;margin-top:2px;">'+c.name+'</div>' +
+             '<div style="font-size:8px;color:#b0a3d0;margin-top:1px;">'+stats+'</div></div>';
+    }).join("");
+  }
+  function toggleDeckCard(cid) {
+    const idx = deckDraft.indexOf(cid);
+    if (idx >= 0) {
+      deckDraft.splice(idx, 1);
+    } else {
+      if (deckDraft.length >= 12) { return; }
+      // максимум 2 копии одной карты
+      if (deckDraft.filter(function(x){ return x === cid; }).length >= 2) return;
+      deckDraft.push(cid);
+    }
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+    renderCollection();
+  }
+  async function saveDeck() {
+    if (deckDraft.length < 8) {
+      cardsLog2("Нужно минимум 8 карт");
+      const sv = document.getElementById("deck-save");
+      sv.textContent = "⚠️ Минимум 8 карт"; setTimeout(function(){ sv.textContent = "💾 Сохранить колоду"; }, 1500);
+      return;
+    }
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "save", cards: deckDraft }) });
+      const d = await resp.json();
+      if (d.ok) {
+        savedDeck = deckDraft.slice();
+        const sv = document.getElementById("deck-save");
+        sv.textContent = "✅ Сохранено!"; setTimeout(function(){ closeDeckBuilder(); }, 700);
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+      }
+    } catch(e) {}
+  }
+  function cardsLog2(t) {} // заглушка для билдера
+
+  function buildDeck(useCustom) {
     let deck = [];
-    Object.keys(CARD_SPELLS).forEach(function(id){ deck.push(id, id); });
-    Object.keys(CARD_MINIONS).forEach(function(id){ deck.push(id, id); });
+    if (useCustom && savedDeck && savedDeck.length >= 8) {
+      // колода игрока: каждая карта x2 для стабильности добора
+      savedDeck.forEach(function(id){ if (ALL_CARDS[id]) deck.push(id, id); });
+    } else {
+      // случайная: все карты x2
+      Object.keys(CARD_SPELLS).forEach(function(id){ deck.push(id, id); });
+      Object.keys(CARD_MINIONS).forEach(function(id){ deck.push(id, id); });
+    }
     // перемешать
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -5136,8 +5264,15 @@
     return deck;
   }
 
-  function openCards(difficulty) {
+  async function openCards(difficulty) {
     difficulty = difficulty || "normal";
+    // загрузить сохранённую колоду игрока
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const dd = await resp.json();
+      savedDeck = (dd.cards || []).filter(function(c){ return ALL_CARDS[c]; });
+    } catch(e) {}
     const diffCfg = {
       easy:   { hp: 24, name:"Ученик", ai:0.5 },
       normal: { hp: 30, name:"Тёмный маг", ai:0.75 },
@@ -5145,8 +5280,8 @@
     }[difficulty];
     cardsState = {
       difficulty: difficulty, aiSkill: diffCfg.ai,
-      you: { hp: 30, maxHp: 30, mana: 0, maxMana: 0, armor: 0, deck: buildDeck(), hand: [], board: [] },
-      foe: { hp: diffCfg.hp, maxHp: diffCfg.hp, mana: 0, maxMana: 0, armor: 0, deck: buildDeck(), hand: [], board: [] },
+      you: { hp: 30, maxHp: 30, mana: 0, maxMana: 0, armor: 0, deck: buildDeck(true), hand: [], board: [] },
+      foe: { hp: diffCfg.hp, maxHp: diffCfg.hp, mana: 0, maxMana: 0, armor: 0, deck: buildDeck(false), hand: [], board: [] },
       turn: "you", over: false, selectedMinion: null,
     };
     document.getElementById("cards-foe-name").textContent = diffCfg.name;
@@ -5213,9 +5348,11 @@
     box.innerHTML = side.board.map(function(m, i){
       const canAtk = (owner === "you" && m.canAttack && cardsState.turn === "you") ? " can-attack" : "";
       const sel = (cardsState.selectedMinion === m) ? " selected" : "";
+      const taunt = (m.ability === "taunt") ? " taunt" : "";
       const onclick = owner === "you" ? 'onclick="selectMinion('+i+')"' : 'onclick="attackTarget(\'foe-minion\','+i+')"';
-      return '<div class="board-minion'+canAtk+sel+'" '+onclick+'>' +
-             '<span class="bm-emoji">'+m.emoji+'</span>' +
+      const abBadge = m.ability ? '<span class="bm-ability">'+abilityIcon(m.ability)+'</span>' : '';
+      return '<div class="board-minion'+canAtk+sel+taunt+'" '+onclick+'>' +
+             abBadge + '<span class="bm-emoji">'+m.emoji+'</span>' +
              '<span class="bm-atk">'+m.atk+'</span><span class="bm-hp">'+m.hp+'</span></div>';
     }).join("");
   }
@@ -5226,19 +5363,28 @@
     box.innerHTML = s.you.hand.map(function(cid, i){
       const c = ALL_CARDS[cid];
       const playable = (s.turn === "you" && s.you.mana >= c.cost) ? " playable" : " unplayable";
+      const rarCol = RARITY_COLOR[c.rarity || "common"];
+      const abIcon = c.ability ? '<div class="hc-ability">'+abilityIcon(c.ability)+'</div>' : '';
       const stats = c.kind === "minion"
         ? '<div class="hc-stats"><span class="hc-atk">⚔'+c.atk+'</span><span class="hc-hp">❤'+c.hp+'</span></div>'
         : '<div class="hc-type">'+spellTypeLabel(c)+'</div>';
-      return '<div class="hand-card'+playable+'" onclick="playCard('+i+')">' +
-             '<div class="hc-cost">'+c.cost+'</div>' +
+      return '<div class="hand-card'+playable+'" style="border-color:'+rarCol+';" onclick="playCard('+i+')">' +
+             '<div class="hc-cost">'+c.cost+'</div>'+abIcon+
              '<div class="hc-emoji">'+c.emoji+'</div>' +
              '<div class="hc-name">'+c.name+'</div>'+stats+'</div>';
     }).join("");
+  }
+  function abilityIcon(ab) {
+    const m = { charge:"⚡", taunt:"🛡️", lifesteal:"🩸", poison_touch:"☠️",
+                deathrattle_summon:"♻️", battlecry_heal:"💚", battlecry_dmg:"🔥" };
+    return m[ab] || "✨";
   }
   function spellTypeLabel(c) {
     if (c.effect === "heal") return "💚 +"+c.val+" HP";
     if (c.effect === "armor") return "🛡️ +"+c.val;
     if (c.effect === "damage_all") return "☠️ "+c.val+" всем";
+    if (c.effect === "damage_minions") return "🌨️ "+c.val+" существам";
+    if (c.effect === "execute") return "💀 "+c.val+" урона";
     return "🔥 "+c.val+" урона";
   }
 
@@ -5252,8 +5398,11 @@
     s.you.mana -= c.cost;
     s.you.hand.splice(idx, 1);
     if (c.kind === "minion") {
-      s.you.board.push({ id: cid, emoji: c.emoji, atk: c.atk, hp: c.hp, maxHp: c.hp, canAttack: false });
+      const minion = { id: cid, emoji: c.emoji, atk: c.atk, hp: c.hp, maxHp: c.hp,
+                       canAttack: c.ability === "charge", ability: c.ability, abilityVal: c.abilityVal };
+      s.you.board.push(minion);
       cardsLog("Ты призвал " + c.emoji + " " + c.name);
+      applyBattlecry(minion, "you", "foe");
     } else {
       applySpell(c, "you", "foe");
     }
@@ -5271,16 +5420,52 @@
       caster.armor += c.val;
       cardsLog((casterKey==="you"?"Ты ставишь щит":"Враг ставит щит")+" +"+c.val);
     } else if (c.effect === "damage_all") {
-      // урон всем существам врага + герою
       target.board.forEach(function(m){ m.hp -= c.val; });
       target.board = target.board.filter(function(m){ return m.hp > 0; });
       dealHeroDamage(target, c.val);
       cardsLog(c.emoji + " " + c.name + ": " + c.val + " урона всем");
+    } else if (c.effect === "damage_minions") {
+      // урон всем существам врага (не герою)
+      target.board.forEach(function(m){ m.hp -= c.val; });
+      handleDeaths(targetKey);
+      cardsLog(c.emoji + " " + c.name + ": " + c.val + " по существам");
+    } else if (c.effect === "execute") {
+      // мгновенно убивает героя? нет — наносит огромный урон
+      dealHeroDamage(target, c.val);
+      cardsLog("💀 " + c.name + "!");
     } else {
-      // прямой урон герою
       dealHeroDamage(target, c.val);
       cardsLog(c.emoji + " " + c.name + ": " + c.val + " урона");
     }
+  }
+
+  // Боевой клич существа при выходе
+  function applyBattlecry(minion, casterKey, targetKey) {
+    const s = cardsState;
+    const caster = s[casterKey], target = s[targetKey];
+    if (minion.ability === "battlecry_heal") {
+      caster.hp = Math.min(caster.maxHp, caster.hp + (minion.abilityVal || 4));
+      cardsLog("💚 Боевой клич: +" + (minion.abilityVal || 4) + " HP");
+    } else if (minion.ability === "battlecry_dmg") {
+      dealHeroDamage(target, minion.abilityVal || 2);
+      cardsLog("🔥 Боевой клич: " + (minion.abilityVal || 2) + " урона врагу");
+    }
+  }
+
+  // Обработка смертей существ + предсмертные эффекты
+  function handleDeaths(sideKey) {
+    const s = cardsState;
+    const side = s[sideKey];
+    const survivors = [];
+    side.board.forEach(function(m){
+      if (m.hp > 0) { survivors.push(m); return; }
+      // предсмертный крик феникса — призывает птенца
+      if (m.ability === "deathrattle_summon") {
+        survivors.push({ emoji:"🐤", atk:2, hp:2, maxHp:2, canAttack:false, ability:null });
+        cardsLog("🔥 Феникс возрождается птенцом!");
+      }
+    });
+    side.board = survivors;
   }
 
   function dealHeroDamage(hero, dmg) {
@@ -5309,9 +5494,11 @@
     if (targetType === "foe-minion") {
       const target = s.foe.board[idx];
       if (!target) return;
+      // вампиризм — лечит героя
       target.hp -= attacker.atk; attacker.hp -= target.atk;
-      s.foe.board = s.foe.board.filter(function(mm){ return mm.hp > 0; });
-      s.you.board = s.you.board.filter(function(mm){ return mm.hp > 0; });
+      if (attacker.ability === "lifesteal") s.you.hp = Math.min(s.you.maxHp, s.you.hp + attacker.atk);
+      if (attacker.ability === "poison_touch") target.hp = 0; // яд убивает любое существо
+      handleDeaths("foe"); handleDeaths("you");
       cardsLog("⚔️ Бой существ!");
     }
     attacker.canAttack = false;
@@ -5320,12 +5507,19 @@
     checkCardsEnd();
   }
 
+  // есть ли у врага провокация (нужно бить её first)
+  function foeHasTaunt() {
+    return cardsState.foe.board.some(function(m){ return m.ability === "taunt"; });
+  }
+
   // атака героя врага (клик по аватару врага)
   function attackFoeHero() {
     const s = cardsState;
     if (!s || !s.selectedMinion || s.turn !== "you") return;
+    if (foeHasTaunt()) { cardsLog("🛡️ Сначала уничтожь провокатора!"); return; }
     const attacker = s.selectedMinion;
     dealHeroDamage(s.foe, attacker.atk);
+    if (attacker.ability === "lifesteal") s.you.hp = Math.min(s.you.maxHp, s.you.hp + attacker.atk);
     attacker.canAttack = false;
     s.selectedMinion = null;
     cardsLog("⚔️ Атака по врагу!");
@@ -5356,8 +5550,11 @@
         s.foe.mana -= c.cost;
         s.foe.hand.splice(playableIdx, 1);
         if (c.kind === "minion") {
-          s.foe.board.push({ id: cid, emoji: c.emoji, atk: c.atk, hp: c.hp, maxHp: c.hp, canAttack: false });
+          const minion = { id: cid, emoji: c.emoji, atk: c.atk, hp: c.hp, maxHp: c.hp,
+                           canAttack: c.ability === "charge", ability: c.ability, abilityVal: c.abilityVal };
+          s.foe.board.push(minion);
           cardsLog("Враг призвал " + c.emoji + " " + c.name);
+          applyBattlecry(minion, "foe", "you");
         } else {
           applySpell(c, "foe", "you");
         }
@@ -5369,12 +5566,23 @@
     }
     // существа врага атакуют
     await sleep(400);
+    const youTaunts = s.you.board.filter(function(m){ return m.ability === "taunt"; });
     for (const m of s.foe.board) {
       if (!m.canAttack) continue;
-      // атакует героя игрока (упрощённо)
-      dealHeroDamage(s.you, m.atk);
+      // если у игрока есть провокатор — бьём его
+      if (youTaunts.length > 0) {
+        const tgt = youTaunts[0];
+        tgt.hp -= m.atk; m.hp -= tgt.atk;
+        if (m.ability === "lifesteal") s.foe.hp = Math.min(s.foe.maxHp, s.foe.hp + m.atk);
+        handleDeaths("you"); handleDeaths("foe");
+        if (tgt.hp <= 0) youTaunts.shift();
+        cardsLog("Враг бьёт провокатора " + m.emoji);
+      } else {
+        dealHeroDamage(s.you, m.atk);
+        if (m.ability === "lifesteal") s.foe.hp = Math.min(s.foe.maxHp, s.foe.hp + m.atk);
+        cardsLog("Враг атакует " + m.emoji);
+      }
       m.canAttack = false;
-      cardsLog("Враг атакует " + m.emoji);
       renderCards();
       await sleep(500);
       if (checkCardsEnd()) { cardsBusy = false; return; }
@@ -5413,6 +5621,7 @@
     const html =
       '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:16px;">🃏 Карточная дуэль</div>' +
       '<div style="font-size:12px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Призывай существ, кидай заклинания, снеси HP врага с 30 до 0.</div>' +
+      '<div class="action-btn" style="margin-bottom:8px;background:rgba(255,216,107,0.16);border-color:rgba(255,216,107,0.4);" onclick="openDeckFromMenu()">🛠️ Собрать колоду</div>' +
       '<div class="action-btn green" style="margin-bottom:8px;" onclick="startCards(\'easy\')">🧌 Лёгкий</div>' +
       '<div class="action-btn" style="margin-bottom:8px;" onclick="startCards(\'normal\')">🧙‍♂️ Средний</div>' +
       '<div class="action-btn red" onclick="startCards(\'hard\')">🦹 Сложный</div>';
@@ -5420,6 +5629,7 @@
     document.getElementById("pubprofile-backdrop").classList.add("show");
     document.getElementById("pubprofile-modal").classList.add("show");
   }
+  function openDeckFromMenu() { closePubProfile(); openDeckBuilder(); }
   function startCards(diff) { closePubProfile(); openCards(diff); }
 
   // стартовая подсветка основной кнопки (профиль → Герой)
