@@ -775,21 +775,21 @@
   .pvp-spin { display: inline-block; animation: pvpSpin 1.5s linear infinite; }
   @keyframes pvpSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
   /* ── Замок ── */
-  .castle-stats { position: relative; z-index: 3; display: flex; justify-content: center; gap: 16px; padding: 6px 16px; font-size: 13px; color: #ffe9a8; }
-  .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px; }
-  .castle-grid { display: grid; gap: 3px; width: min(92vw, 420px); aspect-ratio: 1; }
+  .castle-stats { position: relative; z-index: 3; display: flex; justify-content: center; gap: 16px; padding: 8px 16px; font-size: 15px; color: #ffe9a8; }
+  .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; }
+  .castle-grid { display: grid; gap: 2px; width: min(94vw, 440px); }
   .castle-cell {
-    border-radius: 5px; display: flex; align-items: center; justify-content: center;
-    font-size: 18px; background: rgba(255,255,255,0.04);
+    aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 17px; background: #2a2342;
   }
-  .castle-cell.fog { background: rgba(10,6,22,0.92); }
-  .castle-cell.wall { background: linear-gradient(145deg,#3a2f56,#241c3e); box-shadow: inset 0 1px 2px rgba(255,255,255,0.08); }
-  .castle-cell.empty { background: rgba(120,110,160,0.10); }
-  .castle-cell.loot { background: rgba(255,216,107,0.18); }
-  .castle-cell.trap { background: rgba(255,107,107,0.12); }
-  .castle-cell.exit { background: rgba(92,255,138,0.18); }
-  .castle-cell.player { background: rgba(108,180,255,0.25); box-shadow: inset 0 0 0 2px #6cb4ff; }
-  .castle-log { position: relative; z-index: 3; text-align: center; min-height: 22px; font-size: 13px; color: #d8cdf0; font-family:"Cinzel",serif; padding: 4px 16px; }
+  .castle-cell.fog { background: #0d0a18; }
+  .castle-cell.wall { background: #4a3d6e; box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.08); }
+  .castle-cell.empty { background: #38305a; }
+  .castle-cell.loot { background: #4a4020; box-shadow: inset 0 0 8px rgba(255,216,107,0.4); }
+  .castle-cell.trap { background: #4a2530; }
+  .castle-cell.exit { background: #1f4a2e; box-shadow: inset 0 0 8px rgba(92,255,138,0.4); }
+  .castle-cell.player { background: #2d5a8a; box-shadow: inset 0 0 0 2px #6cb4ff, 0 0 10px rgba(108,180,255,0.5); }
+  .castle-log { position: relative; z-index: 3; text-align: center; min-height: 24px; font-size: 14px; color: #d8cdf0; font-family:"Cinzel",serif; padding: 6px 16px; }
   /* ── Чат ── */
   .chat-feed { height: 56vh; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 6px; padding: 8px 4px; margin: 8px 0; }
   .chat-msg { font-size: 13px; line-height: 1.4; word-break: break-word; }
@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v20 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v21 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6287,7 +6287,7 @@
           eventHint = "🎪 ИВЕНТ! Найди 🎁 " + ed.prizeEmoji + " " + ed.prizeName + " (осталось " + h + "ч " + m + "м)";
         }
       } catch(e){}
-      castleLog(eventHint || "Иди стрелочками. Ищи сундуки 📦, избегай ловушек ⚠️, найди выход 🚪");
+      castleLog(eventHint || "🧙 ты • 📦 сундук • ⚠️ ловушка • 🚪 выход. Ходи стрелочками!");
     } catch(e) { document.getElementById("castle-grid").innerHTML = '<div class="lb-empty" style="grid-column:1/-1;">Ошибка входа</div>'; }
   }
   function closeCastle() {
@@ -6310,7 +6310,7 @@
         let cls = "castle-cell", content = "";
         if (s.pr === r && s.pc === c) { cls += " player"; content = "🧙"; }
         else if (v === -1) cls += " fog";
-        else if (v === 1) cls += " wall";
+        else if (v === 1) { cls += " wall"; }
         else if (v === 2) { cls += " loot"; content = "📦"; }
         else if (v === 3) { cls += " trap"; content = "⚠️"; }
         else if (v === 4) { cls += " exit"; content = "🚪"; }
@@ -7278,12 +7278,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v20 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v21 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v20 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v21 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v20 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v21 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
