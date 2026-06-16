@@ -1570,7 +1570,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v11 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v12 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -1594,6 +1594,9 @@
     <div class="stat"><span class="ico">⚡</span><div><div class="val" id="spd">10</div><div class="cap">Скорость</div></div></div>
     <div class="stat"><span class="ico">🍀</span><div><div class="val" id="luck">5</div><div class="cap">Удача</div></div></div>
   </div>
+
+  <div id="stat-breakdown" style="font-size:11px;color:#9d8fc0;text-align:center;margin:4px 0 8px;"></div>
+  <div class="act-btn" style="margin:0 0 8px;background:rgba(160,120,220,0.14);border-color:rgba(160,120,220,0.4);color:#cdb8f0;" onclick="openModelPicker()">🎭 <span id="my-model">🧙</span> Выбрать модель персонажа</div>
 
   <div class="gold-banner">💰 <span id="gold">150</span> галлеонов</div>
 
@@ -2468,10 +2471,30 @@
     document.getElementById("crest").textContent = data.houseEmoji;
     document.getElementById("rank").textContent  = data.rank;
     document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
-    try { window._profileMaxHp = data.maxHp; window._profileCloak = data.cloak || null; window._profileId = data.id || null; } catch(e){}
+    try { window._profileMaxHp = data.maxHp; window._profileCloak = data.cloak || null; window._profileId = data.id || null; window._profileAtk = data.atk; window._profileDef = data.def; window._profileLuck = data.luck; window._profileModel = data.model || "🧙"; } catch(e){}
     document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
     document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
     animateNumber(document.getElementById("atk"), data.atk);
+    // раскладка усилений
+    try {
+      const sb = data.statsBreakdown;
+      const mm = document.getElementById("my-model");
+      if (mm) mm.textContent = data.model || "🧙";
+      const bd = document.getElementById("stat-breakdown");
+      if (bd && sb) {
+        let parts = [];
+        const a = sb.atk || {};
+        if ((a.cloak||0) + (a.equip||0) > 0) {
+          let s = "⚔️ " + (a.base||0) + " база";
+          if (a.cloak) s += " +" + a.cloak + "🧥";
+          if (a.equip) s += " +" + a.equip + "⚔";
+          parts.push(s);
+        }
+        const df = sb.def || {};
+        if ((df.cloak||0) > 0) parts.push("🛡️ " + (df.base||0) + " +" + df.cloak + "🧥");
+        bd.innerHTML = parts.length ? parts.join(" &nbsp;•&nbsp; ") : "Надень плащ/снаряжение для бонусов";
+      }
+    } catch(e){}
     animateNumber(document.getElementById("def"), data.def);
     animateNumber(document.getElementById("spd"), data.spd);
     animateNumber(document.getElementById("luck"), data.luck);
@@ -2537,6 +2560,44 @@
   }
 
   // ── Запрашиваем РЕАЛЬНЫЕ данные у API ──────────────────────────────────
+  // ── Выбор модельки персонажа ──
+  async function openModelPicker() {
+    let models = ["🧙","🧙‍♂️","🧙‍♀️","🦹","🦹‍♂️","🦹‍♀️","🧝","🧝‍♂️","🧝‍♀️","🧚","🧛","🦸","🤴","👸","🥷","👨‍🎤","🧜","🧞"];
+    let current = "🧙";
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/setmodel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const d = await resp.json();
+      if (d.models) models = d.models;
+      if (d.model) current = d.model;
+    } catch(e){}
+    const grid = models.map(function(m){
+      const sel = m === current ? "border-color:#ffd86b;box-shadow:0 0 10px rgba(255,216,107,0.5);" : "border-color:rgba(255,255,255,0.12);";
+      return '<div onclick="pickModel(\''+m+'\')" style="font-size:34px;padding:8px;border:2px solid;border-radius:12px;cursor:pointer;text-align:center;'+sel+'">'+m+'</div>';
+    }).join("");
+    const html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🎭 Модель персонажа</div>' +
+      '<div style="font-size:12px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Эта фигурка будет видна в дуэли</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">'+grid+'</div>' +
+      '<div class="pet-msg" id="model-msg"></div>';
+    document.getElementById("pubprofile-body").innerHTML = html;
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
+  }
+  async function pickModel(m) {
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/setmodel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "set", model: m }) });
+      const d = await resp.json();
+      if (d.ok) {
+        window._profileModel = m;
+        const mm = document.getElementById("my-model"); if (mm) mm.textContent = m;
+        const msg = document.getElementById("model-msg"); if (msg) { msg.style.color = "#9be8c0"; msg.textContent = "✅ Модель выбрана: " + m; }
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("light"); } catch(e){} }
+        setTimeout(closePubProfile, 700);
+      }
+    } catch(e){}
+  }
+
   async function loadProfile() {
     // Если адрес API ещё не вставлен — показываем демо
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
@@ -2597,7 +2658,7 @@
   // ── Группировка вкладок в 4 основные категории ─────────────────────────
   const TAB_GROUPS = {
     battle: { title: "⚔️ Сражения", tabs: [
-      ["battle","⚔️","В бой"], ["pvp","🤺","Дуэль"], ["duel","⚡","Магдуэль"],
+      ["battle","⚔️","В бой"], ["duel","⚡","Магдуэль"],
       ["abilities","⚡","Умения"], ["teambattle","🛡️","Бой 3×3"],
       ["tournament","🏅","Турнир"], ["worldboss","🐲","Босс"], ["triwizard","🏆","Триволшеб."],
       ["war","⚔️","Война"], ["league","📊","Лига"],
@@ -6031,8 +6092,6 @@
       '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:10px;">⚡ Магическая дуэль</div>' +
       rankHtml +
       '<div class="action-btn" style="margin-bottom:8px;background:rgba(255,216,107,0.16);border-color:rgba(255,216,107,0.4);" onclick="openDuelLeague()">🏆 Таблица лидеров</div>' +
-      '<div class="action-btn" style="margin-bottom:8px;background:rgba(108,180,255,0.18);border-color:rgba(108,180,255,0.45);color:#a8d0ff;" onclick="startLivePvP()">🌐 Живой бой с игроком</div>' +
-      '<div style="font-size:11px;color:#9d8fc0;text-align:center;margin-bottom:10px;">— или тренировка с ИИ —</div>' +
       '<div class="action-btn green" style="margin-bottom:8px;" onclick="startDuel(\'easy\')">🧌 Лёгкий <span style="font-size:11px;opacity:0.8;">+12 RP</span></div>' +
       '<div class="action-btn" style="margin-bottom:8px;" onclick="startDuel(\'normal\')">🧙‍♂️ Средний <span style="font-size:11px;opacity:0.8;">+22 RP</span></div>' +
       '<div class="action-btn red" onclick="startDuel(\'hard\')">🦹 Сложный <span style="font-size:11px;opacity:0.8;">+35 RP</span></div>';
@@ -6347,11 +6406,17 @@
     try { if (window._profileCloak && window._profileCloak.id) cloakId = window._profileCloak.id; } catch(e){}
     const cloakFx = CLOAK_DUEL_FX[cloakId] || {};
 
+    // боевые статы профиля (атака/защита/удача) влияют на дуэль
+    let pAtk = 10, pDef = 5, pLuck = 5, pModel = "🧙";
+    try { pAtk = window._profileAtk || 10; pDef = window._profileDef || 5; pLuck = window._profileLuck || 5; pModel = window._profileModel || "🧙"; } catch(e){}
+
     duelState = {
       difficulty: difficulty, aiSkill: diffCfg.ai,
       you: { hp: myHp, maxHp: myHp, r: 4, c: 2, burn: 0, frozen: 0 },   // игрок снизу-центр
       foe: { hp: diffCfg.hp, maxHp: diffCfg.hp, r: 0, c: 2, burn: 0, frozen: 0 }, // враг сверху-центр
       cloakFx: cloakFx,
+      atk: pAtk, def: pDef, luck: pLuck,
+      youEmoji: pModel, foeEmoji: diffCfg.foeEmoji || "🦹",
       spellIds: spellIds, spellLevels: spellLevels,
       selSpell: spellIds[0], selMove: "stay", selAim: null,
       over: false, phase: "choose",
@@ -6571,20 +6636,25 @@
     const casterPos = casterKey === "you" ? s.you : s.foe;
     const lvl = casterKey === "you" ? (s.spellLevels[spellId] || 1) : Math.max(1, Math.round(s.aiSkill * 4));
     const fx = (casterKey === "you" && s.cloakFx) ? s.cloakFx : {};
+    // боевые статы: атака усиливает урон, удача — шанс крита, защита цели снижает урон
+    const atkBonus = casterKey === "you" ? (1 + ((s.atk||10) - 10) * 0.01) : 1;
+    const luckCrit = casterKey === "you" ? Math.min(0.4, 0.05 + ((s.luck||5) * 0.005)) : 0.1;
+    const defReduce = casterKey === "you" ? 1 : (1 - Math.min(0.5, ((s.def||5) - 5) * 0.008));
     // снаряд летит
     await flyDuelProjectile(casterPos, aim, spell.emoji, spell.color);
     // проверка попадания
     const tr = target.r, tc = target.c;
     let dmg = 0, kind = "";
-    const dmgMult = (1 + (lvl-1)*0.04 + (fx.dmg_bonus || 0));
+    let dmgMult = (1 + (lvl-1)*0.04 + (fx.dmg_bonus || 0)) * atkBonus;
+    const luckyCrit = Math.random() < luckCrit;
     if (aim.r === tr && aim.c === tc) {
-      dmg = Math.round(spell.dmg * dmgMult * 1.5);
+      dmg = Math.round(spell.dmg * dmgMult * 1.5 * defReduce);
       kind = "crit";
     } else {
       const splash = splashCells(aim, spell.bigsplash);
       if (splash.some(function(p){ return p.r===tr && p.c===tc; })) {
-        dmg = Math.round(spell.dmg * dmgMult * 0.5);
-        kind = "splash";
+        dmg = Math.round(spell.dmg * dmgMult * (luckyCrit ? 1.0 : 0.5) * defReduce);
+        kind = luckyCrit ? "crit" : "splash";
       }
     }
     flashDuelCell(aim.r, aim.c);
@@ -6712,12 +6782,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v11 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v12 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v11 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v12 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v11 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v12 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
