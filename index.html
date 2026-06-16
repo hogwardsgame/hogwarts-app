@@ -1528,7 +1528,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v3 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v4 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2683,13 +2683,16 @@
     currentTab = tab;
     ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction","abilities"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
-      if (t === tab) {
-        scr.style.display = "block";
-        scr.classList.remove("appearing"); void scr.offsetWidth; scr.classList.add("appearing");
-      } else {
-        scr.style.display = "none";
+      if (scr) {
+        if (t === tab) {
+          scr.style.display = "block";
+          scr.classList.remove("appearing"); void scr.offsetWidth; scr.classList.add("appearing");
+        } else {
+          scr.style.display = "none";
+        }
       }
-      document.getElementById("tab-" + t).classList.toggle("active", t === tab);
+      const tabBtn = document.getElementById("tab-" + t);
+      if (tabBtn) tabBtn.classList.toggle("active", t === tab);
     });
     if (tab === "rating" && !ratingLoaded) { ratingLoaded = true; loadLeaderboard("level"); }
     if (tab === "inventory" && !inventoryLoaded) { inventoryLoaded = true; loadInventory(); }
@@ -6228,12 +6231,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v3 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v4 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v3 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v4 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v3 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v4 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
