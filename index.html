@@ -757,6 +757,14 @@
     pointer-events: none;
   }
   body.perf-mode .duel-ghost { opacity: 0.2; }
+  .duel-fighter.fighter-hit { animation: fighterHit 0.4s; }
+  @keyframes fighterHit {
+    0%,100% { transform: translate(0,0); }
+    20% { transform: translate(-4px,-2px) scale(1.1); filter: brightness(2) drop-shadow(0 0 8px #ff6b6b); }
+    50% { transform: translate(4px,2px); }
+    70% { transform: translate(-2px,1px); }
+  }
+  body.perf-mode .duel-fighter.fighter-hit { animation: none; }
   .duel-fighter.you-piece { }
   .duel-fighter.foe-piece { }
   .duel-cell.hit-flash { animation: duelHitFlash 0.5s; }
@@ -1553,7 +1561,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v6 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v7 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2451,7 +2459,7 @@
     document.getElementById("crest").textContent = data.houseEmoji;
     document.getElementById("rank").textContent  = data.rank;
     document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
-    try { window._profileMaxHp = data.maxHp; } catch(e){}
+    try { window._profileMaxHp = data.maxHp; window._profileCloak = data.cloak || null; } catch(e){}
     document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
     document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
     animateNumber(document.getElementById("atk"), data.atk);
@@ -5979,16 +5987,28 @@
 
   // ══════════════ МАГИЧЕСКАЯ ДУЭЛЬ (сетка 4×4) ══════════════
   const DUEL_SPELLS = {
-    fireball:    { name:"Огненный шар", emoji:"🔥", dmg:18, color:"#ff7a3c", burn:3 },
-    lightning:   { name:"Молния", emoji:"⚡", dmg:12, color:"#c77dff" },
-    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", dmg:14, color:"#5cd8ff", freeze:2 },
-    sun_ray:     { name:"Солнечный луч", emoji:"☀️", dmg:22, color:"#ffe96b" },
-    dark_magic:  { name:"Тёмная магия", emoji:"☠️", dmg:16, color:"#b56cff", burn:2 },
-    wind_blade:  { name:"Ветряной клинок", emoji:"🌀", dmg:15, color:"#9bffb0", bigsplash:true },
+    fireball:    { name:"Огненный шар", emoji:"🔥", dmg:24, color:"#ff7a3c", burn:3 },
+    lightning:   { name:"Молния", emoji:"⚡", dmg:18, color:"#c77dff" },
+    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", dmg:20, color:"#5cd8ff", freeze:2 },
+    sun_ray:     { name:"Солнечный луч", emoji:"☀️", dmg:30, color:"#ffe96b" },
+    dark_magic:  { name:"Тёмная магия", emoji:"☠️", dmg:22, color:"#b56cff", burn:2 },
+    wind_blade:  { name:"Ветряной клинок", emoji:"🌀", dmg:20, color:"#9bffb0", bigsplash:true },
   };
   const GRID = 5;
   let duelState = null;
   let duelBusy = false;
+
+  // Эффекты плащей в дуэли (совпадает с бэкендом)
+  const CLOAK_DUEL_FX = {
+    novice:   {},
+    warrior:  { dmg_bonus: 0.1 },
+    guardian: { shield_bonus: 5 },
+    healer:   { heal_bonus: 0.2 },
+    swift:    { move_bonus: 1 },
+    dark:     { burn_bonus: 3, freeze_bonus: 1 },
+    frost:    { freeze_bonus: 2 },
+    legend:   { dmg_bonus: 0.15, shield_bonus: 5, move_bonus: 1 },
+  };
 
   async function chooseDuelDifficulty() {
     const html =
@@ -6013,8 +6033,12 @@
       const d = await resp.json();
       (d.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e) {}
-    // hp из текущего профиля (глобальная переменная если есть)
+    // hp из текущего профиля, но ограничиваем для баланса дуэли (иначе бой вечный)
     try { if (window._profileMaxHp) myHp = window._profileMaxHp; } catch(e){}
+    // нормализуем: дуэльное HP 100-200 (масштабируем большие значения)
+    let duelHp = Math.round(100 + Math.min(100, (myHp - 100) * 0.2));
+    if (duelHp < 100) duelHp = 100;
+    myHp = duelHp;
     // доступные заклинания — максимум 4 из тех что есть
     let spellIds = Object.keys(myAbils);
     if (spellIds.length === 0) spellIds = ["fireball","lightning","ice_chains","sun_ray"];
@@ -6023,15 +6047,21 @@
     spellIds.forEach(function(id){ spellLevels[id] = myAbils[id] || 1; });
 
     const diffCfg = {
-      easy:   { hp: 80,  name:"🧌 Ученик", ai:0.3 },
-      normal: { hp: 110, name:"🧙‍♂️ Тёмный маг", ai:0.6 },
-      hard:   { hp: 150, name:"🦹 Пожиратель смерти", ai:0.85 },
+      easy:   { hp: 70,  name:"🧌 Ученик", ai:0.35 },
+      normal: { hp: 110, name:"🧙‍♂️ Тёмный маг", ai:0.65 },
+      hard:   { hp: 160, name:"🦹 Пожиратель смерти", ai:0.9 },
     }[difficulty];
+
+    // эффект активного плаща игрока
+    let cloakId = "novice";
+    try { if (window._profileCloak && window._profileCloak.id) cloakId = window._profileCloak.id; } catch(e){}
+    const cloakFx = CLOAK_DUEL_FX[cloakId] || {};
 
     duelState = {
       difficulty: difficulty, aiSkill: diffCfg.ai,
       you: { hp: myHp, maxHp: myHp, r: 4, c: 2, burn: 0, frozen: 0 },   // игрок снизу-центр
       foe: { hp: diffCfg.hp, maxHp: diffCfg.hp, r: 0, c: 2, burn: 0, frozen: 0 }, // враг сверху-центр
+      cloakFx: cloakFx,
       spellIds: spellIds, spellLevels: spellLevels,
       selSpell: spellIds[0], selMove: "stay", selAim: null,
       over: false, phase: "choose",
@@ -6062,8 +6092,9 @@
     // сетка
     const grid = document.getElementById("duel-grid");
     const cells = [];
-    // куда шагнёт игрок (превью)
-    const preview = movedPos(s.you, s.selMove);
+    // куда шагнёт игрок (превью) — с учётом бонуса плаща на дальность
+    const youSteps = 1 + ((s.cloakFx && s.cloakFx.move_bonus) || 0);
+    const preview = movedPos(s.you, s.selMove, youSteps);
     // область удара (превью)
     const curSpell = DUEL_SPELLS[s.selSpell] || {};
     const splash = s.selAim ? splashCells(s.selAim, curSpell.bigsplash) : [];
@@ -6124,10 +6155,11 @@
     if (Math.abs(dr) >= Math.abs(dc)) return dr < 0 ? "wand-up" : "wand-down";
     return dc < 0 ? "wand-left" : "wand-right";
   }
-  function movedPos(fighter, move) {
+  function movedPos(fighter, move, steps) {
+    steps = steps || 1;
     let r = fighter.r, c = fighter.c;
-    if (move === "up") r--; if (move === "down") r++;
-    if (move === "left") c--; if (move === "right") c++;
+    if (move === "up") r -= steps; if (move === "down") r += steps;
+    if (move === "left") c -= steps; if (move === "right") c += steps;
     r = Math.max(0, Math.min(GRID-1, r)); c = Math.max(0, Math.min(GRID-1, c));
     return { r: r, c: c };
   }
@@ -6176,7 +6208,8 @@
 
     // РОЗЫГРЫШ: оба двигаются одновременно (заморозка блокирует движение)
     duelLog("⚔️ Розыгрыш хода...");
-    const youNew = s.you.frozen > 0 ? { r: s.you.r, c: s.you.c } : movedPos(s.you, s.selMove);
+    const youSteps = 1 + ((s.cloakFx && s.cloakFx.move_bonus) || 0);
+    const youNew = s.you.frozen > 0 ? { r: s.you.r, c: s.you.c } : movedPos(s.you, s.selMove, youSteps);
     const foeNew = s.foe.frozen > 0 ? { r: s.foe.r, c: s.foe.c } : movedPos(s.foe, aiChoice.move);
     s.you.r = youNew.r; s.you.c = youNew.c;
     s.foe.r = foeNew.r; s.foe.c = foeNew.c;
@@ -6228,30 +6261,33 @@
     if (!spell || !aim) return;
     const casterPos = casterKey === "you" ? s.you : s.foe;
     const lvl = casterKey === "you" ? (s.spellLevels[spellId] || 1) : Math.max(1, Math.round(s.aiSkill * 4));
+    const fx = (casterKey === "you" && s.cloakFx) ? s.cloakFx : {};
     // снаряд летит
     await flyDuelProjectile(casterPos, aim, spell.emoji, spell.color);
     // проверка попадания
     const tr = target.r, tc = target.c;
     let dmg = 0, kind = "";
+    const dmgMult = (1 + (lvl-1)*0.04 + (fx.dmg_bonus || 0));
     if (aim.r === tr && aim.c === tc) {
-      dmg = Math.round(spell.dmg * (1 + (lvl-1)*0.04) * 1.5);
+      dmg = Math.round(spell.dmg * dmgMult * 1.5);
       kind = "crit";
     } else {
       const splash = splashCells(aim, spell.bigsplash);
       if (splash.some(function(p){ return p.r===tr && p.c===tc; })) {
-        dmg = Math.round(spell.dmg * (1 + (lvl-1)*0.04) * 0.5);
+        dmg = Math.round(spell.dmg * dmgMult * 0.5);
         kind = "splash";
       }
     }
     flashDuelCell(aim.r, aim.c);
     if (dmg > 0) {
       target.hp = Math.max(0, target.hp - dmg);
-      // эффекты при попадании
-      if (spell.burn) { target.burn = Math.max(target.burn, spell.burn); }
-      if (spell.freeze) { target.frozen = Math.max(target.frozen, spell.freeze); }
+      // эффекты при попадании (+ длительность от плаща)
+      if (spell.burn) { target.burn = Math.max(target.burn, spell.burn + (fx.burn_bonus || 0)); }
+      if (spell.freeze) { target.frozen = Math.max(target.frozen, spell.freeze + (fx.freeze_bonus || 0)); }
       const cellIdx = tr * GRID + tc;
       const cell = document.querySelectorAll(".duel-cell")[cellIdx];
       if (cell) spawnArenaText(cell, "-" + dmg + (kind==="crit"?"!":""), kind==="crit"?"#ffd86b":"#ff8a8a");
+      hitShake(target === s.foe ? "foe" : "you");
       if (casterKey === "you") {
         let extra = spell.burn ? " 🔥поджог" : (spell.freeze ? " ❄️заморозка" : "");
         duelLog((kind==="crit" ? "💥 Крит! -"+dmg : "Задел: -"+dmg) + extra);
@@ -6331,6 +6367,17 @@
     const cell = cells[r*GRID + c];
     if (cell) { cell.classList.remove("hit-flash"); void cell.offsetWidth; cell.classList.add("hit-flash"); }
   }
+  function hitShake(who) {
+    const s = duelState; if (!s) return;
+    const f = who === "foe" ? s.foe : s.you;
+    const cells = document.querySelectorAll(".duel-cell");
+    const cell = cells[f.r*GRID + f.c];
+    if (cell) {
+      const fighter = cell.querySelector(".duel-fighter");
+      if (fighter) { fighter.classList.remove("fighter-hit"); void fighter.offsetWidth; fighter.classList.add("fighter-hit"); }
+    }
+    if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("medium"); } catch(e){} }
+  }
 
 
   // стартовая подсветка основной кнопки (профиль → Герой)
@@ -6343,12 +6390,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v6 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v7 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v6 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v7 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v6 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v7 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
