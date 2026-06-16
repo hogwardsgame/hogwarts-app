@@ -1528,6 +1528,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v3 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6219,6 +6220,22 @@
 
   // стартовая подсветка основной кнопки (профиль → Герой)
   syncMainbar();
+
+  // Проверка связи с сервером — показываем статус в профиле
+  (async function checkServer() {
+    const el = document.getElementById("server-status");
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
+      if (resp.ok || resp.status === 401 || resp.status === 400) {
+        if (el) { el.textContent = "v3 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+      } else {
+        if (el) { el.textContent = "v3 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+      }
+    } catch (e) {
+      if (el) { el.textContent = "v3 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+    }
+  })();
 
   // Гасим transition наклона во время прокрутки уже не нужно — наклон убран
 
