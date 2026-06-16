@@ -724,14 +724,39 @@
     box-shadow: inset 0 1px 3px rgba(255,255,255,0.05);
   }
   .duel-cell.move-target { box-shadow: inset 0 0 0 2px #5cff8a; background: rgba(92,255,138,0.12); }
-  .duel-cell.aim-target { box-shadow: inset 0 0 0 2px #ff6b6b; background: rgba(255,107,107,0.15); }
-  .duel-cell.aim-splash { background: rgba(255,107,107,0.07); }
+  .duel-cell.aim-target {
+    box-shadow: inset 0 0 0 3px #ff6b6b, 0 0 12px rgba(255,107,107,0.5);
+    background: rgba(255,107,107,0.22);
+  }
+  .duel-cell.aim-target::after {
+    content: "🎯"; position: absolute; top: 1px; right: 2px; font-size: 11px; opacity: 0.85;
+  }
+  .duel-cell.aim-splash { background: rgba(255,107,107,0.09); box-shadow: inset 0 0 0 1px rgba(255,107,107,0.3); }
   .duel-fighter {
     font-size: 26px; line-height: 1; z-index: 2;
     transition: transform 0.4s cubic-bezier(0.3,0.9,0.4,1);
     filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
   }
   body.perf-mode .duel-fighter { transition: none; filter: none; }
+  /* палочка персонажа */
+  .duel-fighter { position: relative; }
+  .duel-wand {
+    position: absolute; font-size: 14px; line-height: 1;
+    transition: transform 0.2s; pointer-events: none;
+  }
+  .duel-wand.wand-up    { top: -8px; left: 50%; transform: translateX(-50%) rotate(-45deg); }
+  .duel-wand.wand-down  { bottom: -8px; left: 50%; transform: translateX(-50%) rotate(135deg); }
+  .duel-wand.wand-left  { left: -10px; top: 50%; transform: translateY(-50%) rotate(-135deg); }
+  .duel-wand.wand-right { right: -10px; top: 50%; transform: translateY(-50%) rotate(45deg); }
+  .duel-wand.foe-wand   { bottom: -8px; right: -4px; transform: rotate(135deg); }
+  /* призрак-след на старой клетке */
+  .duel-ghost {
+    position: absolute; font-size: 24px; opacity: 0.28;
+    filter: grayscale(0.5);
+    left: 50%; top: 50%; transform: translate(-50%,-50%);
+    pointer-events: none;
+  }
+  body.perf-mode .duel-ghost { opacity: 0.2; }
   .duel-fighter.you-piece { }
   .duel-fighter.foe-piece { }
   .duel-cell.hit-flash { animation: duelHitFlash 0.5s; }
@@ -1528,7 +1553,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v4 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v5 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -5975,6 +6000,11 @@
     const curSpell = DUEL_SPELLS[s.selSpell] || {};
     const splash = s.selAim ? splashCells(s.selAim, curSpell.bigsplash) : [];
     let html = "";
+    // позиция игрока для отрисовки: во время выбора — превью-клетка
+    const youDraw = (s.phase === "choose") ? preview : { r: s.you.r, c: s.you.c };
+    const showGhost = (s.phase === "choose") && (youDraw.r !== s.you.r || youDraw.c !== s.you.c);
+    // направление палочки игрока — к клетке прицела
+    const wandDir = s.selAim ? aimDirection(youDraw, s.selAim) : "";
     for (let r = 0; r < GRID; r++) {
       for (let c = 0; c < GRID; c++) {
         let cls = "duel-cell";
@@ -5982,8 +6012,17 @@
         if (s.selAim && s.selAim.r === r && s.selAim.c === c) cls += " aim-target";
         else if (splash.some(function(p){ return p.r===r && p.c===c; })) cls += " aim-splash";
         let content = "";
-        if (s.you.r === r && s.you.c === c) content = '<span class="duel-fighter you-piece">🧙'+effIcon(s.you)+'</span>';
-        if (s.foe.r === r && s.foe.c === c) content = '<span class="duel-fighter foe-piece">🦹'+effIcon(s.foe)+'</span>';
+        // призрак-след на старой клетке игрока
+        if (showGhost && s.you.r === r && s.you.c === c) {
+          content += '<span class="duel-ghost">🧙</span>';
+        }
+        // игрок на (превью или реальной) клетке
+        if (youDraw.r === r && youDraw.c === c) {
+          content += '<span class="duel-fighter you-piece">🧙<span class="duel-wand '+wandDir+'">🪄</span>'+effIcon(s.you)+'</span>';
+        }
+        if (s.foe.r === r && s.foe.c === c) {
+          content += '<span class="duel-fighter foe-piece">🦹<span class="duel-wand foe-wand">🪄</span>'+effIcon(s.foe)+'</span>';
+        }
         html += '<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'" onclick="duelAim('+r+','+c+')">'+content+'</div>';
       }
     }
@@ -6011,6 +6050,11 @@
     if (f.burn > 0) s += '<span style="font-size:12px;position:absolute;margin-left:-4px;margin-top:-8px;">🔥</span>';
     if (f.frozen > 0) s += '<span style="font-size:12px;position:absolute;margin-left:-4px;margin-top:8px;">❄️</span>';
     return s;
+  }
+  function aimDirection(from, to) {
+    const dr = to.r - from.r, dc = to.c - from.c;
+    if (Math.abs(dr) >= Math.abs(dc)) return dr < 0 ? "wand-up" : "wand-down";
+    return dc < 0 ? "wand-left" : "wand-right";
   }
   function movedPos(fighter, move) {
     let r = fighter.r, c = fighter.c;
@@ -6231,12 +6275,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v4 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v5 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v4 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v5 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v4 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v5 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
