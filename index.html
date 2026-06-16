@@ -1570,7 +1570,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v10 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v11 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6203,10 +6203,18 @@
     // используем тот же оверлей дуэли
     liveState = { mySide: pvpMatch.side, sel: { move:"stay", spell:null, aim:null }, waiting:false, lastTurn:0 };
     // настраиваем заклинания (берём 4 базовых)
+    // моя моделька по факультету (до первой синхронизации)
+    let myEmoji = "🧙";
+    try {
+      const he = { "Гриффиндор":"🦁", "Слизерин":"🐍", "Когтевран":"🦅", "Пуффендуй":"🦡" };
+      const myHouse = document.getElementById("house") ? document.getElementById("house").textContent.trim() : "";
+      if (he[myHouse]) myEmoji = he[myHouse];
+    } catch(e){}
     duelState = {
       live: true, difficulty: "pvp",
       you: { hp:130, maxHp:130, r:4, c:2, burn:0, frozen:0 },
       foe: { hp:130, maxHp:130, r:0, c:2, burn:0, frozen:0 },
+      youEmoji: myEmoji, foeEmoji: "🌐",
       cloakFx: {}, spellIds: ["fireball","ice_chains","lightning","sun_ray"],
       spellLevels: {fireball:1,ice_chains:1,lightning:1,sun_ray:1},
       selSpell: "fireball", selMove:"stay", selAim:null,
@@ -6254,6 +6262,14 @@
     // side — это я (p1/p2). Маппим p1/p2 на you/foe
     const meKey = side, foeKey = side === "p1" ? "p2" : "p1";
     const me = st[meKey], fo = st[foeKey];
+    // модельки персонажей из серверного состояния (синхронны для обоих телефонов)
+    if (me.emoji) duelState.youEmoji = me.emoji;
+    if (fo.emoji) duelState.foeEmoji = fo.emoji;
+    if (me.name) duelState.youName = me.name;
+    if (fo.name) duelState.foeName = fo.name;
+    // имя соперника в шапке
+    const foeNameEl = document.getElementById("duel-foe-name");
+    if (foeNameEl && fo.name && fo.name !== "Ожидание...") foeNameEl.textContent = (fo.emoji||"🌐") + " " + fo.name;
     // обновляем позиции/HP только если изменился ход (чтобы не перетирать выбор)
     const turnChanged = st.turn !== (liveState.lastTurn || 1);
     duelState.you.hp = me.hp; duelState.you.maxHp = me.maxHp;
@@ -6385,16 +6401,19 @@
         if (s.selAim && s.selAim.r === r && s.selAim.c === c) cls += " aim-target";
         else if (splash.some(function(p){ return p.r===r && p.c===c; })) cls += " aim-splash";
         let content = "";
+        // модельки: в живом бою из сервера, иначе дефолтные
+        const youEmoji = s.youEmoji || "🧙";
+        const foeEmoji = s.foeEmoji || "🦹";
         // призрак-след на старой клетке игрока
         if (showGhost && s.you.r === r && s.you.c === c) {
-          content += '<span class="duel-ghost">🧙</span>';
+          content += '<span class="duel-ghost">'+youEmoji+'</span>';
         }
         // игрок на (превью или реальной) клетке
         if (youDraw.r === r && youDraw.c === c) {
-          content += '<span class="duel-fighter you-piece">🧙<span class="duel-wand '+wandDir+'">🪄</span>'+effIcon(s.you)+'</span>';
+          content += '<span class="duel-fighter you-piece">'+youEmoji+'<span class="duel-wand '+wandDir+'">🪄</span>'+effIcon(s.you)+'</span>';
         }
         if (s.foe.r === r && s.foe.c === c) {
-          content += '<span class="duel-fighter foe-piece">🦹<span class="duel-wand foe-wand">🪄</span>'+effIcon(s.foe)+'</span>';
+          content += '<span class="duel-fighter foe-piece">'+foeEmoji+'<span class="duel-wand foe-wand">🪄</span>'+effIcon(s.foe)+'</span>';
         }
         html += '<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'" onclick="duelAim('+r+','+c+')">'+content+'</div>';
       }
@@ -6693,12 +6712,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v10 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v11 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v10 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v11 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v10 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v11 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
