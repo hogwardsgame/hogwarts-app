@@ -765,6 +765,8 @@
     70% { transform: translate(-2px,1px); }
   }
   body.perf-mode .duel-fighter.fighter-hit { animation: none; }
+  .pvp-spin { display: inline-block; animation: pvpSpin 1.5s linear infinite; }
+  @keyframes pvpSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
   .duel-fighter.you-piece { }
   .duel-fighter.foe-piece { }
   .duel-cell.hit-flash { animation: duelHitFlash 0.5s; }
@@ -1561,7 +1563,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v7 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v9 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2459,7 +2461,7 @@
     document.getElementById("crest").textContent = data.houseEmoji;
     document.getElementById("rank").textContent  = data.rank;
     document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
-    try { window._profileMaxHp = data.maxHp; window._profileCloak = data.cloak || null; } catch(e){}
+    try { window._profileMaxHp = data.maxHp; window._profileCloak = data.cloak || null; window._profileId = data.id || null; } catch(e){}
     document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
     document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
     animateNumber(document.getElementById("atk"), data.atk);
@@ -6011,17 +6013,280 @@
   };
 
   async function chooseDuelDifficulty() {
+    let rankHtml = "";
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "me" }) });
+      const d = await resp.json();
+      if (d.league) {
+        rankHtml = '<div style="text-align:center;margin-bottom:12px;padding:10px;border-radius:11px;background:rgba(255,216,107,0.1);">' +
+          '<div style="font-size:20px;color:#ffe9a8;">'+d.league.emoji+' '+d.league.name+'</div>' +
+          '<div style="font-size:13px;color:#d8cdf0;margin-top:3px;">Рейтинг: '+d.rating+' RP'+(d.league.toNext>0?' • до '+d.league.nextEmoji+' '+d.league.toNext:'')+'</div>' +
+          '<div style="font-size:11px;color:#9d8fc0;margin-top:2px;">Побед: '+d.wins+' • Винрейт: '+d.winrate+'%'+(d.streak>=2?' • 🔥'+d.streak:'')+'</div></div>';
+      }
+    } catch(e) {}
     const html =
-      '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:12px;">⚡ Магическая дуэль</div>' +
-      '<div style="font-size:12px;color:#b0a3d0;text-align:center;margin-bottom:14px;">Поле 4×4. Выбери заклинание, шаг и клетку для удара. Ходы разыгрываются одновременно — предугадай движение врага!</div>' +
-      '<div class="action-btn green" style="margin-bottom:8px;" onclick="startDuel(\'easy\')">🧌 Лёгкий</div>' +
-      '<div class="action-btn" style="margin-bottom:8px;" onclick="startDuel(\'normal\')">🧙‍♂️ Средний</div>' +
-      '<div class="action-btn red" onclick="startDuel(\'hard\')">🦹 Сложный</div>';
+      '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:10px;">⚡ Магическая дуэль</div>' +
+      rankHtml +
+      '<div class="action-btn" style="margin-bottom:8px;background:rgba(255,216,107,0.16);border-color:rgba(255,216,107,0.4);" onclick="openDuelLeague()">🏆 Таблица лидеров</div>' +
+      '<div class="action-btn" style="margin-bottom:8px;background:rgba(108,180,255,0.18);border-color:rgba(108,180,255,0.45);color:#a8d0ff;" onclick="startLivePvP()">🌐 Живой бой с игроком</div>' +
+      '<div style="font-size:11px;color:#9d8fc0;text-align:center;margin-bottom:10px;">— или тренировка с ИИ —</div>' +
+      '<div class="action-btn green" style="margin-bottom:8px;" onclick="startDuel(\'easy\')">🧌 Лёгкий <span style="font-size:11px;opacity:0.8;">+12 RP</span></div>' +
+      '<div class="action-btn" style="margin-bottom:8px;" onclick="startDuel(\'normal\')">🧙‍♂️ Средний <span style="font-size:11px;opacity:0.8;">+22 RP</span></div>' +
+      '<div class="action-btn red" onclick="startDuel(\'hard\')">🦹 Сложный <span style="font-size:11px;opacity:0.8;">+35 RP</span></div>';
     document.getElementById("pubprofile-body").innerHTML = html;
     document.getElementById("pubprofile-backdrop").classList.add("show");
     document.getElementById("pubprofile-modal").classList.add("show");
   }
+  async function openDuelLeague() {
+    const body = document.getElementById("pubprofile-body");
+    body.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "top" }) });
+      const d = await resp.json();
+      let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏆 Таблица лидеров</div>';
+      if (d.me) html += '<div style="text-align:center;font-size:12px;color:#d8cdf0;margin-bottom:12px;">Ты: '+d.me.leagueEmoji+' '+d.me.league+' • '+d.me.rating+' RP</div>';
+      if (d.top && d.top.length) {
+        html += d.top.map(function(p, i){
+          const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+".";
+          return '<div class="quest-card" style="padding:9px 11px;"><div style="display:flex;align-items:center;gap:8px;">' +
+                 '<span style="width:26px;font-weight:700;color:#ffd86b;">'+medal+'</span>' +
+                 '<span style="flex:1;color:#f4f0e6;">'+p.leagueEmoji+' '+p.name+'</span>' +
+                 '<span style="color:#ffe9a8;font-weight:700;">'+p.rating+'</span></div></div>';
+        }).join("");
+      } else {
+        html += '<div class="lb-empty">Пока никто не сыграл рейтинговых боёв</div>';
+      }
+      html += '<div class="action-btn" style="margin-top:12px;" onclick="chooseDuelDifficulty()">← Назад</div>';
+      body.innerHTML = html;
+    } catch(e) { body.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
   function startDuel(diff) { closePubProfile(); openDuel(diff); }
+
+  // ══════════════ ЖИВОЙ PvP ══════════════
+  let pvpMatch = null;    // { matchId, side }
+  let pvpPoll = null;     // интервал опроса
+  let pvpSearching = false;
+
+  async function pvpReq(action, extra) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const resp = await apiFetch(API_URL + "/api/pvpduel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) }, 12000);
+    return await resp.json();
+  }
+
+  function startLivePvP() {
+    const html =
+      '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:14px;">🌐 Живой бой</div>' +
+      '<div style="font-size:12px;color:#b0a3d0;text-align:center;margin-bottom:14px;">Сразись с реальным игроком. Ходы разыгрываются одновременно.</div>' +
+      '<div class="action-btn green" style="margin-bottom:8px;" onclick="pvpFindMatch()">🔍 Найти соперника</div>' +
+      '<div class="action-btn" style="margin-bottom:8px;" onclick="pvpCreateInvite()">📨 Создать бой для друга</div>' +
+      '<div class="action-btn" style="margin-bottom:8px;" onclick="pvpJoinPrompt()">🔗 Войти по ID друга</div>' +
+      '<div class="action-btn" style="opacity:0.7;" onclick="chooseDuelDifficulty()">← Назад</div>';
+    document.getElementById("pubprofile-body").innerHTML = html;
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
+  }
+
+  // Поиск случайного соперника
+  async function pvpFindMatch() {
+    pvpSearching = true;
+    const body = document.getElementById("pubprofile-body");
+    body.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:18px;color:#ffe9a8;font-family:Cinzel,serif;">🔍 Ищем соперника...</div>' +
+      '<div style="font-size:32px;margin:18px 0;" class="pvp-spin">⚔️</div>' +
+      '<div style="font-size:12px;color:#9d8fc0;">Если никого нет за 25 сек — предложим бой с ИИ</div>' +
+      '<div class="action-btn" style="margin-top:16px;" onclick="pvpCancelSearch()">Отмена</div></div>';
+    let attempts = 0;
+    const poll = async function() {
+      if (!pvpSearching) return;
+      attempts++;
+      try {
+        const d = await pvpReq("find");
+        if (d.status === "matched") {
+          pvpSearching = false;
+          pvpMatch = { matchId: d.matchId, side: d.side };
+          openLiveDuel();
+          return;
+        }
+      } catch(e) {}
+      if (attempts >= 13) { // ~25 сек
+        pvpSearching = false;
+        try { await pvpReq("cancel"); } catch(e){}
+        const body2 = document.getElementById("pubprofile-body");
+        if (body2) body2.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:16px;color:#ffe9a8;">Соперник не найден 😔</div>' +
+          '<div style="font-size:12px;color:#b0a3d0;margin:12px 0;">Попробуй позже или сыграй с ИИ</div>' +
+          '<div class="action-btn green" style="margin-bottom:8px;" onclick="startDuel(\'normal\')">🧙‍♂️ Бой с ИИ</div>' +
+          '<div class="action-btn" onclick="pvpFindMatch()">🔍 Искать снова</div></div>';
+        return;
+      }
+      setTimeout(poll, 2000);
+    };
+    poll();
+  }
+  async function pvpCancelSearch() {
+    pvpSearching = false;
+    try { await pvpReq("cancel"); } catch(e){}
+    closePubProfile();
+  }
+
+  // Создать приглашение для друга
+  async function pvpCreateInvite() {
+    try {
+      const d = await pvpReq("invite");
+      const myId = (window._profileId || "");
+      pvpMatch = { matchId: d.matchId, side: "p1" };
+      const body = document.getElementById("pubprofile-body");
+      body.innerHTML = '<div style="text-align:center;padding:16px;"><div style="font-size:17px;color:#ffe9a8;font-family:Cinzel,serif;margin-bottom:10px;">📨 Бой создан!</div>' +
+        '<div style="font-size:13px;color:#d8cdf0;margin-bottom:6px;">Скажи другу твой ID:</div>' +
+        '<div style="font-size:24px;color:#ffd86b;font-weight:800;margin-bottom:6px;">'+myId+'</div>' +
+        '<div style="font-size:11px;color:#9d8fc0;margin-bottom:14px;">Друг заходит в «Войти по ID друга» и вводит его</div>' +
+        '<div style="font-size:14px;color:#ffe9a8;" class="pvp-spin">⏳ Ждём друга...</div>' +
+        '<div class="action-btn" style="margin-top:16px;" onclick="pvpCancelMatch()">Отмена</div></div>';
+      // ждём, пока друг присоединится
+      pvpWaitForJoin();
+    } catch(e) {}
+  }
+  function pvpWaitForJoin() {
+    if (!pvpMatch) return;
+    const check = async function() {
+      if (!pvpMatch) return;
+      try {
+        const d = await pvpReq("state", { matchId: pvpMatch.matchId });
+        if (d.ok && d.bothJoined) { openLiveDuel(); return; }
+      } catch(e){}
+      setTimeout(check, 2000);
+    };
+    check();
+  }
+
+  function pvpJoinPrompt() {
+    const body = document.getElementById("pubprofile-body");
+    body.innerHTML = '<div style="text-align:center;padding:16px;"><div style="font-size:16px;color:#ffe9a8;margin-bottom:12px;">🔗 Войти по ID друга</div>' +
+      '<input id="pvp-join-id" class="gold-input" placeholder="ID друга" inputmode="numeric" style="margin-bottom:12px;text-align:center;">' +
+      '<div class="action-btn green" style="margin-bottom:8px;" onclick="pvpDoJoin()">Войти в бой</div>' +
+      '<div class="action-btn" onclick="startLivePvP()">← Назад</div></div>';
+  }
+  async function pvpDoJoin() {
+    const inp = document.getElementById("pvp-join-id");
+    const hostId = inp ? inp.value.trim() : "";
+    if (!hostId) return;
+    try {
+      const d = await pvpReq("join", { hostId: hostId });
+      if (d.status === "matched") {
+        pvpMatch = { matchId: d.matchId, side: d.side };
+        openLiveDuel();
+      } else if (d.status === "notfound") {
+        inp.style.borderColor = "#ff6b6b";
+        const b = document.getElementById("pubprofile-body");
+        const warn = document.createElement("div");
+        warn.style.cssText = "color:#ff8a8a;font-size:12px;margin-top:8px;text-align:center;";
+        warn.textContent = "Бой не найден. Друг должен сначала создать бой.";
+        b.appendChild(warn);
+      } else if (d.status === "full") {
+        alert("Бой уже занят");
+      }
+    } catch(e) {}
+  }
+  async function pvpCancelMatch() {
+    pvpMatch = null;
+    try { await pvpReq("cancel"); } catch(e){}
+    closePubProfile();
+  }
+
+  // ── Сам живой бой ──
+  let liveState = null;
+  function openLiveDuel() {
+    closePubProfile();
+    // используем тот же оверлей дуэли
+    liveState = { mySide: pvpMatch.side, sel: { move:"stay", spell:null, aim:null }, waiting:false, lastTurn:0 };
+    // настраиваем заклинания (берём 4 базовых)
+    duelState = {
+      live: true, difficulty: "pvp",
+      you: { hp:130, maxHp:130, r:4, c:2, burn:0, frozen:0 },
+      foe: { hp:130, maxHp:130, r:0, c:2, burn:0, frozen:0 },
+      cloakFx: {}, spellIds: ["fireball","ice_chains","lightning","sun_ray"],
+      spellLevels: {fireball:1,ice_chains:1,lightning:1,sun_ray:1},
+      selSpell: "fireball", selMove:"stay", selAim:null,
+      over:false, phase:"choose",
+    };
+    document.getElementById("duel-foe-name").textContent = "🌐 Соперник";
+    document.getElementById("duel-overlay").style.display = "flex";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeLiveDuel); } catch(e){} }
+    renderDuel();
+    duelLog("⚔️ Живой бой! Выбери ход.");
+    startLivePoll();
+  }
+  function closeLiveDuel() {
+    stopLivePoll();
+    document.getElementById("duel-overlay").style.display = "none";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.hide(); tg.BackButton.offClick(closeLiveDuel); } catch(e){} }
+    duelState = null; pvpMatch = null; liveState = null;
+    loadProfile();
+  }
+  function startLivePoll() {
+    stopLivePoll();
+    pvpPoll = setInterval(syncLiveDuel, 1500);
+  }
+  function stopLivePoll() {
+    if (pvpPoll) { clearInterval(pvpPoll); pvpPoll = null; }
+  }
+  async function syncLiveDuel() {
+    if (!pvpMatch || !duelState || duelState.over) return;
+    try {
+      const d = await pvpReq("state", { matchId: pvpMatch.matchId });
+      if (!d.ok || !d.state) return;
+      applyLiveState(d.state, d.side);
+    } catch(e){}
+  }
+  function applyLiveState(st, side) {
+    // side — это я (p1/p2). Маппим p1/p2 на you/foe
+    const meKey = side, foeKey = side === "p1" ? "p2" : "p1";
+    const me = st[meKey], fo = st[foeKey];
+    // обновляем позиции/HP только если изменился ход (чтобы не перетирать выбор)
+    const turnChanged = st.turn !== (liveState.lastTurn || 1);
+    duelState.you.hp = me.hp; duelState.you.maxHp = me.maxHp;
+    duelState.foe.hp = fo.hp; duelState.foe.maxHp = fo.maxHp;
+    duelState.you.burn = me.burn; duelState.you.frozen = me.frozen;
+    duelState.foe.burn = fo.burn; duelState.foe.frozen = fo.frozen;
+    if (turnChanged || !liveState.waiting) {
+      duelState.you.r = me.r; duelState.you.c = me.c;
+      duelState.foe.r = fo.r; duelState.foe.c = fo.c;
+    }
+    if (st.log) duelLog(st.log);
+    if (turnChanged) {
+      // новый ход — сбрасываем выбор, можно ходить
+      liveState.lastTurn = st.turn;
+      liveState.waiting = false;
+      duelState.over = false; duelState.phase = "choose";
+      duelState.selAim = null; duelState.selMove = "stay";
+      document.getElementById("duel-confirm").classList.remove("disabled");
+      document.getElementById("duel-confirm").textContent = "Подтвердить ход";
+    }
+    renderDuel();
+    if (st.over) {
+      stopLivePoll();
+      const myId = window._profileId || 0;
+      const won = st.winner === myId;
+      const draw = st.winner === 0;
+      duelState.over = true;
+      document.getElementById("duel-result-title").textContent = draw ? "🤝 НИЧЬЯ" : (won ? "🏆 ПОБЕДА!" : "☠️ ПОРАЖЕНИЕ");
+      document.getElementById("duel-result-title").style.color = won ? "#ffd86b" : (draw ? "#b0a3d0" : "#ff6b6b");
+      // начисляем рейтинг за живой бой
+      if (!draw) {
+        pvpReq("state", { matchId: pvpMatch.matchId }); // финализация
+        apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: (tg&&tg.initData)?tg.initData:"", won: won, difficulty: "hard" }) }).then(function(r){return r.json();}).then(function(rd){
+          document.getElementById("duel-result-reward").textContent = won ? (rd.msg||"Победа в живом бою!") : "Поражение в живом бою";
+        }).catch(function(){});
+      } else {
+        document.getElementById("duel-result-reward").textContent = "Ничья!";
+      }
+      document.getElementById("duel-result").classList.add("show");
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won?"success":"error"); } catch(e){} }
+    }
+  }
 
   async function openDuel(difficulty) {
     difficulty = difficulty || "normal";
@@ -6199,6 +6464,22 @@
   async function duelConfirm() {
     const s = duelState;
     if (!s || s.phase !== "choose" || !s.selAim || duelBusy) return;
+    // ЖИВОЙ РЕЖИМ: отправляем ход на сервер и ждём соперника
+    if (s.live) {
+      duelBusy = true;
+      document.getElementById("duel-confirm").classList.add("disabled");
+      document.getElementById("duel-confirm").textContent = "⏳ Ждём соперника...";
+      liveState.waiting = true;
+      try {
+        await pvpReq("move", { matchId: pvpMatch.matchId, move: s.selMove, spell: s.selSpell, aim: s.selAim });
+        duelLog("Ход отправлен. Ждём соперника...");
+      } catch(e) {
+        document.getElementById("duel-confirm").classList.remove("disabled");
+        document.getElementById("duel-confirm").textContent = "Подтвердить ход";
+      }
+      duelBusy = false;
+      return;
+    }
     duelBusy = true;
     s.phase = "resolve";
     document.getElementById("duel-confirm").classList.add("disabled");
@@ -6325,16 +6606,29 @@
 
   async function endDuel(won) {
     duelState.over = true;
-    let rewardMsg = "";
+    let rewardMsg = "", ratingHtml = "";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, won: won, difficulty: duelState.difficulty }) });
       const d = await resp.json();
       rewardMsg = d.msg || "";
+      if (d.rating != null) {
+        const delta = d.ratingDelta || 0;
+        const deltaStr = (delta >= 0 ? "+" : "") + delta;
+        const deltaColor = delta >= 0 ? "#9be8c0" : "#ff8a8a";
+        const lg = d.league || {};
+        ratingHtml = '<div style="margin-top:14px;font-size:14px;color:#d8cdf0;">Рейтинг: <b>'+d.rating+'</b> <span style="color:'+deltaColor+';">('+deltaStr+')</span></div>' +
+          '<div style="font-size:15px;color:#ffe9a8;margin-top:4px;">'+(lg.emoji||'')+' '+(lg.name||'')+'</div>';
+        if (d.leagueUp) ratingHtml += '<div style="font-size:16px;color:#ffd86b;margin-top:6px;">⬆️ Новая лига!</div>';
+        if (d.streak >= 3) ratingHtml += '<div style="font-size:13px;color:#ff9a5c;margin-top:4px;">🔥 Серия побед: '+d.streak+'</div>';
+      }
+      if (d.unlockedCloak) {
+        ratingHtml += '<div style="margin-top:10px;font-size:14px;color:#ffae3c;">🧥 Новый плащ: '+d.unlockedCloak.emoji+' '+d.unlockedCloak.name+'</div>';
+      }
     } catch(e) {}
     document.getElementById("duel-result-title").textContent = won ? "🏆 ПОБЕДА!" : "☠️ ПОРАЖЕНИЕ";
     document.getElementById("duel-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
-    document.getElementById("duel-result-reward").textContent = rewardMsg;
+    document.getElementById("duel-result-reward").innerHTML = rewardMsg + ratingHtml;
     document.getElementById("duel-result").classList.add("show");
     if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won ? "success" : "error"); } catch(e){} }
     inventoryLoaded = false;
@@ -6390,12 +6684,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v7 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v9 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v7 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v9 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v7 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v9 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
