@@ -790,6 +790,17 @@
   .castle-cell.exit { background: rgba(92,255,138,0.18); }
   .castle-cell.player { background: rgba(108,180,255,0.25); box-shadow: inset 0 0 0 2px #6cb4ff; }
   .castle-log { position: relative; z-index: 3; text-align: center; min-height: 22px; font-size: 13px; color: #d8cdf0; font-family:"Cinzel",serif; padding: 4px 16px; }
+  /* ── Чат ── */
+  .chat-feed { height: 56vh; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 6px; padding: 8px 4px; margin: 8px 0; }
+  .chat-msg { font-size: 13px; line-height: 1.4; word-break: break-word; }
+  .chat-msg .cm-name { font-weight: 700; }
+  .chat-msg .cm-rank { font-size: 10px; color: #8a7da8; margin-left: 3px; }
+  .chat-msg .cm-text { color: #e8e2f5; }
+  .chat-msg.system { text-align: center; color: #ffd86b; font-size: 12px; font-style: italic; padding: 4px 0; }
+  .chat-input-row { display: flex; gap: 8px; align-items: center; }
+  .chat-input { flex: 1; padding: 11px 14px; border-radius: 22px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #f4f0e6; font-size: 14px; outline: none; }
+  .chat-send { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(145deg,#7c5cff,#5c3cdb); display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; cursor: pointer; }
+  .chat-send:active { transform: scale(0.92); }
   .duel-fighter.you-piece { }
   .duel-fighter.foe-piece { }
   .duel-cell.hit-flash { animation: duelHitFlash 0.5s; }
@@ -1594,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v17 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v19 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -1948,6 +1959,18 @@
     <div id="cloaks-content"><div class="lb-empty">Загрузка...</div></div>
   </div>
 </div><!-- /screen-cloaks -->
+
+<div id="screen-chat" class="screen" style="display:none;">
+  <div class="card" style="padding:12px;">
+    <div class="lb-title">💬 Мировой чат</div>
+    <div id="chat-feed" class="chat-feed"></div>
+    <div class="chat-input-row">
+      <input id="chat-input" class="chat-input" placeholder="Сообщение..." maxlength="200">
+      <div class="chat-send" onclick="sendChat()">➤</div>
+    </div>
+    <div id="chat-hint" style="font-size:10px;color:#9d8fc0;text-align:center;margin-top:4px;"></div>
+  </div>
+</div><!-- /screen-chat -->
 
 <div class="pubprofile-backdrop" id="pubprofile-backdrop" onclick="closePubProfile()"></div>
 <div class="pubprofile-modal" id="pubprofile-modal">
@@ -2730,7 +2753,7 @@
       ["room","🏠","Комната"], ["trade","💸","Перевод"],
     ]},
     study: { title: "📚 Занятия", tabs: [
-      ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"],
+      ["chat","💬","Чат"], ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"],
       ["events","🎉","События"], ["cup","🏰","Кубок"], ["rating","🏆","Рейтинг"],
       ["settings","⚙️","Настройки"],
     ]},
@@ -2850,7 +2873,7 @@
     if (tab === "duel" || tab === "cards" || tab === "arena") { chooseDuelDifficulty(); return; }
     if (tab === "worldboss") { openBossMenu(); return; }
     currentTab = tab;
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks","chat"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
       if (scr) {
         if (t === tab) {
@@ -2895,6 +2918,8 @@
     if (tab === "auction" && !auctionLoaded) { auctionLoaded = true; aucSwitch('buy'); }
     if (tab === "abilities") { loadAbilities(); }
     if (tab === "cloaks") { loadCloaks(); }
+    if (tab === "chat") { openChat(); }
+    else { if (typeof stopChatPoll === "function") stopChatPoll(); }
     syncMainbar();
   }
 
@@ -2980,6 +3005,67 @@
     html += '<div class="pet-msg" id="cloaks-msg"></div>';
     box.innerHTML = html;
   }
+  // ── Мировой чат ──
+  let chatPoll = null;
+  let chatBusy = false;
+  async function openChat() {
+    document.getElementById("chat-feed").innerHTML = '<div class="lb-empty">Загрузка чата...</div>';
+    await loadChatFeed(true);
+    startChatPoll();
+    try {
+      if (window._profileId === 6903827237) {
+        document.getElementById("chat-hint").textContent = "Админ: /gold <id> <кол-во> • /item <id> <предмет> • /badge <id> <значок> • /say <текст> • /clear";
+      }
+    } catch(e){}
+  }
+  function startChatPoll() { stopChatPoll(); chatPoll = setInterval(function(){ loadChatFeed(false); }, 3000); }
+  function stopChatPoll() { if (chatPoll) { clearInterval(chatPoll); chatPoll = null; } }
+  async function loadChatFeed(scrollDown) {
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "feed", afterId: 0 }) });
+      const d = await resp.json();
+      renderChatFeed(d.messages || [], scrollDown);
+    } catch(e){}
+  }
+  function renderChatFeed(messages, scrollDown) {
+    const feed = document.getElementById("chat-feed");
+    if (!feed) return;
+    if (!messages.length) { feed.innerHTML = '<div class="lb-empty">Пока тихо. Напиши первым!</div>'; return; }
+    const wasBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
+    feed.innerHTML = messages.map(function(m){
+      if (m.isSystem) return '<div class="chat-msg system">'+escHtml(m.text)+'</div>';
+      const badges = (m.badges||[]).join("");
+      const lvl = m.level ? '<span class="cm-rank">'+m.rank+' '+m.level+'</span>' : '';
+      return '<div class="chat-msg">' +
+        '<span class="cm-name" style="color:'+m.nameColor+';">'+badges+m.houseEmoji+' '+escHtml(m.name)+'</span>'+lvl+
+        ': <span class="cm-text">'+escHtml(m.text)+'</span></div>';
+    }).join("");
+    if (scrollDown || wasBottom) feed.scrollTop = feed.scrollHeight;
+  }
+  function escHtml(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  async function sendChat() {
+    if (chatBusy) return;
+    const inp = document.getElementById("chat-input");
+    const text = inp ? inp.value.trim() : "";
+    if (!text) return;
+    chatBusy = true;
+    inp.value = "";
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "send", text: text }) });
+      const d = await resp.json();
+      if (d.isCommand && d.cmdMsg) {
+        const hint = document.getElementById("chat-hint");
+        if (hint) { hint.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; hint.textContent = d.cmdMsg; }
+      } else if (d.error === "flood") {
+        const hint = document.getElementById("chat-hint");
+        if (hint) { hint.style.color = "#ffb0b0"; hint.textContent = "Не так быстро!"; }
+      }
+      renderChatFeed(d.messages || [], true);
+    } catch(e){} finally { chatBusy = false; }
+  }
+
   async function loadCloaks() {
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("cloaks-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
     document.getElementById("cloaks-content").innerHTML='<div class="lb-empty">Загрузка...</div>';
@@ -6190,7 +6276,18 @@
       const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "enter" }) });
       castleState = await resp.json();
       renderCastle();
-      castleLog("Иди стрелочками. Ищи сундуки 📦, избегай ловушек ⚠️, найди выход 🚪");
+      // проверка активного ивента
+      let eventHint = "";
+      try {
+        const initData2 = (tg && tg.initData) ? tg.initData : "";
+        const er = await apiFetch(API_URL + "/api/castleevent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData2, action: "status" }) });
+        const ed = await er.json();
+        if (ed.active) {
+          const h = Math.floor(ed.timeLeft/3600), m = Math.floor((ed.timeLeft%3600)/60);
+          eventHint = "🎪 ИВЕНТ! Найди 🎁 " + ed.prizeEmoji + " " + ed.prizeName + " (осталось " + h + "ч " + m + "м)";
+        }
+      } catch(e){}
+      castleLog(eventHint || "Иди стрелочками. Ищи сундуки 📦, избегай ловушек ⚠️, найди выход 🚪");
     } catch(e) { document.getElementById("castle-grid").innerHTML = '<div class="lb-empty" style="grid-column:1/-1;">Ошибка входа</div>'; }
   }
   function closeCastle() {
@@ -6217,6 +6314,7 @@
         else if (v === 2) { cls += " loot"; content = "📦"; }
         else if (v === 3) { cls += " trap"; content = "⚠️"; }
         else if (v === 4) { cls += " exit"; content = "🚪"; }
+        else if (v === 6) { cls += " loot"; content = "🎁"; }
         else cls += " empty";
         html += '<div class="'+cls+'">'+content+'</div>';
       }
@@ -6244,6 +6342,17 @@
       else if (d.event === "trap") { castleLog("⚠️ Ловушка! −" + d.damage + " HP"); if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("heavy"); } catch(e){} } }
       else if (d.event === "dead") { castleLog("💀 Ловушка добила тебя!"); endCastle(false); }
       else if (d.event === "exit") { castleLog("🚪 Выход! +" + d.bonus + " 💰"); endCastle(true); }
+      else if (d.event === "eventWin" && d.prize) {
+        castleLog("👑 ТЫ НАШЁЛ ПРИЗ ИВЕНТА: " + d.prize.emoji + " " + d.prize.name + "!");
+        showReward("👑 " + d.prize.emoji + " " + d.prize.name);
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+        document.getElementById("castle-result-title").textContent = "👑 ПРИЗ ИВЕНТА ТВОЙ!";
+        document.getElementById("castle-result-title").style.color = "#ffd86b";
+        document.getElementById("castle-result-reward").innerHTML = '🎁 ' + d.prize.emoji + ' ' + d.prize.name + ' x' + d.prize.qty + '<br>Ты первый нашёл! Значок 👑 твой.';
+        document.getElementById("castle-result").classList.add("show");
+        castleState.done = true;
+      }
+      else if (d.event === "eventTaken") { castleLog("Приз уже забрали 😔"); }
       else castleLog("");
     } catch(e){} finally { castleBusy = false; }
   }
@@ -7169,12 +7278,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v17 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v19 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v17 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v19 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v17 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v19 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
