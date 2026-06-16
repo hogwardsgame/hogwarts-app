@@ -819,6 +819,13 @@
     color: #ffe9a8; font-weight: 700; font-family:"Cinzel",serif; font-size: 15px;
   }
   .duel-confirm.disabled { opacity: 0.4; pointer-events: none; }
+  .duel-potion-btn {
+    text-align: center; padding: 9px 8px; border-radius: 11px; cursor: pointer;
+    background: rgba(92,255,138,0.14); border: 1px solid rgba(92,255,138,0.4);
+    color: #9be8c0; font-weight: 700; font-size: 13px;
+  }
+  .duel-potion-btn:active { background: rgba(92,255,138,0.26); }
+  .duel-potion-btn.disabled { opacity: 0.4; pointer-events: none; }
   .duel-confirm:active { background: rgba(255,216,107,0.28); }
   /* летящий снаряд дуэли */
   .duel-proj {
@@ -1570,7 +1577,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v12 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v13 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -1982,7 +1989,10 @@
       </div>
       <div class="dp-btn down" onclick="duelMove('down')">▼</div>
     </div>
-    <div class="duel-confirm" id="duel-confirm" onclick="duelConfirm()">Подтвердить ход</div>
+    <div style="display:flex;flex-direction:column;gap:6px;flex:1;max-width:180px;">
+      <div class="duel-potion-btn" id="duel-potion-btn" onclick="duelUsePotion()" style="display:none;">🧪 Зелье</div>
+      <div class="duel-confirm" id="duel-confirm" onclick="duelConfirm()">Подтвердить ход</div>
+    </div>
   </div>
 
   <div class="arena-result" id="duel-result">
@@ -6125,6 +6135,77 @@
   }
   function startDuel(diff) { closePubProfile(); openDuel(diff); }
 
+  // Использование зелья в дуэли (= занимает ход, лимит 2 за бой)
+  async function duelUsePotion() {
+    const s = duelState;
+    if (!s || s.live || s.phase !== "choose" || duelBusy) return;
+    if (s.potionsUsed >= s.potionLimit) { duelLog("⛔ Лимит зелий за бой ("+s.potionLimit+")"); return; }
+    const avail = (s.potions || []).filter(function(p){ return p.count > 0; });
+    if (!avail.length) { duelLog("🧪 Нет зелий в сумке"); return; }
+    // выбираем лучшее доступное (наибольшее лечение)
+    avail.sort(function(a,b){ return b.heal - a.heal; });
+    // показываем выбор если несколько типов
+    if (avail.length > 1 && !s._potionChoice) {
+      const opts = avail.map(function(p){
+        return '<div class="action-btn green" style="margin-bottom:6px;" onclick="duelPotionPick(\''+p.id+'\')">'+p.emoji+' '+p.name+' +'+p.heal+' HP ('+p.count+' шт)</div>';
+      }).join("");
+      document.getElementById("pubprofile-body").innerHTML =
+        '<div style="text-align:center;font-family:Cinzel,serif;font-size:16px;color:#ffe9a8;margin-bottom:10px;">🧪 Какое зелье?</div>' +
+        '<div style="font-size:11px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Зелье займёт этот ход — атаковать не сможешь</div>' + opts +
+        '<div class="action-btn" onclick="closePubProfile()">Отмена</div>';
+      document.getElementById("pubprofile-backdrop").classList.add("show");
+      document.getElementById("pubprofile-modal").classList.add("show");
+      return;
+    }
+    duelPotionPick(avail[0].id);
+  }
+  async function duelPotionPick(pid) {
+    closePubProfile();
+    const s = duelState;
+    if (!s || duelBusy) return;
+    duelBusy = true;
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "use", potion: pid }) });
+      const d = await resp.json();
+      if (d.ok) {
+        const heal = d.heal || 20;
+        s.you.hp = Math.min(s.you.maxHp, s.you.hp + heal);
+        s.potionsUsed++;
+        // уменьшаем счётчик в локальном списке
+        const p = (s.potions||[]).find(function(x){ return x.id === pid; });
+        if (p) p.count--;
+        duelLog("🧪 +"+heal+" HP! (зелье занимает ход)");
+        // зелье = ход: разыгрываем ход БЕЗ атаки игрока, но враг ходит
+        s.phase = "resolve";
+        renderDuel();
+        await sleep(400);
+        // враг делает ход (атакует)
+        const aiChoice = aiDuelChoose();
+        const youNew = s.you.frozen > 0 ? {r:s.you.r,c:s.you.c} : movedPos(s.you, s.selMove, 1 + ((s.cloakFx&&s.cloakFx.move_bonus)||0));
+        const foeNew = s.foe.frozen > 0 ? {r:s.foe.r,c:s.foe.c} : movedPos(s.foe, aiChoice.move);
+        s.you.r = youNew.r; s.you.c = youNew.c;
+        s.foe.r = foeNew.r; s.foe.c = foeNew.c;
+        renderDuel();
+        await sleep(300);
+        // только враг атакует (игрок пил зелье)
+        await resolveAttack("foe", aiChoice.spell, aiChoice.aim, s.you);
+        renderDuel();
+        await sleep(300);
+        tickDuelEffects();
+        renderDuel();
+        await sleep(200);
+        if (!checkDuelEnd()) {
+          s.selAim = null; s.selMove = "stay"; s.phase = "choose";
+          renderDuel();
+          duelLog("Твой ход.");
+        }
+      } else {
+        duelLog(d.msg || "Не удалось использовать зелье");
+      }
+    } catch(e){} finally { duelBusy = false; }
+  }
+
   // ══════════════ ЖИВОЙ PvP ══════════════
   let pvpMatch = null;    // { matchId, side }
   let pvpPoll = null;     // интервал опроса
@@ -6410,6 +6491,15 @@
     let pAtk = 10, pDef = 5, pLuck = 5, pModel = "🧙";
     try { pAtk = window._profileAtk || 10; pDef = window._profileDef || 5; pLuck = window._profileLuck || 5; pModel = window._profileModel || "🧙"; } catch(e){}
 
+    // доступные зелья HP
+    let duelPotions = [];
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const pd = await resp.json();
+      duelPotions = pd.potions || [];
+    } catch(e){}
+
     duelState = {
       difficulty: difficulty, aiSkill: diffCfg.ai,
       you: { hp: myHp, maxHp: myHp, r: 4, c: 2, burn: 0, frozen: 0 },   // игрок снизу-центр
@@ -6417,6 +6507,7 @@
       cloakFx: cloakFx,
       atk: pAtk, def: pDef, luck: pLuck,
       youEmoji: pModel, foeEmoji: diffCfg.foeEmoji || "🦹",
+      potions: duelPotions, potionsUsed: 0, potionLimit: 2,
       spellIds: spellIds, spellLevels: spellLevels,
       selSpell: spellIds[0], selMove: "stay", selAim: null,
       over: false, phase: "choose",
@@ -6500,6 +6591,15 @@
     const cf = document.getElementById("duel-confirm");
     if (s.selAim && s.phase === "choose") cf.classList.remove("disabled");
     else cf.classList.add("disabled");
+    // кнопка зелья (только в дуэли с ИИ, есть зелья, лимит не исчерпан)
+    const pb = document.getElementById("duel-potion-btn");
+    if (pb) {
+      const avail = (s.potions || []).filter(function(p){ return p.count > 0; });
+      const canUse = !s.live && avail.length > 0 && s.potionsUsed < s.potionLimit && s.phase === "choose";
+      pb.style.display = (!s.live && (avail.length > 0 || s.potionsUsed > 0)) ? "block" : "none";
+      pb.textContent = "🧪 Зелье (" + (s.potionLimit - s.potionsUsed) + ")";
+      if (canUse) pb.classList.remove("disabled"); else pb.classList.add("disabled");
+    }
   }
 
   function effIcon(f) {
@@ -6782,12 +6882,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v12 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v13 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v12 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v13 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v12 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v13 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
