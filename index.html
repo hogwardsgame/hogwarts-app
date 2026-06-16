@@ -705,9 +705,9 @@
 
   .duel-grid {
     position: relative; z-index: 2; align-self: center;
-    width: min(86vw, 360px); aspect-ratio: 1; margin: 8px 0;
-    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
-    gap: 5px; padding: 6px;
+    width: min(90vw, 380px); aspect-ratio: 1; margin: 8px 0;
+    display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);
+    gap: 4px; padding: 6px;
     background: rgba(255,255,255,0.03); border-radius: 14px;
     border: 1px solid rgba(255,216,107,0.15);
   }
@@ -727,7 +727,7 @@
   .duel-cell.aim-target { box-shadow: inset 0 0 0 2px #ff6b6b; background: rgba(255,107,107,0.15); }
   .duel-cell.aim-splash { background: rgba(255,107,107,0.07); }
   .duel-fighter {
-    font-size: 30px; line-height: 1; z-index: 2;
+    font-size: 26px; line-height: 1; z-index: 2;
     transition: transform 0.4s cubic-bezier(0.3,0.9,0.4,1);
     filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
   }
@@ -2660,6 +2660,10 @@
 
   let currentTab = "profile";
   function switchTab(tab) {
+    // оверлейные вкладки не имеют экранов — перенаправляем
+    if (tab === "battle") { openBattle(); return; }
+    if (tab === "pvp") { openPvP(); return; }
+    if (tab === "duel" || tab === "cards" || tab === "arena") { chooseDuelDifficulty(); return; }
     currentTab = tab;
     ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction","abilities"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
@@ -5853,14 +5857,14 @@
 
   // ══════════════ МАГИЧЕСКАЯ ДУЭЛЬ (сетка 4×4) ══════════════
   const DUEL_SPELLS = {
-    fireball:    { name:"Огненный шар", emoji:"🔥", dmg:18, color:"#ff7a3c" },
+    fireball:    { name:"Огненный шар", emoji:"🔥", dmg:18, color:"#ff7a3c", burn:3 },
     lightning:   { name:"Молния", emoji:"⚡", dmg:12, color:"#c77dff" },
-    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", dmg:14, color:"#5cd8ff" },
+    ice_chains:  { name:"Ледяные оковы", emoji:"❄️", dmg:14, color:"#5cd8ff", freeze:2 },
     sun_ray:     { name:"Солнечный луч", emoji:"☀️", dmg:22, color:"#ffe96b" },
-    dark_magic:  { name:"Тёмная магия", emoji:"☠️", dmg:16, color:"#b56cff" },
-    wind_blade:  { name:"Ветряной клинок", emoji:"🌀", dmg:15, color:"#9bffb0" },
+    dark_magic:  { name:"Тёмная магия", emoji:"☠️", dmg:16, color:"#b56cff", burn:2 },
+    wind_blade:  { name:"Ветряной клинок", emoji:"🌀", dmg:15, color:"#9bffb0", bigsplash:true },
   };
-  const GRID = 4;
+  const GRID = 5;
   let duelState = null;
   let duelBusy = false;
 
@@ -5904,8 +5908,8 @@
 
     duelState = {
       difficulty: difficulty, aiSkill: diffCfg.ai,
-      you: { hp: myHp, maxHp: myHp, r: 3, c: 1 },   // игрок снизу
-      foe: { hp: diffCfg.hp, maxHp: diffCfg.hp, r: 0, c: 2 }, // враг сверху
+      you: { hp: myHp, maxHp: myHp, r: 4, c: 2, burn: 0, frozen: 0 },   // игрок снизу-центр
+      foe: { hp: diffCfg.hp, maxHp: diffCfg.hp, r: 0, c: 2, burn: 0, frozen: 0 }, // враг сверху-центр
       spellIds: spellIds, spellLevels: spellLevels,
       selSpell: spellIds[0], selMove: "stay", selAim: null,
       over: false, phase: "choose",
@@ -5939,7 +5943,8 @@
     // куда шагнёт игрок (превью)
     const preview = movedPos(s.you, s.selMove);
     // область удара (превью)
-    const splash = s.selAim ? splashCells(s.selAim) : [];
+    const curSpell = DUEL_SPELLS[s.selSpell] || {};
+    const splash = s.selAim ? splashCells(s.selAim, curSpell.bigsplash) : [];
     let html = "";
     for (let r = 0; r < GRID; r++) {
       for (let c = 0; c < GRID; c++) {
@@ -5948,8 +5953,8 @@
         if (s.selAim && s.selAim.r === r && s.selAim.c === c) cls += " aim-target";
         else if (splash.some(function(p){ return p.r===r && p.c===c; })) cls += " aim-splash";
         let content = "";
-        if (s.you.r === r && s.you.c === c) content = '<span class="duel-fighter you-piece">🧙</span>';
-        if (s.foe.r === r && s.foe.c === c) content = '<span class="duel-fighter foe-piece">🦹</span>';
+        if (s.you.r === r && s.you.c === c) content = '<span class="duel-fighter you-piece">🧙'+effIcon(s.you)+'</span>';
+        if (s.foe.r === r && s.foe.c === c) content = '<span class="duel-fighter foe-piece">🦹'+effIcon(s.foe)+'</span>';
         html += '<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'" onclick="duelAim('+r+','+c+')">'+content+'</div>';
       }
     }
@@ -5972,6 +5977,12 @@
     else cf.classList.add("disabled");
   }
 
+  function effIcon(f) {
+    let s = "";
+    if (f.burn > 0) s += '<span style="font-size:12px;position:absolute;margin-left:-4px;margin-top:-8px;">🔥</span>';
+    if (f.frozen > 0) s += '<span style="font-size:12px;position:absolute;margin-left:-4px;margin-top:8px;">❄️</span>';
+    return s;
+  }
   function movedPos(fighter, move) {
     let r = fighter.r, c = fighter.c;
     if (move === "up") r--; if (move === "down") r++;
@@ -5979,9 +5990,19 @@
     r = Math.max(0, Math.min(GRID-1, r)); c = Math.max(0, Math.min(GRID-1, c));
     return { r: r, c: c };
   }
-  function splashCells(center) {
-    // крест: центр + 4 соседа
-    const out = [{r:center.r-1,c:center.c},{r:center.r+1,c:center.c},{r:center.r,c:center.c-1},{r:center.r,c:center.c+1}];
+  function splashCells(center, big) {
+    let out;
+    if (big) {
+      // большая область: все 8 соседей
+      out = [];
+      for (let dr=-1; dr<=1; dr++) for (let dc=-1; dc<=1; dc++) {
+        if (dr===0 && dc===0) continue;
+        out.push({r:center.r+dr, c:center.c+dc});
+      }
+    } else {
+      // крест: 4 соседа
+      out = [{r:center.r-1,c:center.c},{r:center.r+1,c:center.c},{r:center.r,c:center.c-1},{r:center.r,c:center.c+1}];
+    }
     return out.filter(function(p){ return p.r>=0 && p.r<GRID && p.c>=0 && p.c<GRID; });
   }
 
@@ -6012,10 +6033,10 @@
     // ИИ выбирает ход втайне
     const aiChoice = aiDuelChoose();
 
-    // РОЗЫГРЫШ: оба двигаются одновременно
+    // РОЗЫГРЫШ: оба двигаются одновременно (заморозка блокирует движение)
     duelLog("⚔️ Розыгрыш хода...");
-    const youNew = movedPos(s.you, s.selMove);
-    const foeNew = movedPos(s.foe, aiChoice.move);
+    const youNew = s.you.frozen > 0 ? { r: s.you.r, c: s.you.c } : movedPos(s.you, s.selMove);
+    const foeNew = s.foe.frozen > 0 ? { r: s.foe.r, c: s.foe.c } : movedPos(s.foe, aiChoice.move);
     s.you.r = youNew.r; s.you.c = youNew.c;
     s.foe.r = foeNew.r; s.foe.c = foeNew.c;
     renderDuel();
@@ -6030,12 +6051,34 @@
     renderDuel();
     await sleep(300);
 
+    // тик эффектов: поджог наносит урон, заморозка спадает
+    tickDuelEffects();
+    renderDuel();
+    await sleep(200);
+
     if (checkDuelEnd()) { duelBusy = false; return; }
     // новый ход
     s.selAim = null; s.selMove = "stay"; s.phase = "choose";
     renderDuel();
-    duelLog("Твой ход. Выбери заклинание, шаг и цель.");
+    if (s.you.frozen > 0) duelLog("❄️ Ты заморожен! Движение недоступно ("+s.you.frozen+" х.)");
+    else duelLog("Твой ход. Выбери заклинание, шаг и цель.");
     duelBusy = false;
+  }
+
+  function tickDuelEffects() {
+    const s = duelState;
+    ["you","foe"].forEach(function(k){
+      const f = s[k];
+      if (f.burn > 0) {
+        const burnDmg = 6;
+        f.hp = Math.max(0, f.hp - burnDmg);
+        const cellIdx = f.r * GRID + f.c;
+        const cell = document.querySelectorAll(".duel-cell")[cellIdx];
+        if (cell) spawnArenaText(cell, "🔥-" + burnDmg, "#ff7a3c");
+        f.burn--;
+      }
+      if (f.frozen > 0) f.frozen--;
+    });
   }
 
   async function resolveAttack(casterKey, spellId, aim, target) {
@@ -6050,25 +6093,28 @@
     const tr = target.r, tc = target.c;
     let dmg = 0, kind = "";
     if (aim.r === tr && aim.c === tc) {
-      // прямое попадание — крит
       dmg = Math.round(spell.dmg * (1 + (lvl-1)*0.04) * 1.5);
       kind = "crit";
     } else {
-      // в области (крест)?
-      const splash = splashCells(aim);
+      const splash = splashCells(aim, spell.bigsplash);
       if (splash.some(function(p){ return p.r===tr && p.c===tc; })) {
         dmg = Math.round(spell.dmg * (1 + (lvl-1)*0.04) * 0.5);
         kind = "splash";
       }
     }
-    // вспышка на клетке удара
     flashDuelCell(aim.r, aim.c);
     if (dmg > 0) {
       target.hp = Math.max(0, target.hp - dmg);
+      // эффекты при попадании
+      if (spell.burn) { target.burn = Math.max(target.burn, spell.burn); }
+      if (spell.freeze) { target.frozen = Math.max(target.frozen, spell.freeze); }
       const cellIdx = tr * GRID + tc;
       const cell = document.querySelectorAll(".duel-cell")[cellIdx];
       if (cell) spawnArenaText(cell, "-" + dmg + (kind==="crit"?"!":""), kind==="crit"?"#ffd86b":"#ff8a8a");
-      if (casterKey === "you") duelLog(kind==="crit" ? "💥 Критическое попадание! -"+dmg : "Задел врага: -"+dmg);
+      if (casterKey === "you") {
+        let extra = spell.burn ? " 🔥поджог" : (spell.freeze ? " ❄️заморозка" : "");
+        duelLog((kind==="crit" ? "💥 Крит! -"+dmg : "Задел: -"+dmg) + extra);
+      }
     } else {
       if (casterKey === "you") duelLog("💨 Мимо!");
     }
