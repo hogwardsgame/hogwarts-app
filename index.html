@@ -1577,7 +1577,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v13 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v15 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2669,20 +2669,18 @@
   const TAB_GROUPS = {
     battle: { title: "⚔️ Сражения", tabs: [
       ["battle","⚔️","В бой"], ["duel","⚡","Магдуэль"],
-      ["abilities","⚡","Умения"], ["teambattle","🛡️","Бой 3×3"],
-      ["tournament","🏅","Турнир"], ["worldboss","🐲","Босс"], ["triwizard","🏆","Триволшеб."],
-      ["war","⚔️","Война"], ["league","📊","Лига"],
+      ["abilities","⚡","Умения"], ["worldboss","🐲","Боссы"],
+      ["tournament","🏅","Турнир"], ["war","⚔️","Война"], ["league","📊","Лига"],
     ]},
     hero: { title: "🧙 Герой", tabs: [
       ["profile","🧙","Профиль"], ["inventory","🎒","Сумка"], ["cloaks","🧥","Плащи"],
-      ["pet","🐾","Питомец"], ["wandcraft","🪄","Палочка"], ["collections","📦","Коллекции"],
-      ["titles","🎭","Титулы"], ["ach","🏅","Награды"], ["journal","📖","Журнал"],
+      ["pet","🐾","Питомец"], ["wandcraft","🪄","Палочка"],
+      ["ach","🏅","Награды"], ["journal","📖","Журнал"],
     ]},
     world: { title: "🏰 Мир", tabs: [
       ["explore","🗺️","Карта"], ["hogsmeade","🏘️","Хогсмид"], ["shop","🛒","Магазин"],
       ["blackmarket","🕯️","Рынок"], ["auction","🔨","Аукцион"], ["bank","🏦","Банк"],
-      ["room","🏠","Комната"], ["squad","🛡️","Отряд"], ["trade","💸","Перевод"],
-      ["horcruxes","💎","Крестражи"],
+      ["room","🏠","Комната"], ["trade","💸","Перевод"],
     ]},
     study: { title: "📚 Занятия", tabs: [
       ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"], ["quests","📜","Задания"],
@@ -2733,6 +2731,7 @@
     if (tab === "arena") { closeSubmenu(); chooseArenaDifficulty(); return; }  // арена — оверлей
     if (tab === "cards") { closeSubmenu(); chooseDuelDifficulty(); return; }  // старая вкладка → дуэль
     if (tab === "duel") { closeSubmenu(); chooseDuelDifficulty(); return; }  // магдуэль — оверлей
+    if (tab === "worldboss") { closeSubmenu(); openBossMenu(); return; }  // боссы дуэли — оверлей
     switchTab(tab);
     closeSubmenu();
   }
@@ -2801,8 +2800,9 @@
     if (tab === "battle") { openBattle(); return; }
     if (tab === "pvp") { openPvP(); return; }
     if (tab === "duel" || tab === "cards" || tab === "arena") { chooseDuelDifficulty(); return; }
+    if (tab === "worldboss") { openBossMenu(); return; }
     currentTab = tab;
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction","abilities","cloaks"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
       if (scr) {
         if (t === tab) {
@@ -6069,7 +6069,7 @@
     dark_magic:  { name:"Тёмная магия", emoji:"☠️", dmg:22, color:"#b56cff", burn:2 },
     wind_blade:  { name:"Ветряной клинок", emoji:"🌀", dmg:20, color:"#9bffb0", bigsplash:true },
   };
-  const GRID = 5;
+  let duelGrid = 5;  // размер поля (меняется для боссов)
   let duelState = null;
   let duelBusy = false;
 
@@ -6134,6 +6134,100 @@
     } catch(e) { body.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
   }
   function startDuel(diff) { closePubProfile(); openDuel(diff); }
+
+  // ══════════════ БОССЫ (на сетке) ══════════════
+  async function openBossMenu() {
+    const body = document.getElementById("pubprofile-body");
+    body.innerHTML = '<div class="lb-empty">Загрузка боссов...</div>';
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const d = await resp.json();
+      if (!d.bosses || !d.bosses.length) { body.innerHTML = '<div class="lb-empty">Боссы недоступны</div>'; return; }
+      let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🐲 Боссы</div>' +
+        '<div style="font-size:11px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Сложность растёт под твой уровень. С боссов падают редкие ингредиенты для зелий.</div>';
+      html += d.bosses.map(function(b){
+        if (b.locked) {
+          return '<div class="quest-card" style="opacity:0.5;"><div style="display:flex;align-items:center;gap:10px;">' +
+                 '<span style="font-size:30px;filter:grayscale(1);">'+b.emoji+'</span>' +
+                 '<div style="flex:1;"><div class="quest-name">🔒 '+b.name+'</div>' +
+                 '<div style="font-size:10px;color:#9d8fc0;">Победи предыдущего босса</div></div></div></div>';
+        }
+        const done = b.defeated ? '<span style="color:#9be8c0;font-size:11px;">✅ Повержен</span>' : '';
+        return '<div class="quest-card" style="border-left:3px solid '+(b.defeated?"#9be8c0":"#ff8a5c")+';"><div style="display:flex;align-items:center;gap:10px;">' +
+               '<span style="font-size:32px;">'+b.emoji+'</span>' +
+               '<div style="flex:1;"><div class="quest-name">'+b.name+' '+done+'</div>' +
+               '<div style="font-size:10px;color:#ffd86b;margin-top:1px;">❤️'+b.hp+' • ⚔️'+b.dmg+' • поле '+b.grid+'×'+b.grid+'</div>' +
+               '<div style="font-size:10px;color:#c9b8f0;margin-top:1px;">'+b.mechDesc+'</div>' +
+               '<div style="font-size:10px;color:#9d8fc0;margin-top:1px;">🎁 '+b.gold+'💰 '+b.xp+'XP • '+b.ingredient.emoji+' '+b.ingredient.name+'</div></div>' +
+               '<div class="shop-buy" style="font-size:12px;" onclick="startBossBattle(\''+b.id+'\')">⚔️</div></div></div>';
+      }).join("");
+      body.innerHTML = html;
+    } catch(e) { body.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+
+  async function startBossBattle(bossId) {
+    closePubProfile();
+    let boss = null, playerHp = 130;
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "start", boss: bossId }) });
+      const d = await resp.json();
+      if (!d.ok || !d.boss) { return; }
+      boss = d.boss; playerHp = d.playerHp || 130;
+    } catch(e) { return; }
+    openBossDuel(boss, playerHp);
+  }
+
+  async function openBossDuel(boss, playerHp) {
+    // загрузка умений и плаща (как в openDuel)
+    let myAbils = {};
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const ad = await resp.json();
+      (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
+    } catch(e){}
+    let spellIds = Object.keys(myAbils);
+    if (spellIds.length === 0) spellIds = ["fireball","lightning","ice_chains","sun_ray"];
+    spellIds = spellIds.slice(0,4);
+    const spellLevels = {}; spellIds.forEach(function(id){ spellLevels[id] = myAbils[id] || 1; });
+    let cloakId = "novice";
+    try { if (window._profileCloak && window._profileCloak.id) cloakId = window._profileCloak.id; } catch(e){}
+    const cloakFx = CLOAK_DUEL_FX[cloakId] || {};
+    let pAtk=10,pDef=5,pLuck=5,pModel="🧙";
+    try { pAtk=window._profileAtk||10; pDef=window._profileDef||5; pLuck=window._profileLuck||5; pModel=window._profileModel||"🧙"; } catch(e){}
+    // зелья
+    let duelPotions = [];
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const pd = await resp.json(); duelPotions = pd.potions || [];
+    } catch(e){}
+
+    duelGrid = boss.grid || 5;
+    const center = Math.floor(duelGrid/2);
+    duelState = {
+      difficulty: "boss", bossId: boss.id, bossDmg: boss.dmg, mechanic: boss.mechanic || boss.mechDesc,
+      bossMechanic: boss.mechanic, aiSkill: 0.7,
+      you: { hp: playerHp, maxHp: playerHp, r: duelGrid-1, c: center, burn:0, frozen:0, poison:0, cursed:0 },
+      foe: { hp: boss.hp, maxHp: boss.maxHp, r: 0, c: center, burn:0, frozen:0, reviveUsed:false },
+      cloakFx: cloakFx, atk: pAtk, def: pDef, luck: pLuck,
+      youEmoji: pModel, foeEmoji: boss.emoji,
+      potions: duelPotions, potionsUsed: 0, potionLimit: 2,
+      spellIds: spellIds, spellLevels: spellLevels,
+      selSpell: spellIds[0], selMove: "stay", selAim: null,
+      over: false, phase: "choose",
+    };
+    document.getElementById("duel-foe-name").textContent = boss.emoji + " " + boss.name;
+    document.getElementById("duel-overlay").style.display = "flex";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeDuel); } catch(e){} }
+    renderDuel();
+    duelLog("🐲 " + boss.name + "! " + (boss.mechDesc||""));
+  }
 
   // Использование зелья в дуэли (= занимает ход, лимит 2 за бой)
   async function duelUsePotion() {
@@ -6537,6 +6631,8 @@
     setBar("duel-foe-hp", "duel-foe-hp-txt", s.foe.hp, s.foe.maxHp);
     // сетка
     const grid = document.getElementById("duel-grid");
+    grid.style.gridTemplateColumns = "repeat(" + duelGrid + ", 1fr)";
+    grid.style.gridTemplateRows = "repeat(" + duelGrid + ", 1fr)";
     const cells = [];
     // куда шагнёт игрок (превью) — с учётом бонуса плаща на дальность
     const youSteps = 1 + ((s.cloakFx && s.cloakFx.move_bonus) || 0);
@@ -6550,8 +6646,8 @@
     const showGhost = (s.phase === "choose") && (youDraw.r !== s.you.r || youDraw.c !== s.you.c);
     // направление палочки игрока — к клетке прицела
     const wandDir = s.selAim ? aimDirection(youDraw, s.selAim) : "";
-    for (let r = 0; r < GRID; r++) {
-      for (let c = 0; c < GRID; c++) {
+    for (let r = 0; r < duelGrid; r++) {
+      for (let c = 0; c < duelGrid; c++) {
         let cls = "duel-cell";
         if (preview.r === r && preview.c === c) cls += " move-target";
         if (s.selAim && s.selAim.r === r && s.selAim.c === c) cls += " aim-target";
@@ -6618,7 +6714,7 @@
     let r = fighter.r, c = fighter.c;
     if (move === "up") r -= steps; if (move === "down") r += steps;
     if (move === "left") c -= steps; if (move === "right") c += steps;
-    r = Math.max(0, Math.min(GRID-1, r)); c = Math.max(0, Math.min(GRID-1, c));
+    r = Math.max(0, Math.min(duelGrid-1, r)); c = Math.max(0, Math.min(duelGrid-1, c));
     return { r: r, c: c };
   }
   function splashCells(center, big) {
@@ -6634,7 +6730,7 @@
       // крест: 4 соседа
       out = [{r:center.r-1,c:center.c},{r:center.r+1,c:center.c},{r:center.r,c:center.c-1},{r:center.r,c:center.c+1}];
     }
-    return out.filter(function(p){ return p.r>=0 && p.r<GRID && p.c>=0 && p.c<GRID; });
+    return out.filter(function(p){ return p.r>=0 && p.r<duelGrid && p.c>=0 && p.c<duelGrid; });
   }
 
   function duelPickSpell(id) {
@@ -6720,7 +6816,7 @@
       if (f.burn > 0) {
         const burnDmg = 6;
         f.hp = Math.max(0, f.hp - burnDmg);
-        const cellIdx = f.r * GRID + f.c;
+        const cellIdx = f.r * duelGrid + f.c;
         const cell = document.querySelectorAll(".duel-cell")[cellIdx];
         if (cell) spawnArenaText(cell, "🔥-" + burnDmg, "#ff7a3c");
         f.burn--;
@@ -6758,12 +6854,32 @@
       }
     }
     flashDuelCell(aim.r, aim.c);
+    // механики боссов: когда атакует босс (foe) в режиме boss
+    if (casterKey === "foe" && s.difficulty === "boss" && dmg > 0) {
+      const mech = s.bossMechanic;
+      // базовый урон босса вместо урона заклинания
+      dmg = Math.round(s.bossDmg * (kind === "crit" ? 1.5 : (kind === "splash" ? 0.6 : 1)) * defReduce);
+      // rage: чем меньше HP босса, тем сильнее
+      if (mech === "rage" || mech === "all") {
+        const missing = 1 - (s.foe.hp / s.foe.maxHp);
+        dmg = Math.round(dmg * (1 + missing * 0.6));
+      }
+      // smash: бьёт сильнее по площади (уже учтено splash, добавим бонус)
+      if ((mech === "smash" || mech === "all") && kind === "splash") dmg = Math.round(dmg * 1.6);
+    }
     if (dmg > 0) {
       target.hp = Math.max(0, target.hp - dmg);
+      // механики-эффекты при попадании босса по игроку
+      if (casterKey === "foe" && s.difficulty === "boss") {
+        const mech = s.bossMechanic;
+        if (mech === "web" || mech === "all") { if (Math.random() < 0.35) target.frozen = Math.max(target.frozen, 1); }
+        if (mech === "poison" || mech === "all") { target.burn = Math.max(target.burn, 2); }
+        if (mech === "drain" || mech === "all") { s.foe.hp = Math.min(s.foe.maxHp, s.foe.hp + Math.round(dmg * 0.4)); }
+      }
       // эффекты при попадании (+ длительность от плаща)
       if (spell.burn) { target.burn = Math.max(target.burn, spell.burn + (fx.burn_bonus || 0)); }
       if (spell.freeze) { target.frozen = Math.max(target.frozen, spell.freeze + (fx.freeze_bonus || 0)); }
-      const cellIdx = tr * GRID + tc;
+      const cellIdx = tr * duelGrid + tc;
       const cell = document.querySelectorAll(".duel-cell")[cellIdx];
       if (cell) spawnArenaText(cell, "-" + dmg + (kind==="crit"?"!":""), kind==="crit"?"#ffd86b":"#ff8a8a");
       hitShake(target === s.foe ? "foe" : "you");
@@ -6797,6 +6913,15 @@
   function checkDuelEnd() {
     const s = duelState;
     if (!s || s.over) return s && s.over;
+    // механика возрождения боссов
+    if (s.difficulty === "boss" && s.foe.hp <= 0 && !s.foe.reviveUsed &&
+        (s.bossMechanic === "revive" || s.bossMechanic === "all")) {
+      s.foe.reviveUsed = true;
+      s.foe.hp = Math.round(s.foe.maxHp * 0.3);
+      duelLog("🔥 Босс возрождается с 30% HP!");
+      renderDuel();
+      return false;
+    }
     if (s.foe.hp <= 0) { endDuel(true); return true; }
     if (s.you.hp <= 0) { endDuel(false); return true; }
     return false;
@@ -6804,6 +6929,25 @@
 
   async function endDuel(won) {
     duelState.over = true;
+    // бой с боссом — отдельная награда
+    if (duelState.difficulty === "boss") {
+      let msg = "", dropHtml = "";
+      try {
+        const initData = (tg && tg.initData) ? tg.initData : "";
+        const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "reward", boss: duelState.bossId, won: won }) });
+        const d = await resp.json();
+        msg = d.msg || "";
+        if (d.drop) dropHtml = '<div style="margin-top:10px;font-size:15px;color:#ffae3c;">🎁 '+d.drop.emoji+' '+d.drop.name+'</div>';
+      } catch(e){}
+      document.getElementById("duel-result-title").textContent = won ? "🏆 БОСС ПОВЕРЖЕН!" : "☠️ ПОРАЖЕНИЕ";
+      document.getElementById("duel-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
+      document.getElementById("duel-result-reward").innerHTML = msg + dropHtml;
+      document.getElementById("duel-result").classList.add("show");
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won?"success":"error"); } catch(e){} }
+      duelGrid = 5; // вернуть стандартное поле
+      inventoryLoaded = false;
+      return;
+    }
     let rewardMsg = "", ratingHtml = "";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
@@ -6836,8 +6980,8 @@
     return new Promise(function(resolve){
       if (isPerfMode()) { resolve(); return; }
       const cells = document.querySelectorAll(".duel-cell");
-      const fromCell = cells[fromPos.r*GRID + fromPos.c];
-      const toCell = cells[toPos.r*GRID + toPos.c];
+      const fromCell = cells[fromPos.r*duelGrid + fromPos.c];
+      const toCell = cells[toPos.r*duelGrid + toPos.c];
       if (!fromCell || !toCell) { resolve(); return; }
       const fr = fromCell.getBoundingClientRect();
       const tr = toCell.getBoundingClientRect();
@@ -6856,14 +7000,14 @@
   }
   function flashDuelCell(r, c) {
     const cells = document.querySelectorAll(".duel-cell");
-    const cell = cells[r*GRID + c];
+    const cell = cells[r*duelGrid + c];
     if (cell) { cell.classList.remove("hit-flash"); void cell.offsetWidth; cell.classList.add("hit-flash"); }
   }
   function hitShake(who) {
     const s = duelState; if (!s) return;
     const f = who === "foe" ? s.foe : s.you;
     const cells = document.querySelectorAll(".duel-cell");
-    const cell = cells[f.r*GRID + f.c];
+    const cell = cells[f.r*duelGrid + f.c];
     if (cell) {
       const fighter = cell.querySelector(".duel-fighter");
       if (fighter) { fighter.classList.remove("fighter-hit"); void fighter.offsetWidth; fighter.classList.add("fighter-hit"); }
@@ -6882,12 +7026,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v13 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v15 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v13 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v15 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v13 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v15 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
