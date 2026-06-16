@@ -1553,7 +1553,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v5 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v6 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -1896,6 +1896,14 @@
     <div id="abilities-content"><div class="lb-empty">Загрузка...</div></div>
   </div>
 </div><!-- /screen-abilities -->
+
+<div id="screen-cloaks" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🧥 Гардероб — Плащи</div>
+    <div class="divider"></div>
+    <div id="cloaks-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-cloaks -->
 
 <div class="pubprofile-backdrop" id="pubprofile-backdrop" onclick="closePubProfile()"></div>
 <div class="pubprofile-modal" id="pubprofile-modal">
@@ -2578,9 +2586,9 @@
       ["war","⚔️","Война"], ["league","📊","Лига"],
     ]},
     hero: { title: "🧙 Герой", tabs: [
-      ["profile","🧙","Профиль"], ["inventory","🎒","Сумка"], ["pet","🐾","Питомец"],
-      ["wandcraft","🪄","Палочка"], ["collections","📦","Коллекции"], ["titles","🎭","Титулы"],
-      ["ach","🏅","Награды"], ["journal","📖","Журнал"],
+      ["profile","🧙","Профиль"], ["inventory","🎒","Сумка"], ["cloaks","🧥","Плащи"],
+      ["pet","🐾","Питомец"], ["wandcraft","🪄","Палочка"], ["collections","📦","Коллекции"],
+      ["titles","🎭","Титулы"], ["ach","🏅","Награды"], ["journal","📖","Журнал"],
     ]},
     world: { title: "🏰 Мир", tabs: [
       ["explore","🗺️","Карта"], ["hogsmeade","🏘️","Хогсмид"], ["shop","🛒","Магазин"],
@@ -2706,7 +2714,7 @@
     if (tab === "pvp") { openPvP(); return; }
     if (tab === "duel" || tab === "cards" || tab === "arena") { chooseDuelDifficulty(); return; }
     currentTab = tab;
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction","abilities"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","teambattle","events","squad","trade","wandcraft","bank","explore","collections","titles","hogsmeade","blackmarket","room","horcruxes","journal","settings","triwizard","war","auction","abilities","cloaks"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
       if (scr) {
         if (t === tab) {
@@ -2750,6 +2758,7 @@
     if (tab === "war" && !warLoaded) { warLoaded = true; loadWar(); }
     if (tab === "auction" && !auctionLoaded) { auctionLoaded = true; aucSwitch('buy'); }
     if (tab === "abilities") { loadAbilities(); }
+    if (tab === "cloaks") { loadCloaks(); }
     syncMainbar();
   }
 
@@ -2800,7 +2809,66 @@
     } catch (e) {} finally { abilitiesBusy = false; }
   }
 
-  let auctionLoaded = false, aucMode = "buy", aucBusy = false;
+  // ── Гардероб: плащи ────────────────────────────────────────────────────
+  let cloaksBusy = false;
+  const CLOAK_RAR_COLOR = { common:"#9aa0b5", rare:"#5c9dff", epic:"#b56cff", legendary:"#ffae3c" };
+  async function cloaksReq(action, cloak) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await apiFetch(API_URL + "/api/cloaks", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, cloak: cloak || "" }) });
+    return await resp.json();
+  }
+  function renderCloaks(d) {
+    const box = document.getElementById("cloaks-content");
+    if (!d.cloaks) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; return; }
+    let html = '<div class="bank-card" style="text-align:center;"><div style="font-size:13px;color:#d8cdf0;">💰 Золото: <b style="color:#ffd86b;">'+(d.gold||0)+'</b></div>' +
+               '<div style="font-size:11px;color:#9d8fc0;margin-top:4px;">Плащ даёт бонусы к статам везде + эффект в дуэли.</div></div>';
+    html += d.cloaks.map(function(c){
+      const rarCol = CLOAK_RAR_COLOR[c.rarityKey] || "#9aa0b5";
+      let statline = [];
+      if (c.atk) statline.push("⚔+"+c.atk);
+      if (c.def) statline.push("🛡+"+c.def);
+      if (c.hp) statline.push("❤+"+c.hp);
+      if (c.mana) statline.push("💧+"+c.mana);
+      const stats = statline.length ? statline.join(" ") : "базовый";
+      let btn;
+      if (c.active) btn = '<div class="shop-buy cant" style="font-size:11px;background:rgba(155,232,192,0.2);color:#9be8c0;">✅ Надет</div>';
+      else if (c.owned) btn = '<div class="shop-buy" style="font-size:12px;" onclick="equipCloak(\''+c.id+'\')">Надеть</div>';
+      else if (d.gold >= c.price) btn = '<div class="shop-buy" style="font-size:11px;" onclick="buyCloak(\''+c.id+'\')">'+c.price+'💰</div>';
+      else btn = '<div class="shop-buy cant" style="font-size:11px;">'+c.price+'💰</div>';
+      return '<div class="quest-card" style="border-left:3px solid '+rarCol+';"><div style="display:flex;align-items:center;gap:10px;">' +
+             '<span style="font-size:32px;">'+c.emoji+'</span>' +
+             '<div style="flex:1;"><div class="quest-name">'+c.name+' <span style="color:'+rarCol+';font-size:11px;">'+c.rarity+'</span></div>' +
+             '<div style="font-size:11px;color:#ffd86b;margin-top:2px;">'+stats+'</div>' +
+             '<div style="font-size:10px;color:#b0a3d0;margin-top:2px;">'+c.desc+'</div></div>'+btn+'</div></div>';
+    }).join("");
+    html += '<div class="pet-msg" id="cloaks-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadCloaks() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("cloaks-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    document.getElementById("cloaks-content").innerHTML='<div class="lb-empty">Загрузка...</div>';
+    try { renderCloaks(await cloaksReq("list")); } catch (e) { document.getElementById("cloaks-content").innerHTML='<div class="lb-empty">Не удалось загрузить.<br><div class="action-btn" style="margin-top:10px;" onclick="loadCloaks();">🔄 Повторить</div></div>'; }
+  }
+  async function equipCloak(id) {
+    if (cloaksBusy) return; cloaksBusy = true;
+    try {
+      const d = await cloaksReq("equip", id);
+      renderCloaks(d);
+      const msg = document.getElementById("cloaks-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok) loadProfile();
+    } catch (e) {} finally { cloaksBusy = false; }
+  }
+  async function buyCloak(id) {
+    if (cloaksBusy) return; cloaksBusy = true;
+    try {
+      const d = await cloaksReq("buy", id);
+      renderCloaks(d);
+      const msg = document.getElementById("cloaks-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok) { showReward("🧥 Плащ получен!"); loadProfile(); }
+    } catch (e) {} finally { cloaksBusy = false; }
+  }
   let twLoaded = false, warLoaded = false;
   async function aucReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
@@ -6275,12 +6343,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v5 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v6 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v5 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v6 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v5 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v6 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
