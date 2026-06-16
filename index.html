@@ -898,6 +898,7 @@
   .pubprofile-modal {
     position: fixed; left: 50%; top: 50%; z-index: 42;
     width: calc(100% - 48px); max-width: 360px;
+    max-height: 82vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
     transform: translate(-50%, -50%) scale(0.85);
     background: linear-gradient(170deg, rgba(34,24,58,0.99), rgba(20,14,38,0.99));
     border: 1px solid rgba(255,216,107,0.35); border-radius: 22px;
@@ -1577,7 +1578,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v15 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v16 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2668,22 +2669,22 @@
   // ── Группировка вкладок в 4 основные категории ─────────────────────────
   const TAB_GROUPS = {
     battle: { title: "⚔️ Сражения", tabs: [
-      ["battle","⚔️","В бой"], ["duel","⚡","Магдуэль"],
-      ["abilities","⚡","Умения"], ["worldboss","🐲","Боссы"],
+      ["duel","⚡","Магдуэль"], ["worldboss","🐲","Боссы"],
+      ["abilities","⚡","Умения"],
       ["tournament","🏅","Турнир"], ["war","⚔️","Война"], ["league","📊","Лига"],
     ]},
     hero: { title: "🧙 Герой", tabs: [
       ["profile","🧙","Профиль"], ["inventory","🎒","Сумка"], ["cloaks","🧥","Плащи"],
       ["pet","🐾","Питомец"], ["wandcraft","🪄","Палочка"],
-      ["ach","🏅","Награды"], ["journal","📖","Журнал"],
+      ["ach","🏅","Награды"],
     ]},
     world: { title: "🏰 Мир", tabs: [
-      ["explore","🗺️","Карта"], ["hogsmeade","🏘️","Хогсмид"], ["shop","🛒","Магазин"],
+      ["hogsmeade","🏘️","Хогсмид"], ["shop","🛒","Магазин"],
       ["blackmarket","🕯️","Рынок"], ["auction","🔨","Аукцион"], ["bank","🏦","Банк"],
       ["room","🏠","Комната"], ["trade","💸","Перевод"],
     ]},
     study: { title: "📚 Занятия", tabs: [
-      ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"], ["quests","📜","Задания"],
+      ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"],
       ["events","🎉","События"], ["cup","🏰","Кубок"], ["rating","🏆","Рейтинг"],
       ["settings","⚙️","Настройки"],
     ]},
@@ -2732,8 +2733,8 @@
     if (tab === "cards") { closeSubmenu(); chooseDuelDifficulty(); return; }  // старая вкладка → дуэль
     if (tab === "duel") { closeSubmenu(); chooseDuelDifficulty(); return; }  // магдуэль — оверлей
     if (tab === "worldboss") { closeSubmenu(); openBossMenu(); return; }  // боссы дуэли — оверлей
+    closeSubmenu();  // закрываем подменю всегда, до переключения (чтобы не зависало)
     switchTab(tab);
-    closeSubmenu();
   }
   // подсветить основную кнопку, соответствующую активной вкладке
   function syncMainbar() {
@@ -3195,10 +3196,6 @@
       '<div class="live-block-row" style="padding:12px;border-radius:11px;background:rgba(255,255,255,0.04);">' +
       '<span style="font-size:13px;color:#d8cdf0;">Случайные приглашения на дуэль</span>' +
       '<div class="live-toggle'+(d.pvpBlock?' blocked':'')+'" onclick="togglePvpBlock('+(d.pvpBlock?'true':'false')+')">'+(d.pvpBlock?'🔒 Заблок.':'🔓 Разреш.')+'</div></div>' +
-      '<div class="sec-title">Производительность</div>' +
-      '<div class="live-block-row" style="padding:12px;border-radius:11px;background:rgba(255,255,255,0.04);">' +
-      '<span style="font-size:13px;color:#d8cdf0;">⚡ Режим производительности<br><span style="font-size:11px;color:#9d8fc0;">отключает эффекты для слабых телефонов</span></span>' +
-      '<div class="live-toggle'+(isPerfMode()?' blocked':'')+'" onclick="togglePerfMode()">'+(isPerfMode()?'🚀 Вкл.':'✨ Выкл.')+'</div></div>' +
       '<div class="sec-title">Помощь</div>' +
       '<div class="action-btn" onclick="showHowToPlay()">📖 Как играть — инструкция</div>' +
       '<div class="pet-msg" id="settings-msg"></div>';
@@ -3251,8 +3248,6 @@
       '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">Исследуй карту, проходи уроки и задания, вари зелья, торгуй на аукционе и рынке, вступай в отряды, бейся с мировым боссом и на турнирах.</div>' +
       '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">💰 Золото</div>' +
       '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">Зарабатывай в боях и заданиях. Трать в магазинах. Храни в банке под проценты.</div>' +
-      '<div style="color:#ffd86b;font-weight:700;margin:12px 0 4px;">⚡ Тормозит игра?</div>' +
-      '<div style="font-size:13px;color:#d8cdf0;line-height:1.5;">В Настройках включи «Режим производительности».</div>' +
       '</div>';
     document.getElementById("pubprofile-body").innerHTML = html;
     document.getElementById("pubprofile-backdrop").classList.add("show");
@@ -6246,15 +6241,24 @@
       document.getElementById("pubprofile-body").innerHTML =
         '<div style="text-align:center;font-family:Cinzel,serif;font-size:16px;color:#ffe9a8;margin-bottom:10px;">🧪 Какое зелье?</div>' +
         '<div style="font-size:11px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Зелье займёт этот ход — атаковать не сможешь</div>' + opts +
-        '<div class="action-btn" onclick="closePubProfile()">Отмена</div>';
-      document.getElementById("pubprofile-backdrop").classList.add("show");
-      document.getElementById("pubprofile-modal").classList.add("show");
+        '<div class="action-btn" onclick="closePotionPicker()">Отмена</div>';
+      // поднимаем модалку над оверлеем дуэли (z-index дуэли = 200)
+      const md = document.getElementById("pubprofile-modal");
+      const bd = document.getElementById("pubprofile-backdrop");
+      md.style.zIndex = "260"; bd.style.zIndex = "259";
+      bd.classList.add("show"); md.classList.add("show");
       return;
     }
     duelPotionPick(avail[0].id);
   }
+  function closePotionPicker() {
+    const md = document.getElementById("pubprofile-modal");
+    const bd = document.getElementById("pubprofile-backdrop");
+    md.classList.remove("show"); bd.classList.remove("show");
+    md.style.zIndex = ""; bd.style.zIndex = "";  // вернуть обычный z-index
+  }
   async function duelPotionPick(pid) {
-    closePubProfile();
+    closePotionPicker();
     const s = duelState;
     if (!s || duelBusy) return;
     duelBusy = true;
@@ -6683,17 +6687,23 @@
     document.querySelectorAll(".dp-btn").forEach(function(b){ b.classList.remove("selected"); });
     const moveCls = { up:".dp-btn.up", down:".dp-btn.down", left:".dp-btn.left", right:".dp-btn.right", stay:".dp-btn.stay" }[s.selMove];
     if (moveCls) { const el = document.querySelector(moveCls); if (el) el.classList.add("selected"); }
-    // кнопка подтверждения
+    // кнопка подтверждения (при заморозке можно подтвердить без цели — пропуск хода)
     const cf = document.getElementById("duel-confirm");
-    if (s.selAim && s.phase === "choose") cf.classList.remove("disabled");
+    const canConfirm = (s.selAim || s.you.frozen > 0) && s.phase === "choose";
+    if (canConfirm) cf.classList.remove("disabled");
     else cf.classList.add("disabled");
+    if (s.you.frozen > 0 && !s.selAim) cf.textContent = "❄️ Пропустить ход";
+    else cf.textContent = "Подтвердить ход";
     // кнопка зелья (только в дуэли с ИИ, есть зелья, лимит не исчерпан)
     const pb = document.getElementById("duel-potion-btn");
     if (pb) {
       const avail = (s.potions || []).filter(function(p){ return p.count > 0; });
-      const canUse = !s.live && avail.length > 0 && s.potionsUsed < s.potionLimit && s.phase === "choose";
-      pb.style.display = (!s.live && (avail.length > 0 || s.potionsUsed > 0)) ? "block" : "none";
-      pb.textContent = "🧪 Зелье (" + (s.potionLimit - s.potionsUsed) + ")";
+      const hasPotions = avail.length > 0;
+      const canUse = !s.live && hasPotions && s.potionsUsed < s.potionLimit && s.phase === "choose";
+      // в PvE кнопка всегда видна (чтобы было понятно что механика есть)
+      pb.style.display = !s.live ? "block" : "none";
+      if (!hasPotions) pb.textContent = "🧪 Нет зелий";
+      else pb.textContent = "🧪 Зелье (" + (s.potionLimit - s.potionsUsed) + ")";
       if (canUse) pb.classList.remove("disabled"); else pb.classList.add("disabled");
     }
   }
@@ -6752,7 +6762,9 @@
 
   async function duelConfirm() {
     const s = duelState;
-    if (!s || s.phase !== "choose" || !s.selAim || duelBusy) return;
+    if (!s || s.phase !== "choose" || duelBusy) return;
+    // нужна цель для атаки; если заморожен и не выбрал цель — можно пропустить ход (просто стоять)
+    if (!s.selAim && s.you.frozen <= 0) return;
     // ЖИВОЙ РЕЖИМ: отправляем ход на сервер и ждём соперника
     if (s.live) {
       duelBusy = true;
@@ -7026,12 +7038,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v15 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v16 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v15 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v16 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v15 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v16 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
