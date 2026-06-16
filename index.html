@@ -427,6 +427,13 @@
   body.perf-mode .reward-pop { animation-duration: 0.8s !important; }
   body.perf-mode .submenu .submenu-item { animation: none !important; opacity: 1 !important; transform: none !important; }
   body.perf-mode .vignette { display: none !important; }
+  /* Агрессивная оптимизация FPS: убираем самое тяжёлое */
+  body.perf-mode * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  body.perf-mode .mainbar { backdrop-filter: none !important; background: rgba(15,10,28,0.98) !important; }
+  body.perf-mode .fog, body.perf-mode .candles, body.perf-mode .magic-dust,
+  body.perf-mode #stars, body.perf-mode .house-watermark, body.perf-mode .vignette { display: none !important; }
+  body.perf-mode .card { box-shadow: none !important; }
+  body.perf-mode .pvp-spin { animation: pvpSpin 1.5s linear infinite; } /* спиннер оставляем — лёгкий */
 
   /* ══ АРЕНА (2D-бой с ИИ) ══ */
   .arena-overlay {
@@ -1537,7 +1544,7 @@
   .upgrade-card.owned { border-color:rgba(107,232,155,0.4); background:rgba(107,232,155,0.07); }
 </style>
 </head>
-<body>
+<body class="perf-mode">
 <div id="loader">
   <div class="loader-sky" id="loader-sky"></div>
   <div class="loader-moon"></div>
@@ -1563,7 +1570,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v9 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v10 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -3145,18 +3152,13 @@
 
   // ── Режим производительности (для слабых телефонов) ────────────────────
   function isPerfMode() {
-    try { return localStorage.getItem("perfMode") === "1"; } catch(e) { return window._perfMode === true; }
+    return true; // Режим производительности всегда включён — тяжёлые эффекты отключены для FPS
   }
   function applyPerfMode() {
-    if (isPerfMode()) document.body.classList.add("perf-mode");
-    else document.body.classList.remove("perf-mode");
+    document.body.classList.add("perf-mode");
   }
   function togglePerfMode() {
-    const next = !isPerfMode();
-    try { localStorage.setItem("perfMode", next ? "1" : "0"); } catch(e) { window._perfMode = next; }
     applyPerfMode();
-    renderSettings({ wizardName: document.getElementById("name") ? document.getElementById("name").textContent : "", userId: "", lang: "ru", pvpBlock: false });
-    // перечитываем настройки чтобы сохранить остальные поля
     settingsReq("get").then(renderSettings).catch(function(){});
     if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("medium"); } catch(e){} }
   }
@@ -6239,6 +6241,13 @@
       const d = await pvpReq("state", { matchId: pvpMatch.matchId });
       if (!d.ok || !d.state) return;
       applyLiveState(d.state, d.side);
+      // таймер хода
+      if (!d.state.over && d.state.turnStarted) {
+        const elapsed = Math.floor(Date.now()/1000 - d.state.turnStarted);
+        const left = Math.max(0, 30 - elapsed);
+        const ph = document.getElementById("duel-phase");
+        if (ph) ph.textContent = liveState.waiting ? "⏳ Ждём соперника ("+left+"с)" : "⚡ Твой ход ("+left+"с)";
+      }
     } catch(e){}
   }
   function applyLiveState(st, side) {
@@ -6684,12 +6693,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v9 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v10 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v9 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v10 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v9 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v10 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
