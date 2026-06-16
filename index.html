@@ -667,6 +667,10 @@
   .coll-card.in-deck::after {
     content: "✓"; position: absolute; top: 2px; right: 4px; color: #9be8c0; font-weight: 800; font-size: 13px;
   }
+  .coll-card.locked {
+    cursor: default; background: linear-gradient(165deg,#2a2440,#1a1630);
+    display: flex; align-items: center; justify-content: center;
+  }
   .coll-count {
     position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: 800; color: #ffd86b;
     background: rgba(0,0,0,0.6); border-radius: 5px; padding: 0 4px;
@@ -5174,16 +5178,34 @@
   let cardsState = null;
   let cardsBusy = false;
   let savedDeck = []; // сохранённая колода игрока (массив id)
+  let unlockedCards = null; // открытые карты игрока (массив id), null = ещё не загружено
+
+  async function loadUnlockedCards() {
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await fetch(API_URL + "/api/cardcollection", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const d = await resp.json();
+      unlockedCards = (d.unlocked || []).filter(function(c){ return ALL_CARDS[c]; });
+    } catch(e) {
+      unlockedCards = ["lightning","ice_chains","shield","heal","fireball","pixie","fire_imp","shadow_wolf","stone_guard"];
+    }
+    return unlockedCards;
+  }
+  function isUnlocked(cid) {
+    if (!unlockedCards) return true; // пока не загружено — не блокируем
+    return unlockedCards.indexOf(cid) >= 0;
+  }
 
   // ── Конструктор колоды ──
   let deckDraft = [];
   async function openDeckBuilder() {
+    await loadUnlockedCards();
     // загрузить сохранённую колоду
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await fetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
       const d = await resp.json();
-      deckDraft = (d.cards || []).filter(function(c){ return ALL_CARDS[c]; });
+      deckDraft = (d.cards || []).filter(function(c){ return ALL_CARDS[c] && isUnlocked(c); });
     } catch(e) { deckDraft = []; }
     document.getElementById("deck-overlay").style.display = "flex";
     if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeDeckBuilder); } catch(e){} }
@@ -5196,14 +5218,20 @@
   function renderCollection() {
     const box = document.getElementById("deck-collection");
     document.getElementById("deck-count").textContent = deckDraft.length + "/12";
-    // сортируем: сначала по стоимости
     const ids = Object.keys(ALL_CARDS).sort(function(a,b){ return ALL_CARDS[a].cost - ALL_CARDS[b].cost; });
     box.innerHTML = ids.map(function(cid){
       const c = ALL_CARDS[cid];
+      const locked = !isUnlocked(cid);
       const inDeck = deckDraft.indexOf(cid) >= 0;
       const rarCol = RARITY_COLOR[c.rarity || "common"];
       const count = deckDraft.filter(function(x){ return x === cid; }).length;
       const stats = c.kind === "minion" ? '⚔'+c.atk+' ❤'+c.hp : spellTypeLabel(c);
+      if (locked) {
+        return '<div class="coll-card locked" style="border-color:#444;">' +
+               '<div style="font-size:24px;filter:grayscale(1);opacity:0.4;">'+c.emoji+'</div>' +
+               '<div style="font-size:20px;position:absolute;">🔒</div>' +
+               '<div style="font-size:8px;color:#888;text-align:center;margin-top:2px;">'+unlockHint(cid)+'</div></div>';
+      }
       return '<div class="coll-card'+(inDeck?' in-deck':'')+'" style="border-color:'+rarCol+';" onclick="toggleDeckCard(\''+cid+'\')">' +
              '<div class="hc-cost" style="width:20px;height:20px;font-size:11px;">'+c.cost+'</div>' +
              (count>0?'<div class="coll-count">'+count+'</div>':'') +
@@ -5212,7 +5240,15 @@
              '<div style="font-size:8px;color:#b0a3d0;margin-top:1px;">'+stats+'</div></div>';
     }).join("");
   }
+  const CARD_UNLOCK_WINS = { troll:1, healer:2, ice_golem:3, dark_magic:4, poison_cloud:5,
+    shadow_wolf:6, sun_ray:7, vampire:9, phoenix:11, blizzard:13, dragon:15, meteor:18,
+    dementor:22, basilisk:26, avada:30 };
+  function unlockHint(cid) {
+    const w = CARD_UNLOCK_WINS[cid];
+    return w ? (w + " побед") : "закрыто";
+  }
   function toggleDeckCard(cid) {
+    if (!isUnlocked(cid)) return;
     const idx = deckDraft.indexOf(cid);
     if (idx >= 0) {
       deckDraft.splice(idx, 1);
@@ -5251,8 +5287,12 @@
     if (useCustom && savedDeck && savedDeck.length >= 8) {
       // колода игрока: каждая карта x2 для стабильности добора
       savedDeck.forEach(function(id){ if (ALL_CARDS[id]) deck.push(id, id); });
+    } else if (useCustom) {
+      // нет своей колоды — случайная из ОТКРЫТЫХ карт
+      const pool = (unlockedCards && unlockedCards.length) ? unlockedCards : Object.keys(ALL_CARDS);
+      pool.forEach(function(id){ if (ALL_CARDS[id]) deck.push(id, id); });
     } else {
-      // случайная: все карты x2
+      // колода ИИ — все карты
       Object.keys(CARD_SPELLS).forEach(function(id){ deck.push(id, id); });
       Object.keys(CARD_MINIONS).forEach(function(id){ deck.push(id, id); });
     }
@@ -5266,12 +5306,13 @@
 
   async function openCards(difficulty) {
     difficulty = difficulty || "normal";
+    await loadUnlockedCards();
     // загрузить сохранённую колоду игрока
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await fetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
       const dd = await resp.json();
-      savedDeck = (dd.cards || []).filter(function(c){ return ALL_CARDS[c]; });
+      savedDeck = (dd.cards || []).filter(function(c){ return ALL_CARDS[c] && isUnlocked(c); });
     } catch(e) {}
     const diffCfg = {
       easy:   { hp: 24, name:"Ученик", ai:0.5 },
@@ -5602,25 +5643,41 @@
   async function endCards(won) {
     cardsState.over = true;
     let rewardMsg = "";
+    let unlockedCard = null;
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await fetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, won: won, difficulty: cardsState.difficulty }) });
       const d = await resp.json();
       rewardMsg = d.msg || "";
+      unlockedCard = d.unlockedCard || null;
+      if (unlockedCard && unlockedCards && unlockedCards.indexOf(unlockedCard) < 0) {
+        unlockedCards.push(unlockedCard);
+      }
     } catch(e) {}
     const res = document.getElementById("cards-result");
     document.getElementById("cards-result-title").textContent = won ? "🏆 ПОБЕДА!" : "☠️ ПОРАЖЕНИЕ";
     document.getElementById("cards-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
-    document.getElementById("cards-result-reward").textContent = rewardMsg;
+    let rewardHtml = rewardMsg;
+    if (unlockedCard && ALL_CARDS[unlockedCard]) {
+      const c = ALL_CARDS[unlockedCard];
+      rewardHtml += '<br><br><div style="font-size:18px;color:#ffae3c;font-family:Cinzel,serif;">🎉 Новая карта!</div>' +
+        '<div style="font-size:40px;margin:6px 0;">'+c.emoji+'</div>' +
+        '<div style="font-size:15px;color:#ffe9a8;">'+c.name+'</div>';
+    }
+    document.getElementById("cards-result-reward").innerHTML = rewardHtml;
     res.classList.add("show");
     if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won ? "success" : "error"); } catch(e){} }
     inventoryLoaded = false;
   }
 
-  function chooseCardsDifficulty() {
+  async function chooseCardsDifficulty() {
+    await loadUnlockedCards();
+    const total = Object.keys(ALL_CARDS).length;
+    const have = unlockedCards ? unlockedCards.length : 0;
     const html =
-      '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:16px;">🃏 Карточная дуэль</div>' +
-      '<div style="font-size:12px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Призывай существ, кидай заклинания, снеси HP врага с 30 до 0.</div>' +
+      '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:10px;">🃏 Карточная дуэль</div>' +
+      '<div style="font-size:12px;color:#b0a3d0;text-align:center;margin-bottom:8px;">Призывай существ, кидай заклинания, снеси HP врага с 30 до 0.</div>' +
+      '<div style="font-size:13px;color:#ffd86b;text-align:center;margin-bottom:12px;">🃏 Карт открыто: '+have+'/'+total+'</div>' +
       '<div class="action-btn" style="margin-bottom:8px;background:rgba(255,216,107,0.16);border-color:rgba(255,216,107,0.4);" onclick="openDeckFromMenu()">🛠️ Собрать колоду</div>' +
       '<div class="action-btn green" style="margin-bottom:8px;" onclick="startCards(\'easy\')">🧌 Лёгкий</div>' +
       '<div class="action-btn" style="margin-bottom:8px;" onclick="startCards(\'normal\')">🧙‍♂️ Средний</div>' +
