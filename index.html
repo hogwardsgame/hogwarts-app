@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v35 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v36 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -3232,6 +3232,8 @@
     } catch (e) {} finally { broomsBusy = false; }
   }
   let twLoaded = false, warLoaded = false;
+  let aucBusy = false;
+  let aucMode = "buy";
   async function aucReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
     const payload = Object.assign({ initData: initData, action: action }, extra || {});
@@ -3294,27 +3296,29 @@
     } catch (e) { box.innerHTML='<div class="lb-empty">Не удалось загрузить ('+(e&&e.name?e.name:'ошибка')+').<br><div class="action-btn" style="margin-top:10px;" onclick="aucSwitch(\'sell\')">🔄 Повторить</div></div>'; }
   }
   async function sellItem(invId, hours) {
-    if (aucBusy) return;
+    const msg = document.getElementById("auc-msg");
+    // мгновенная реакция — видно что клик дошёл
+    if (msg) { msg.style.color="#d8cdf0"; msg.textContent="⏳ Обработка (предмет "+invId+", "+hours+"ч)..."; }
+    if (aucBusy) { if(msg){msg.textContent="Подожди, идёт обработка...";} return; }
     const inp = document.getElementById("sell-price-"+invId);
     const price = parseInt(inp ? inp.value.trim() : "0") || 0;
-    const msg = document.getElementById("auc-msg");
     if (price < 1) {
       if(msg){ msg.style.color="#ffb0b0"; msg.textContent="⚠️ Сначала введи цену в поле выше!"; }
       if (inp) { inp.style.borderColor = "#ff6b6b"; inp.focus(); }
       return;
     }
     aucBusy = true;
-    if(msg){ msg.style.color="#d8cdf0"; msg.textContent="Выставляю..."; }
+    if(msg){ msg.style.color="#d8cdf0"; msg.textContent="Выставляю за "+price+"💰 на "+hours+"ч..."; }
     try {
       const d = await aucReq("sell", { invId: invId, price: price, hours: hours });
-      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
-      if (d.ok) {
+      if (msg) { msg.style.color = (d&&d.ok)?"#9be8c0":"#ffb0b0"; msg.textContent = (d&&d.msg) ? d.msg : (d&&d.ok ? "Готово" : "Не удалось выставить"); }
+      if (d && d.ok) {
         inventoryLoaded = false;
         if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
         showReward("🔨 Выставлено на аукцион!");
-        setTimeout(loadAuctionSell, 900);
+        setTimeout(loadAuctionSell, 1100);
       }
-    } catch (e) { if(msg){ msg.style.color="#ffb0b0"; msg.textContent="Ошибка связи ("+(e&&e.name?e.name:'')+")"; } } finally { aucBusy = false; }
+    } catch (e) { if(msg){ msg.style.color="#ffb0b0"; msg.textContent="Ошибка связи: "+(e&&e.name?e.name:'неизвестно'); } } finally { aucBusy = false; }
   }
   let hxLoaded = false, journalLoaded = false, settingsLoaded = false;
 
@@ -8181,12 +8185,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v35 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v36 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v35 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v36 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v35 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v36 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
