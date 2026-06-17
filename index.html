@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v23 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v24 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -1960,6 +1960,14 @@
   </div>
 </div><!-- /screen-cloaks -->
 
+<div id="screen-brooms" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🧹 Мётлы</div>
+    <div class="divider"></div>
+    <div id="brooms-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-brooms -->
+
 <div id="screen-chat" class="screen" style="display:none;">
   <div class="card" style="padding:12px;">
     <div class="lb-title">💬 Мировой чат</div>
@@ -2060,6 +2068,7 @@
       <div class="dp-btn down" onclick="duelMove('down')">▼</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:6px;flex:1;max-width:180px;">
+      <div class="duel-potion-btn" id="duel-dash-btn" onclick="duelToggleDash()" style="display:none;background:rgba(108,180,255,0.16);border-color:rgba(108,180,255,0.4);color:#a8d0ff;">🧹 Рывок</div>
       <div class="duel-potion-btn" id="duel-potion-btn" onclick="duelUsePotion()" style="display:none;">🧪 Зелье</div>
       <div class="duel-confirm" id="duel-confirm" onclick="duelConfirm()">Подтвердить ход</div>
     </div>
@@ -2551,7 +2560,7 @@
     document.getElementById("crest").textContent = data.houseEmoji;
     document.getElementById("rank").textContent  = data.rank;
     document.getElementById("hp-txt").textContent   = data.hp + " / " + data.maxHp;
-    try { window._profileMaxHp = data.maxHp; window._profileCloak = data.cloak || null; window._profileId = data.id || null; window._profileAtk = data.atk; window._profileDef = data.def; window._profileLuck = data.luck; window._profileModel = data.model || "🧙"; } catch(e){}
+    try { window._profileMaxHp = data.maxHp; window._profileCloak = data.cloak || null; window._profileId = data.id || null; window._profileAtk = data.atk; window._profileDef = data.def; window._profileLuck = data.luck; window._profileModel = data.model || "🧙"; window._profileBroom = data.broom || null; } catch(e){}
     document.getElementById("mana-txt").textContent = data.mana + " / " + data.maxMana;
     document.getElementById("xp-txt").textContent   = data.xp + " / " + data.maxXp;
     animateNumber(document.getElementById("atk"), data.atk);
@@ -2744,7 +2753,7 @@
     ]},
     hero: { title: "🧙 Герой", tabs: [
       ["profile","🧙","Профиль"], ["inventory","🎒","Сумка"], ["cloaks","🧥","Плащи"],
-      ["pet","🐾","Питомец"], ["wandcraft","🪄","Палочка"],
+      ["brooms","🧹","Мётлы"], ["pet","🐾","Питомец"], ["wandcraft","🪄","Палочка"],
       ["ach","🏅","Награды"],
     ]},
     world: { title: "🏰 Мир", tabs: [
@@ -2873,7 +2882,7 @@
     if (tab === "duel" || tab === "cards" || tab === "arena") { chooseDuelDifficulty(); return; }
     if (tab === "worldboss") { openBossMenu(); return; }
     currentTab = tab;
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks","chat"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks","chat","brooms"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
       if (scr) {
         if (t === tab) {
@@ -2920,6 +2929,7 @@
     if (tab === "cloaks") { loadCloaks(); }
     if (tab === "chat") { openChat(); }
     else { if (typeof stopChatPoll === "function") stopChatPoll(); }
+    if (tab === "brooms") { loadBrooms(); }
     syncMainbar();
   }
 
@@ -3090,6 +3100,68 @@
       if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
       if (d.ok) { showReward("🧥 Плащ получен!"); loadProfile(); }
     } catch (e) {} finally { cloaksBusy = false; }
+  }
+
+  // ── Мётлы ──
+  let broomsBusy = false;
+  const BROOM_RAR_COLOR = { common:"#9aa0b5", rare:"#5c9dff", epic:"#b56cff", legendary:"#ffae3c" };
+  async function broomsReq(action, broom) {
+    const initData = (tg && tg.initData) ? tg.initData : "";
+    const resp = await apiFetch(API_URL + "/api/brooms", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, broom: broom || "" }) });
+    return await resp.json();
+  }
+  function renderBrooms(d) {
+    const box = document.getElementById("brooms-content");
+    if (!d.brooms) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; return; }
+    let html = '<div class="bank-card" style="text-align:center;"><div style="font-size:13px;color:#d8cdf0;">💰 Золото: <b style="color:#ffd86b;">'+(d.gold||0)+'</b></div>' +
+               '<div style="font-size:11px;color:#9d8fc0;margin-top:4px;">Метла даёт статы + рывок в дуэли (улететь на N клеток, 2-3 раза за бой).</div></div>';
+    html += d.brooms.map(function(b){
+      const rarCol = BROOM_RAR_COLOR[b.rarityKey] || "#9aa0b5";
+      let statline = [];
+      if (b.atk) statline.push("⚔+"+b.atk);
+      if (b.def) statline.push("🛡+"+b.def);
+      if (b.hp) statline.push("❤+"+b.hp);
+      if (b.luck) statline.push("🍀+"+b.luck);
+      const dashTxt = (b.dash >= 99 ? "∞" : b.dash) + " кл ×" + b.dashes;
+      const stats = (statline.length ? statline.join(" ") + " • " : "") + "🧹 рывок " + dashTxt;
+      let btn;
+      if (b.active) btn = '<div class="shop-buy cant" style="font-size:11px;background:rgba(155,232,192,0.2);color:#9be8c0;">✅ Выбрана</div>';
+      else if (b.owned) btn = '<div class="shop-buy" style="font-size:12px;" onclick="equipBroom(\''+b.id+'\')">Выбрать</div>';
+      else if (d.gold >= b.price) btn = '<div class="shop-buy" style="font-size:11px;" onclick="buyBroom(\''+b.id+'\')">'+b.price+'💰</div>';
+      else btn = '<div class="shop-buy cant" style="font-size:11px;">'+b.price+'💰</div>';
+      return '<div class="quest-card" style="border-left:3px solid '+rarCol+';"><div style="display:flex;align-items:center;gap:10px;">' +
+             '<span style="font-size:32px;">'+b.emoji+'</span>' +
+             '<div style="flex:1;"><div class="quest-name">'+b.name+' <span style="color:'+rarCol+';font-size:11px;">'+b.rarity+'</span></div>' +
+             '<div style="font-size:11px;color:#ffd86b;margin-top:2px;">'+stats+'</div>' +
+             '<div style="font-size:10px;color:#b0a3d0;margin-top:2px;">'+b.desc+'</div></div>'+btn+'</div></div>';
+    }).join("");
+    html += '<div class="pet-msg" id="brooms-msg"></div>';
+    box.innerHTML = html;
+  }
+  async function loadBrooms() {
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("brooms-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    document.getElementById("brooms-content").innerHTML='<div class="lb-empty">Загрузка...</div>';
+    try { renderBrooms(await broomsReq("list")); } catch (e) { document.getElementById("brooms-content").innerHTML='<div class="lb-empty">Не удалось загрузить.<br><div class="action-btn" style="margin-top:10px;" onclick="loadBrooms();">🔄 Повторить</div></div>'; }
+  }
+  async function equipBroom(id) {
+    if (broomsBusy) return; broomsBusy = true;
+    try {
+      const d = await broomsReq("equip", id);
+      renderBrooms(d);
+      const msg = document.getElementById("brooms-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok) loadProfile();
+    } catch (e) {} finally { broomsBusy = false; }
+  }
+  async function buyBroom(id) {
+    if (broomsBusy) return; broomsBusy = true;
+    try {
+      const d = await broomsReq("buy", id);
+      renderBrooms(d);
+      const msg = document.getElementById("brooms-msg");
+      if (msg && d.msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg; }
+      if (d.ok) { showReward("🧹 Метла получена!"); loadProfile(); }
+    } catch (e) {} finally { broomsBusy = false; }
   }
   let twLoaded = false, warLoaded = false;
   async function aucReq(action, extra) {
@@ -6453,6 +6525,7 @@
       cloakFx: cloakFx, atk: pAtk, def: pDef, luck: pLuck,
       youEmoji: pModel, foeEmoji: boss.emoji,
       potions: duelPotions, potionsUsed: 0, potionLimit: 2,
+      broomDash: (window._profileBroom?window._profileBroom.dash:2)||2, broomDashes: (window._profileBroom?window._profileBroom.dashes:2)||2, dashesUsed: 0, dashMode: false,
       spellIds: spellIds, spellLevels: spellLevels,
       selSpell: spellIds[0], selMove: "stay", selAim: null,
       over: false, phase: "choose",
@@ -6466,6 +6539,16 @@
   }
 
   // Использование зелья в дуэли (= занимает ход, лимит 2 за бой)
+  // Рывок на метле: следующее движение — на дальность метлы
+  function duelToggleDash() {
+    const s = duelState;
+    if (!s || s.live || s.phase !== "choose" || duelBusy) return;
+    if (s.dashesUsed >= s.broomDashes) { duelLog("⛔ Рывки кончились ("+s.broomDashes+" за бой)"); return; }
+    s.dashMode = !s.dashMode;
+    if (s.dashMode) duelLog("🧹 Рывок готов! Выбери направление — улетишь на " + (s.broomDash>=99?"край":s.broomDash+" кл"));
+    else duelLog("Рывок отменён");
+    renderDuel();
+  }
   async function duelUsePotion() {
     const s = duelState;
     if (!s || s.live || s.phase !== "choose" || duelBusy) return;
@@ -6847,6 +6930,7 @@
       atk: pAtk, def: pDef, luck: pLuck,
       youEmoji: pModel, foeEmoji: diffCfg.foeEmoji || "🦹",
       potions: duelPotions, potionsUsed: 0, potionLimit: 2,
+      broomDash: (window._profileBroom?window._profileBroom.dash:2)||2, broomDashes: (window._profileBroom?window._profileBroom.dashes:2)||2, dashesUsed: 0, dashMode: false,
       spellIds: spellIds, spellLevels: spellLevels,
       selSpell: spellIds[0], selMove: "stay", selAim: null,
       over: false, phase: "choose",
@@ -6947,6 +7031,16 @@
       else pb.textContent = "🧪 Зелье (" + (s.potionLimit - s.potionsUsed) + ")";
       if (canUse) pb.classList.remove("disabled"); else pb.classList.add("disabled");
     }
+    // кнопка рывка на метле
+    const db = document.getElementById("duel-dash-btn");
+    if (db) {
+      const dashesLeft = (s.broomDashes || 0) - (s.dashesUsed || 0);
+      const canDash = !s.live && dashesLeft > 0 && s.phase === "choose";
+      db.style.display = (!s.live && s.broomDashes > 0) ? "block" : "none";
+      db.textContent = s.dashMode ? "🧹 Рывок ВКЛ ✓" : ("🧹 Рывок (" + dashesLeft + ")");
+      db.style.background = s.dashMode ? "rgba(108,180,255,0.35)" : "rgba(108,180,255,0.16)";
+      if (canDash) db.classList.remove("disabled"); else db.classList.add("disabled");
+    }
   }
 
   function effIcon(f) {
@@ -6991,7 +7085,19 @@
   }
   function duelMove(dir) {
     if (!duelState || duelState.phase !== "choose") return;
-    duelState.selMove = (duelState.selMove === dir && dir !== "stay") ? "stay" : dir;
+    const s = duelState;
+    // рывок на метле
+    if (s.dashMode && dir !== "stay") {
+      s.selMove = dir;
+      s.selMoveSteps = (s.broomDash >= 99) ? duelGrid : s.broomDash;
+      s.pendingDash = true;
+      duelLog("🧹 Рывок: " + dir + " на " + (s.broomDash>=99?"край":s.broomDash+" кл") + ". Подтверди ход!");
+      renderDuel();
+      return;
+    }
+    s.selMove = (s.selMove === dir && dir !== "stay") ? "stay" : dir;
+    s.selMoveSteps = 1;
+    s.pendingDash = false;
     renderDuel();
   }
   function duelAim(r, c) {
@@ -7031,7 +7137,13 @@
 
     // РОЗЫГРЫШ: оба двигаются одновременно (заморозка блокирует движение)
     duelLog("⚔️ Розыгрыш хода...");
-    const youSteps = 1 + ((s.cloakFx && s.cloakFx.move_bonus) || 0);
+    let youSteps = 1 + ((s.cloakFx && s.cloakFx.move_bonus) || 0);
+    // рывок на метле
+    if (s.pendingDash && s.selMoveSteps) {
+      youSteps = s.selMoveSteps;
+      s.dashesUsed = (s.dashesUsed || 0) + 1;
+      s.dashMode = false; s.pendingDash = false;
+    }
     const youNew = s.you.frozen > 0 ? { r: s.you.r, c: s.you.c } : movedPos(s.you, s.selMove, youSteps);
     const foeNew = s.foe.frozen > 0 ? { r: s.foe.r, c: s.foe.c } : movedPos(s.foe, aiChoice.move);
     s.you.r = youNew.r; s.you.c = youNew.c;
@@ -7279,12 +7391,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v23 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v24 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v23 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v24 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v23 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v24 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
