@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v30 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v31 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -1984,6 +1984,14 @@
     <div id="chat-hint" style="font-size:10px;color:#9d8fc0;text-align:center;margin-top:4px;"></div>
   </div>
 </div><!-- /screen-chat -->
+
+<div id="screen-battlepass" class="screen" style="display:none;">
+  <div class="card">
+    <div class="lb-title">🎟️ Батл пасс</div>
+    <div class="divider"></div>
+    <div id="bp-content"><div class="lb-empty">Загрузка...</div></div>
+  </div>
+</div><!-- /screen-battlepass -->
 
 <div class="pubprofile-backdrop" id="pubprofile-backdrop" onclick="closePubProfile()"></div>
 <div class="pubprofile-modal" id="pubprofile-modal">
@@ -2769,7 +2777,7 @@
       ["room","🏠","Комната"], ["trade","💸","Перевод"],
     ]},
     study: { title: "📚 Занятия", tabs: [
-      ["chat","💬","Чат"], ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"],
+      ["chat","💬","Чат"], ["battlepass","🎟️","Батл пасс"], ["lessons","📚","Уроки"], ["potions","⚗️","Зелья"],
       ["events","🎉","События"], ["cup","🏰","Кубок"], ["rating","🏆","Рейтинг"],
       ["settings","⚙️","Настройки"],
     ]},
@@ -2893,7 +2901,7 @@
     if (tab === "tower") { openTower(); return; }
     if (tab === "dungeon") { openDungeon(); return; }
     currentTab = tab;
-    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks","chat","brooms"].forEach(function(t) {
+    ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks","chat","brooms","battlepass"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
       if (scr) {
         if (t === tab) {
@@ -2941,6 +2949,7 @@
     if (tab === "chat") { openChat(); }
     else { if (typeof stopChatPoll === "function") stopChatPoll(); }
     if (tab === "brooms") { loadBrooms(); }
+    if (tab === "battlepass") { loadBattlePass(); }
     syncMainbar();
   }
 
@@ -3149,6 +3158,52 @@
     html += '<div class="pet-msg" id="brooms-msg"></div>';
     box.innerHTML = html;
   }
+  // ── Батл пасс ──
+  let bpBusy = false;
+  async function loadBattlePass() {
+    const box = document.getElementById("bp-content");
+    box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/battlepass", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const d = await resp.json();
+      renderBattlePass(d);
+    } catch(e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+  function renderBattlePass(d) {
+    const box = document.getElementById("bp-content");
+    if (!d.levels) { box.innerHTML = '<div class="lb-empty">Недоступно</div>'; return; }
+    const inLevel = d.points % d.pointsPerLevel;
+    const pct = Math.round(inLevel / d.pointsPerLevel * 100);
+    let html = '<div class="bank-card" style="text-align:center;">' +
+      '<div style="font-size:13px;color:#c9b8f0;">Сезон '+d.season+'</div>' +
+      '<div style="font-size:20px;color:#ffd86b;font-weight:700;margin:4px 0;">Уровень '+d.level+' / '+d.maxLevel+'</div>' +
+      '<div style="background:rgba(255,255,255,0.1);border-radius:8px;height:10px;overflow:hidden;margin:8px 0;"><div style="background:linear-gradient(90deg,#7c5cff,#ffd86b);height:100%;width:'+pct+'%;"></div></div>' +
+      '<div style="font-size:11px;color:#9d8fc0;">'+d.points+' очков'+(d.nextLevelPoints?(' • до уровня '+(d.level+1)+': '+(d.nextLevelPoints-d.points)+' очк.'):' • МАКС')+'</div>' +
+      '<div style="font-size:10px;color:#8a7da8;margin-top:6px;">Очки за: дуэли +15, боссы +30, этаж башни +12, данж +40</div></div>';
+    html += d.levels.map(function(l){
+      const r = l.reward || {};
+      let state, btn = "";
+      if (l.claimed) { state = "opacity:0.5;"; btn = '<span style="color:#9be8c0;font-size:11px;">✅ Получено</span>'; }
+      else if (l.unlocked) { state = "border-left:3px solid #ffd86b;"; btn = '<div class="shop-buy" style="font-size:11px;" onclick="claimBP('+l.level+')">Забрать</div>'; }
+      else { state = "opacity:0.6;"; btn = '<span style="color:#9d8fc0;font-size:11px;">🔒</span>'; }
+      return '<div class="quest-card" style="'+state+'"><div style="display:flex;align-items:center;gap:10px;">' +
+             '<span style="font-size:14px;color:#ffd86b;min-width:30px;">'+l.level+'</span>' +
+             '<span style="font-size:24px;">'+(r.emoji||"🎁")+'</span>' +
+             '<div style="flex:1;font-size:12px;color:#e8e2f5;">'+(r.name||"Награда")+'</div>'+btn+'</div></div>';
+    }).join("");
+    box.innerHTML = html;
+  }
+  async function claimBP(level) {
+    if (bpBusy) return; bpBusy = true;
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/battlepass", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "claim", level: level }) });
+      const d = await resp.json();
+      if (d.ok) { showReward((d.reward&&d.reward.emoji||"🎁") + " " + (d.reward&&d.reward.name||"Награда")); loadBattlePass(); loadProfile(); }
+    } catch(e){} finally { bpBusy = false; }
+  }
+
   async function loadBrooms() {
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("brooms-content").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
     document.getElementById("brooms-content").innerHTML='<div class="lb-empty">Загрузка...</div>';
@@ -7811,12 +7866,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v30 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v31 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v30 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v31 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v30 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v31 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
