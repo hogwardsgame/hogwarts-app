@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v21 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v23 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -3122,7 +3122,7 @@
           return '<div class="quest-card"><div class="quest-name">'+l.rarity+' '+l.emoji+' '+l.name+tag+'</div>' +
                  '<div class="quest-reward">💰 '+l.price+' • ⏰ '+l.timeLeft+'</div>'+btn+'</div>';
         }).join("") + '<div class="pet-msg" id="auc-msg"></div>';
-    } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
+    } catch (e) { box.innerHTML='<div class="lb-empty">Не удалось загрузить ('+(e&&e.name?e.name:'ошибка')+').<br><div class="action-btn" style="margin-top:10px;" onclick="aucSwitch(\'buy\')">🔄 Повторить</div></div>'; }
   }
   async function placeBid(lotId) {
     if (aucBusy) return; aucBusy = true;
@@ -4098,7 +4098,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/shop", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: initData, action: action, rowId: rowId || 0 })
+      body: JSON.stringify({ initData: initData, action: action, rowId: rowId || "" })
     });
     return await resp.json();
   }
@@ -4106,14 +4106,15 @@
     document.getElementById("shop-gold").textContent = "💰 " + (d.gold != null ? d.gold : "—") + " галлеонов";
     const box = document.getElementById("shop-list");
     if (!d.items || !d.items.length) { box.innerHTML = '<div class="lb-empty">Магазин пуст</div>'; return; }
-    box.innerHTML = d.items.map(function(it){
+    let head = d.personal ? '<div style="font-size:11px;color:#9d8fc0;text-align:center;margin-bottom:8px;">🛒 Твой личный набор на сегодня — обновится завтра</div>' : '';
+    box.innerHTML = head + d.items.map(function(it){
       const stock = (it.stock < 0) ? "∞" : it.stock;
       const btn = (it.afford && it.stock !== 0)
-        ? '<div class="shop-buy" onclick="buyItem(' + it.rowId + ')">' + it.price + ' 💰</div>'
+        ? '<div class="shop-buy" onclick="buyItem(\'' + it.rowId + '\')">' + it.price + ' 💰</div>'
         : '<div class="shop-buy cant">' + it.price + ' 💰</div>';
       return '<div class="shop-row"><span class="shop-emoji">' + it.emoji + '</span>' +
              '<div class="shop-info"><div class="shop-name">' + (it.rarity ? it.rarity + ' ' : '') + it.name + '</div>' +
-             '<div class="shop-stock">В наличии: ' + stock + '</div></div>' + btn + '</div>';
+             '<div class="shop-stock">' + (it.stock < 0 ? 'Всегда в продаже' : 'В наличии: ' + stock) + '</div></div>' + btn + '</div>';
     }).join("");
   }
   async function loadShop() {
@@ -7278,12 +7279,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v21 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v23 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v21 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v23 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v21 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v23 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
