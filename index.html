@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v31 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v32 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -3608,13 +3608,19 @@
     } else {
       html += '<div class="ev-hint">Доход копится со временем. Купи улучшения, чтобы он рос.</div>';
     }
-    html += '<div class="sec-title" style="margin-top:12px;">Улучшения</div>';
+    html += '<div class="sec-title" style="margin-top:12px;">Улучшения (можно прокачивать)</div>';
     html += d.upgrades.map(function(u){
       const rate = (u.goldPerHour?'+'+u.goldPerHour+' 💰/ч ':'') + (u.xpPerHour?'+'+u.xpPerHour+' XP/ч':'');
+      const lvlTag = u.level > 0 ? '<span style="color:#ffd86b;font-size:11px;"> ур.'+u.level+'/'+u.maxLevel+'</span>' : '';
       let btn;
-      if (u.owned) btn = '<span style="color:#9be8c0;font-size:13px;">✅</span>';
+      if (u.maxed) btn = '<span style="color:#ffd86b;font-size:12px;">МАКС ⭐</span>';
+      else if (u.owned) {
+        const nextRate = (u.goldPerHourNext?'+'+u.goldPerHourNext+'💰':'') + (u.xpPerHourNext?' +'+u.xpPerHourNext+'XP':'');
+        btn = '<div class="shop-buy" style="font-size:11px;" onclick="roomBuy(\''+u.id+'\')">⬆️ '+u.price+'💰</div>';
+      }
       else btn = '<div class="shop-buy" onclick="roomBuy(\''+u.id+'\')">'+u.price+' 💰</div>';
-      return '<div class="upgrade-card'+(u.owned?' owned':'')+'"><div style="flex:1;"><div style="color:#f4f0e6;font-size:14px;">'+u.name+'</div><div style="font-size:12px;color:#9be8c0;">'+rate+'</div></div>'+btn+'</div>';
+      const nextHint = (!u.maxed && u.owned) ? '<div style="font-size:10px;color:#a8d0ff;">След. ур: +'+u.goldPerHourNext+'💰/ч +'+u.xpPerHourNext+'XP/ч</div>' : '';
+      return '<div class="upgrade-card'+(u.owned?' owned':'')+'"><div style="flex:1;"><div style="color:#f4f0e6;font-size:14px;">'+u.name+lvlTag+'</div><div style="font-size:12px;color:#9be8c0;">'+rate+'</div>'+nextHint+'</div>'+btn+'</div>';
     }).join("") + '<div style="text-align:center;font-size:12px;color:#b0a3d0;margin-top:8px;">У тебя: 💰 '+d.gold+'</div><div class="pet-msg" id="room-msg"></div>';
     box.innerHTML = html;
   }
@@ -7866,12 +7872,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v31 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v32 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v31 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v32 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v31 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v32 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
