@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v33 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v34 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6364,8 +6364,17 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "me" }) });
       const d = await resp.json();
+      // уведомление о награде прошлого сезона
+      if (d.seasonReward && d.seasonReward.reward) {
+        rankHtml += '<div style="text-align:center;margin-bottom:10px;padding:10px;border-radius:11px;background:rgba(155,232,192,0.12);border:1px solid rgba(155,232,192,0.3);">' +
+          '<div style="font-size:13px;color:#9be8c0;">🏆 Награда за прошлый сезон ('+d.seasonReward.season+')</div>' +
+          '<div style="font-size:12px;color:#ffe9a8;margin-top:2px;">'+d.seasonReward.reward+' • +'+(d.seasonReward.gold||0)+'💰</div></div>';
+      }
+      if (d.season && d.season.season) {
+        rankHtml += '<div style="text-align:center;font-size:11px;color:#c9b8f0;margin-bottom:8px;">📅 Сезон '+d.season.season+' • осталось '+d.season.daysLeft+' дн.</div>';
+      }
       if (d.league) {
-        rankHtml = '<div style="text-align:center;margin-bottom:12px;padding:10px;border-radius:11px;background:rgba(255,216,107,0.1);">' +
+        rankHtml += '<div style="text-align:center;margin-bottom:12px;padding:10px;border-radius:11px;background:rgba(255,216,107,0.1);">' +
           '<div style="font-size:20px;color:#ffe9a8;">'+d.league.emoji+' '+d.league.name+'</div>' +
           '<div style="font-size:13px;color:#d8cdf0;margin-top:3px;">Рейтинг: '+d.rating+' RP'+(d.league.toNext>0?' • до '+d.league.nextEmoji+' '+d.league.toNext:'')+'</div>' +
           '<div style="font-size:11px;color:#9d8fc0;margin-top:2px;">Побед: '+d.wins+' • Винрейт: '+d.winrate+'%'+(d.streak>=2?' • 🔥'+d.streak:'')+'</div></div>';
@@ -6390,7 +6399,9 @@
       const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "top" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏆 Таблица лидеров</div>';
-      if (d.me) html += '<div style="text-align:center;font-size:12px;color:#d8cdf0;margin-bottom:12px;">Ты: '+d.me.leagueEmoji+' '+d.me.league+' • '+d.me.rating+' RP</div>';
+      if (d.season && d.season.season) html += '<div style="text-align:center;font-size:11px;color:#c9b8f0;margin-bottom:4px;">📅 Сезон '+d.season.season+' • осталось '+d.season.daysLeft+' дн.</div>';
+      if (d.me) html += '<div style="text-align:center;font-size:12px;color:#d8cdf0;margin-bottom:8px;">Ты: '+d.me.leagueEmoji+' '+d.me.league+' • '+d.me.rating+' RP</div>';
+      html += '<div style="font-size:10px;color:#9d8fc0;text-align:center;margin-bottom:10px;">🏆 В конце сезона топы получают награды + значки, рейтинг частично сбрасывается</div>';
       if (d.top && d.top.length) {
         html += d.top.map(function(p, i){
           const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+".";
@@ -8159,12 +8170,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v33 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v34 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v33 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v34 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v33 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v34 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
