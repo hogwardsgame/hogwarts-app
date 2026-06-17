@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v24 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v27 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -1726,9 +1726,14 @@
   <div class="card">
     <div class="lb-title">⚗️ Зельеварение</div>
     <div class="divider"></div>
-    <div id="pot-queue"></div>
-    <div id="pot-list"><div class="lb-empty">Загрузка...</div></div>
-    <div class="pet-msg" id="pot-msg"></div>
+    <div id="buff-active"></div>
+    <div id="buff-ingredients"></div>
+    <div class="auc-tabs" style="display:flex;gap:8px;margin:10px 0;">
+      <div class="action-btn green" id="buff-tab-battle" style="flex:1;" onclick="buffSwitch('battle')">⚔️ Боевые</div>
+      <div class="action-btn" id="buff-tab-long" style="flex:1;" onclick="buffSwitch('long')">⏳ Длительные</div>
+    </div>
+    <div id="buff-list"><div class="lb-empty">Загрузка...</div></div>
+    <div class="pet-msg" id="buff-msg"></div>
   </div>
 </div><!-- /screen-potions -->
 
@@ -2077,6 +2082,7 @@
   <div class="arena-result" id="duel-result">
     <div class="arena-result-title" id="duel-result-title">🏆 ПОБЕДА!</div>
     <div class="arena-result-reward" id="duel-result-reward"></div>
+    <div class="action-btn green" id="duel-rematch-btn" style="width:200px;margin-bottom:8px;" onclick="duelRematch()">🔄 Реванш</div>
     <div class="action-btn" style="width:200px;" onclick="closeDuel()">Завершить</div>
   </div>
 </div>
@@ -4235,90 +4241,88 @@
     } catch (e) { box.innerHTML='<div class="lb-empty">Ошибка</div>'; }
   }
 
-  // ── Зелья ──────────────────────────────────────────────────────────────
-  let potBusy = false;
-  async function potReq(action, recipe) {
+  // ── Зельеварение (баффы) ──────────────────────────────────────────────
+  let buffBusy = false;
+  let buffTab = "battle";
+  async function buffReq(action, potion) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/potions", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: initData, action: action, recipe: recipe || "" })
-    });
+    const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, potion: potion || "" }) });
     return await resp.json();
   }
-
-  function fmtTime(sec) {
-    const m = Math.floor(sec/60), s = sec%60;
-    return m > 0 ? (m + " мин " + s + " с") : (s + " с");
+  function buffSwitch(tab) {
+    buffTab = tab;
+    document.getElementById("buff-tab-battle").className = "action-btn" + (tab==="battle"?" green":"");
+    document.getElementById("buff-tab-long").className = "action-btn" + (tab==="long"?" purple":"");
+    renderBuffList();
   }
-
-  function renderPotions(d) {
-    // Очередь
-    const qbox = document.getElementById("pot-queue");
-    let anyReady = false;
-    if (d.queue && d.queue.length) {
-      qbox.innerHTML = d.queue.map(function(q){
-        if (q.ready) anyReady = true;
-        return '<div class="pot-queue-item' + (q.ready ? ' ready' : '') + '">' +
-                 '<span style="font-size:20px;">' + q.emoji + '</span>' +
-                 '<span style="flex:1;">' + q.name + '</span>' +
-                 '<span style="font-size:12px;">' + (q.ready ? '✅ Готово!' : '⏱ ' + fmtTime(q.remaining)) + '</span>' +
-               '</div>';
-      }).join("");
-      if (anyReady) {
-        qbox.innerHTML += '<div class="pot-collect" onclick="collectPotions()">📥 Собрать готовые зелья</div>';
-      }
-    } else { qbox.innerHTML = ""; }
-
-    // Рецепты
-    const box = document.getElementById("pot-list");
-    if (!d.recipes || !d.recipes.length) {
-      box.innerHTML = '<div class="lb-empty">Нет доступных рецептов</div>'; return;
-    }
-    box.innerHTML = d.recipes.map(function(r){
+  let _buffData = null;
+  function renderBuffList() {
+    const box = document.getElementById("buff-list");
+    if (!_buffData) { box.innerHTML = '<div class="lb-empty">Загрузка...</div>'; return; }
+    const list = buffTab === "battle" ? _buffData.battle : _buffData.long;
+    if (!list || !list.length) { box.innerHTML = '<div class="lb-empty">Нет рецептов</div>'; return; }
+    box.innerHTML = (buffTab==="battle"
+      ? '<div style="font-size:11px;color:#9d8fc0;text-align:center;margin-bottom:8px;">⚔️ Боевые: применяются в дуэли (1 ход, действуют несколько ходов)</div>'
+      : '<div style="font-size:11px;color:#9d8fc0;text-align:center;margin-bottom:8px;">⏳ Длительные: слабее, но действуют 3 РЕАЛЬНЫХ часа везде. Очень редкие!</div>'
+    ) + list.map(function(r){
       const ings = r.ingredients.map(function(i){
-        const cls = (i.have >= i.need) ? "ok" : "no";
-        return '<div class="pot-ing ' + cls + '">• ' + i.name + ': ' + i.have + '/' + i.need + '</div>';
-      }).join("");
-      const btn = r.canBrew
-        ? '<div class="pot-brew" onclick="brewPotion(\'' + r.id + '\')">🔥 Варить (' + r.time + ' мин)</div>'
-        : '<div class="pot-brew disabled">Не хватает ингредиентов</div>';
-      return '<div class="pot-card">' +
-               '<div class="pot-head"><span class="pot-emoji">' + r.emoji + '</span>' +
-               '<span class="pot-name">' + r.name + '</span></div>' +
-               ings + btn +
-             '</div>';
+        const enough = i.have >= i.need;
+        return '<span style="color:'+(enough?"#9be8c0":"#ffb0b0")+';font-size:11px;">'+i.emoji+' '+i.have+'/'+i.need+'</span>';
+      }).join(" ");
+      let btn;
+      if (r.isLong && r.owned > 0)
+        btn = '<div class="shop-buy" style="font-size:11px;" onclick="useLongBuff(\''+r.id+'\')">Выпить ('+r.owned+')</div>';
+      else if (r.canBrew)
+        btn = '<div class="shop-buy" style="font-size:11px;" onclick="brewBuff(\''+r.id+'\')">Сварить</div>';
+      else
+        btn = '<div class="shop-buy cant" style="font-size:11px;">Нет ингр.</div>';
+      const ownTag = r.owned > 0 ? '<span style="color:#9be8c0;font-size:10px;"> ×'+r.owned+'</span>' : '';
+      return '<div class="quest-card"><div style="display:flex;align-items:center;gap:10px;">' +
+             '<span style="font-size:28px;">'+r.emoji+'</span>' +
+             '<div style="flex:1;"><div class="quest-name">'+r.name+ownTag+'</div>' +
+             '<div style="font-size:10px;color:#ffd86b;margin:2px 0;">'+r.desc+'</div>' +
+             '<div>'+ings+'</div></div>'+btn+'</div></div>';
     }).join("");
   }
-
   async function loadPotions() {
-    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) {
-      document.getElementById("pot-list").innerHTML = '<div class="lb-empty">Недоступно</div>'; return;
-    }
-    try { renderPotions(await potReq("list")); }
-    catch (e) { document.getElementById("pot-list").innerHTML = '<div class="lb-empty">Ошибка</div>'; }
-  }
-
-  async function brewPotion(rid) {
-    if (potBusy) return; potBusy = true;
-    const msg = document.getElementById("pot-msg");
-    msg.style.color = "#c9b8e8"; msg.textContent = "⏳...";
+    if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { document.getElementById("buff-list").innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
+    document.getElementById("buff-list").innerHTML='<div class="lb-empty">Загрузка...</div>';
     try {
-      const d = await potReq("brew", rid);
-      msg.style.color = d.ok ? "#9be8c0" : "#ffb0b0"; msg.textContent = d.msg || "";
-      if (d.recipes) renderPotions(d);
-      if (d.ok) { inventoryLoaded = false; loadProfile(); }
-    } catch (e) {} finally { potBusy = false; }
+      _buffData = await buffReq("list");
+      // активные баффы
+      const ab = document.getElementById("buff-active");
+      if (_buffData.activeBuffs && _buffData.activeBuffs.length) {
+        ab.innerHTML = _buffData.activeBuffs.map(function(b){
+          const h = Math.floor(b.timeLeft/3600), m = Math.floor((b.timeLeft%3600)/60);
+          return '<div class="bank-card" style="border-left:3px solid #9be8c0;"><span style="font-size:13px;color:#9be8c0;">'+b.emoji+' '+b.name+' — активно ещё '+h+'ч '+m+'м</span></div>';
+        }).join("");
+      } else ab.innerHTML = "";
+      // ингредиенты
+      const ig = document.getElementById("buff-ingredients");
+      if (_buffData.ingredients && _buffData.ingredients.length) {
+        ig.innerHTML = '<div class="bank-card"><div style="font-size:11px;color:#b0a3d0;margin-bottom:4px;">🧪 Твои ингредиенты (падают с боссов):</div><div>' +
+          _buffData.ingredients.map(function(i){ return '<span style="font-size:12px;margin-right:8px;">'+i.emoji+' '+i.name+' ×'+i.count+'</span>'; }).join("") + '</div></div>';
+      } else ig.innerHTML = '<div class="bank-card"><div style="font-size:11px;color:#9d8fc0;text-align:center;">Нет ингредиентов. Бей боссов (Сражения → 🐲 Боссы) — с них падают ингредиенты для зелий!</div></div>';
+      renderBuffList();
+    } catch (e) { document.getElementById("buff-list").innerHTML='<div class="lb-empty">Ошибка загрузки</div>'; }
   }
-
-  async function collectPotions() {
-    if (potBusy) return; potBusy = true;
-    const msg = document.getElementById("pot-msg");
+  async function brewBuff(pid) {
+    if (buffBusy) return; buffBusy = true;
+    const msg = document.getElementById("buff-msg");
     try {
-      const d = await potReq("collect");
-      msg.style.color = d.ok ? "#9be8c0" : "#b0a3d0"; msg.textContent = d.msg || "";
-      if (d.recipes) renderPotions(d);
-      if (d.ok) { showReward("⚗️ Зелья готовы!"); inventoryLoaded = false; }
-    } catch (e) {} finally { potBusy = false; }
+      const d = await buffReq("brew", pid);
+      if (msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg || ""; }
+      if (d.ok) { showReward("⚗️ Зелье сварено!"); loadPotions(); }
+    } catch (e) {} finally { buffBusy = false; }
+  }
+  async function useLongBuff(pid) {
+    if (buffBusy) return; buffBusy = true;
+    const msg = document.getElementById("buff-msg");
+    try {
+      const d = await buffReq("uselong", pid);
+      if (msg) { msg.style.color = d.ok?"#9be8c0":"#ffb0b0"; msg.textContent = d.msg || ""; }
+      if (d.ok) { showReward("⚜️ Бафф активен 3 часа!"); loadPotions(); loadProfile(); }
+    } catch (e) {} finally { buffBusy = false; }
   }
 
   // ── Питомец ────────────────────────────────────────────────────────────
@@ -6280,10 +6284,10 @@
     warrior:  { dmg_bonus: 0.1 },
     guardian: { shield_bonus: 5 },
     healer:   { heal_bonus: 0.2 },
-    swift:    { move_bonus: 1 },
+    swift:    { dodge_bonus: 0.2 },
     dark:     { burn_bonus: 3, freeze_bonus: 1 },
     frost:    { freeze_bonus: 2 },
-    legend:   { dmg_bonus: 0.15, shield_bonus: 5, move_bonus: 1 },
+    legend:   { dmg_bonus: 0.15, shield_bonus: 5, dodge_bonus: 0.15 },
   };
 
   async function chooseDuelDifficulty() {
@@ -6478,6 +6482,7 @@
 
   async function startBossBattle(bossId) {
     closePubProfile();
+    window._lastDuel = { type: "boss", bossId: bossId };
     let boss = null, playerHp = 130;
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
@@ -6604,7 +6609,7 @@
         await sleep(400);
         // враг делает ход (атакует)
         const aiChoice = aiDuelChoose();
-        const youNew = s.you.frozen > 0 ? {r:s.you.r,c:s.you.c} : movedPos(s.you, s.selMove, 1 + ((s.cloakFx&&s.cloakFx.move_bonus)||0));
+        const youNew = s.you.frozen > 0 ? {r:s.you.r,c:s.you.c} : movedPos(s.you, s.selMove, 1);
         const foeNew = s.foe.frozen > 0 ? {r:s.foe.r,c:s.foe.c} : movedPos(s.foe, aiChoice.move);
         s.you.r = youNew.r; s.you.c = youNew.c;
         s.foe.r = foeNew.r; s.foe.c = foeNew.c;
@@ -6870,6 +6875,7 @@
       } else {
         document.getElementById("duel-result-reward").textContent = "Ничья!";
       }
+      var rmb = document.getElementById("duel-rematch-btn"); if (rmb) rmb.style.display = "none";
       document.getElementById("duel-result").classList.add("show");
       if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won?"success":"error"); } catch(e){} }
     }
@@ -6877,6 +6883,7 @@
 
   async function openDuel(difficulty) {
     difficulty = difficulty || "normal";
+    window._lastDuel = { type: "duel", difficulty: difficulty };
     // HP из профиля
     let myHp = 100, myAbils = {};
     try {
@@ -6951,6 +6958,16 @@
     loadProfile();
   }
 
+  // Реванш — повторить последний бой (дуэль или босс)
+  function duelRematch() {
+    const last = window._lastDuel;
+    document.getElementById("duel-overlay").style.display = "none";
+    document.getElementById("duel-result").classList.remove("show");
+    if (!last) { closeDuel(); return; }
+    if (last.type === "boss") { startBossBattle(last.bossId); }
+    else { openDuel(last.difficulty || "normal"); }
+  }
+
   function duelLog(t) { const el = document.getElementById("duel-log"); if (el) el.textContent = t; }
 
   function renderDuel() {
@@ -6964,7 +6981,7 @@
     grid.style.gridTemplateRows = "repeat(" + duelGrid + ", 1fr)";
     const cells = [];
     // куда шагнёт игрок (превью) — с учётом бонуса плаща на дальность
-    const youSteps = 1 + ((s.cloakFx && s.cloakFx.move_bonus) || 0);
+    const youSteps = 1;
     const preview = movedPos(s.you, s.selMove, youSteps);
     // область удара (превью)
     const curSpell = DUEL_SPELLS[s.selSpell] || {};
@@ -7137,7 +7154,7 @@
 
     // РОЗЫГРЫШ: оба двигаются одновременно (заморозка блокирует движение)
     duelLog("⚔️ Розыгрыш хода...");
-    let youSteps = 1 + ((s.cloakFx && s.cloakFx.move_bonus) || 0);
+    let youSteps = 1;
     // рывок на метле
     if (s.pendingDash && s.selMoveSteps) {
       youSteps = s.selMoveSteps;
@@ -7201,6 +7218,14 @@
     const atkBonus = casterKey === "you" ? (1 + ((s.atk||10) - 10) * 0.01) : 1;
     const luckCrit = casterKey === "you" ? Math.min(0.4, 0.05 + ((s.luck||5) * 0.005)) : 0.1;
     const defReduce = casterKey === "you" ? 1 : (1 - Math.min(0.5, ((s.def||5) - 5) * 0.008));
+    // уклонение от плаща (когда враг атакует игрока)
+    if (casterKey === "foe" && s.cloakFx && s.cloakFx.dodge_bonus) {
+      if (Math.random() < s.cloakFx.dodge_bonus) {
+        await flyDuelProjectile(casterPos, aim, spell.emoji, spell.color);
+        duelLog("💨 Уклонение! Плащ спас от удара.");
+        return;
+      }
+    }
     // снаряд летит
     await flyDuelProjectile(casterPos, aim, spell.emoji, spell.color);
     // проверка попадания
@@ -7306,6 +7331,7 @@
       } catch(e){}
       document.getElementById("duel-result-title").textContent = won ? "🏆 БОСС ПОВЕРЖЕН!" : "☠️ ПОРАЖЕНИЕ";
       document.getElementById("duel-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
+      var rmb1 = document.getElementById("duel-rematch-btn"); if (rmb1) rmb1.style.display = "block";
       document.getElementById("duel-result-reward").innerHTML = msg + dropHtml;
       document.getElementById("duel-result").classList.add("show");
       if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won?"success":"error"); } catch(e){} }
@@ -7335,6 +7361,7 @@
     } catch(e) {}
     document.getElementById("duel-result-title").textContent = won ? "🏆 ПОБЕДА!" : "☠️ ПОРАЖЕНИЕ";
     document.getElementById("duel-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
+    var rmb2 = document.getElementById("duel-rematch-btn"); if (rmb2) rmb2.style.display = "block";
     document.getElementById("duel-result-reward").innerHTML = rewardMsg + ratingHtml;
     document.getElementById("duel-result").classList.add("show");
     if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won ? "success" : "error"); } catch(e){} }
@@ -7391,12 +7418,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v24 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v27 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v24 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v27 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v24 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v27 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
