@@ -1605,7 +1605,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v32 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v33 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2828,6 +2828,7 @@
     if (tab === "worldboss") { closeSubmenu(); openBossMenu(); return; }  // боссы дуэли — оверлей
     if (tab === "tower") { closeSubmenu(); openTower(); return; }  // башня — оверлей
     if (tab === "dungeon") { closeSubmenu(); openDungeon(); return; }  // данж — оверлей
+    if (tab === "tournament") { closeSubmenu(); openTournament(); return; }  // турнир — оверлей
     if (tab === "castle") { closeSubmenu(); openCastle(); return; }  // замок — оверлей
     closeSubmenu();  // закрываем подменю всегда, до переключения (чтобы не зависало)
     switchTab(tab);
@@ -2900,6 +2901,7 @@
     if (tab === "worldboss") { openBossMenu(); return; }
     if (tab === "tower") { openTower(); return; }
     if (tab === "dungeon") { openDungeon(); return; }
+    if (tab === "tournament") { openTournament(); return; }
     currentTab = tab;
     ["profile","rating","inventory","cup","pet","potions","shop","ach","league","quests","lessons","worldboss","tournament","events","trade","wandcraft","bank","explore","hogsmeade","blackmarket","room","journal","settings","war","auction","abilities","cloaks","chat","brooms","battlepass"].forEach(function(t) {
       const scr = document.getElementById("screen-" + t);
@@ -6546,6 +6548,237 @@
     } catch(e) { body.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
   }
 
+  // ══════════════ ТУРНИР (кубок на выбывание) ══════════════
+  async function openCupTournament() {
+    const body = document.getElementById("pubprofile-body");
+    body.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "status" }) });
+      const d = await resp.json();
+      let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏆 Турнир</div>';
+      const isAdmin = (window._profileId === 6903827237);
+      if (d.state === "idle") {
+        html += '<div class="lb-empty">Сейчас турниров нет.<br>Админ откроет регистрацию командой в чате:<br><code>/tournament open 1000</code></div>';
+      } else if (d.state === "registration") {
+        html += '<div class="bank-card" style="text-align:center;"><div style="color:#9be8c0;">📝 Идёт регистрация</div><div style="font-size:13px;color:#ffd86b;margin-top:4px;">Приз: '+d.prizeGold+'💰 + значок 🏆</div><div style="font-size:12px;color:#b0a3d0;margin-top:4px;">Участников: '+d.players.length+'/'+d.maxPlayers+'</div></div>';
+        html += d.players.map(function(p){ return '<div class="quest-card" style="padding:8px;">'+(p.house?houseEmojiOf(p.house):"")+' '+escHtml(p.name)+'</div>'; }).join("");
+        if (d.registered) html += '<div class="bank-card" style="text-align:center;color:#9be8c0;">✅ Ты зарегистрирован! Жди старта.</div>';
+        else html += '<div class="action-btn green" onclick="cupRegister()">📝 Участвовать</div>';
+      } else if (d.state === "active") {
+        html += '<div class="bank-card" style="text-align:center;color:#ffd86b;">⚔️ Турнир идёт! Раунд '+(d.round+1)+'</div>';
+        html += renderBracket(d.bracket);
+        html += '<div class="action-btn green" style="margin-top:10px;" onclick="cupPlayMatch()">⚔️ Мой бой</div>';
+      } else if (d.state === "finished") {
+        html += '<div class="bank-card" style="text-align:center;"><div style="font-size:18px;color:#ffd86b;">🏆 ЧЕМПИОН</div><div style="font-size:16px;color:#fff;margin-top:6px;">'+escHtml(d.winnerName||"?")+'</div></div>';
+        html += renderBracket(d.bracket);
+      }
+      body.innerHTML = html;
+    } catch(e) { body.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+  function houseEmojiOf(h){ return {gryffindor:"🦁",slytherin:"🐍",ravenclaw:"🦅",hufflepuff:"🦡"}[h]||""; }
+  function renderBracket(bracket) {
+    if (!bracket || !bracket.length) return "";
+    return bracket.map(function(round, ri){
+      const rname = ["1/4 финала","1/2 финала","Финал","Раунд"][Math.min(ri, 3)];
+      return '<div style="font-size:11px;color:#9d8fc0;margin:8px 0 4px;text-align:center;">'+(bracket.length-ri===1?"Финал":("Раунд "+(ri+1)))+'</div>' +
+        round.map(function(m){
+          const w = m.winner;
+          const p1w = w !== null && m.p1.id === w;
+          const p2w = w !== null && m.p2.id === w;
+          return '<div class="quest-card" style="padding:6px 10px;display:flex;justify-content:space-between;font-size:12px;">' +
+                 '<span style="color:'+(p1w?"#9be8c0":(w!==null?"#7a7a7a":"#e8e2f5"))+';">'+escHtml(m.p1.name)+(p1w?" ✅":"")+'</span>' +
+                 '<span style="color:#9d8fc0;">vs</span>' +
+                 '<span style="color:'+(p2w?"#9be8c0":(w!==null?"#7a7a7a":"#e8e2f5"))+';">'+escHtml(m.p2.name)+(p2w?" ✅":"")+'</span></div>';
+        }).join("");
+    }).join("");
+  }
+  async function cupRegister() {
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "register" }) });
+      const d = await resp.json();
+      if (d.msg) alert(d.msg);
+      openCupTournament();
+    } catch(e){}
+  }
+  async function cupPlayMatch() {
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "match" }) });
+      const d = await resp.json();
+      if (!d.match) { alert("Сейчас нет твоего матча. Возможно, ты выбыл или ждёшь следующий раунд."); return; }
+      closePubProfile();
+      startCupMatch(d.match.opponent);
+    } catch(e){}
+  }
+  async function startCupMatch(opp) {
+    window._lastDuel = { type: "cup" };
+    window._cupOpponent = opp;
+    // бой против ИИ со статами соперника
+    let myAbils = {};
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const ad = await resp.json();
+      (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
+    } catch(e){}
+    let spellIds = Object.keys(myAbils);
+    if (spellIds.length === 0) spellIds = ["fireball","lightning","ice_chains","sun_ray"];
+    spellIds = spellIds.slice(0,4);
+    const spellLevels = {}; spellIds.forEach(function(id){ spellLevels[id] = myAbils[id] || 1; });
+    let cloakId = "novice";
+    try { if (window._profileCloak && window._profileCloak.id) cloakId = window._profileCloak.id; } catch(e){}
+    const cloakFx = CLOAK_DUEL_FX[cloakId] || {};
+    let pAtk=10,pDef=5,pLuck=5,pModel="🧙";
+    try { pAtk=window._profileAtk||10; pDef=window._profileDef||5; pLuck=window._profileLuck||5; pModel=window._profileModel||"🧙"; } catch(e){}
+    let duelPotions = [], battleBuffs = [];
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      duelPotions = (await r1.json()).potions || [];
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      battleBuffs = (await r2.json()).potions || [];
+    } catch(e){}
+    duelGrid = 5;
+    const oppHp = Math.round(100 + Math.min(100, ((opp.stats&&opp.stats.hp||120) - 100) * 0.2));
+    duelState = {
+      difficulty: "cup", aiSkill: 0.75,
+      you: { hp: 130, maxHp: 130, r: 4, c: 2, burn:0, frozen:0 },
+      foe: { hp: Math.max(110, oppHp), maxHp: Math.max(110, oppHp), r: 0, c: 2, burn:0, frozen:0 },
+      cloakFx: cloakFx, atk: pAtk, def: pDef, luck: pLuck,
+      youEmoji: pModel, foeEmoji: opp.house ? houseEmojiOf(opp.house) : "🧙",
+      potions: duelPotions, potionsUsed: 0, potionLimit: 2,
+      battleBuffs: battleBuffs, activeBuffs: [], buffsUsed: 0, buffLimit: 2,
+      broomDash: (window._profileBroom?window._profileBroom.dash:3)||3, broomDashes: (window._profileBroom?window._profileBroom.dashes:2)||2, dashesUsed: 0, dashMode: false,
+      spellIds: spellIds, spellLevels: spellLevels,
+      selSpell: spellIds[0], selMove: "stay", selAim: null,
+      over: false, phase: "choose",
+    };
+    document.getElementById("duel-foe-name").textContent = "🏆 " + (opp.house?houseEmojiOf(opp.house):"") + " " + opp.name;
+    document.getElementById("duel-overlay").style.display = "flex";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeDuel); } catch(e){} }
+    renderDuel();
+    duelLog("🏆 Турнирный бой против " + opp.name + "!");
+  }
+
+  // ══════════════ ТУРНИР НА ВЫБЫВАНИЕ ══════════════
+  async function openTournament() {
+    const body = document.getElementById("pubprofile-body");
+    body.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    document.getElementById("pubprofile-backdrop").classList.add("show");
+    document.getElementById("pubprofile-modal").classList.add("show");
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "status" }) });
+      const d = await resp.json();
+      let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏆 Турнир на выбывание</div>' +
+        '<div style="font-size:11px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Пройди сетку: четвертьфинал → полуфинал → финал. 3 победы = чемпион! HP не лечится между боями. Раз в день.</div>';
+      html += '<div class="bank-card" style="text-align:center;"><div style="font-size:13px;color:#ffd86b;">🏆 Побед в турнирах: '+(d.winsTotal||0)+'</div></div>';
+      if (d.wonToday) {
+        html += '<div class="bank-card" style="text-align:center;"><div style="font-size:14px;color:#9be8c0;">✅ Сегодня ты чемпион!</div><div style="font-size:11px;color:#9d8fc0;margin-top:4px;">Новый турнир завтра</div></div>';
+      } else if (d.runActive && d.currentRound > 1) {
+        html += '<div class="action-btn green" style="margin:10px 0 6px;" onclick="tournamentContinue()">▶️ Продолжить ('+(d.currentRound===3?"ФИНАЛ":("раунд "+d.currentRound))+')</div>';
+      } else {
+        html += '<div class="action-btn green" style="margin:10px 0 6px;" onclick="tournamentStart()">🏆 Войти в турнир</div>';
+      }
+      html += '<div class="action-btn" style="margin-top:6px;background:rgba(255,216,107,0.16);border-color:rgba(255,216,107,0.4);" onclick="openTournamentTop()">👑 Зал чемпионов</div>';
+      body.innerHTML = html;
+    } catch(e) { body.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
+  }
+  async function openTournamentTop() {
+    const body = document.getElementById("pubprofile-body");
+    body.innerHTML = '<div class="lb-empty">Загрузка...</div>';
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "champions" }) });
+      const d = await resp.json();
+      let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:12px;">👑 Зал чемпионов</div>';
+      if (!d.top || !d.top.length) html += '<div class="lb-empty">Пока нет чемпионов</div>';
+      else html += d.top.map(function(p,i){
+        const medal = i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)+".";
+        return '<div class="quest-card" style="display:flex;align-items:center;gap:10px;"><span style="width:28px;">'+medal+'</span><span style="flex:1;">'+p.houseEmoji+' '+escHtml(p.name)+'</span><span style="color:#ffd86b;">'+p.wins+' 🏆</span></div>';
+      }).join("");
+      html += '<div class="action-btn" style="margin-top:10px;" onclick="openTournament()">← Назад</div>';
+      body.innerHTML = html;
+    } catch(e) { body.innerHTML = '<div class="lb-empty">Ошибка</div>'; }
+  }
+  async function tournamentStart() {
+    closePubProfile();
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "start" }) });
+      const d = await resp.json();
+      if (d.ok && d.opponent) openTournamentBattle(d.opponent, d.playerHp, d.round);
+      else if (d.msg) alert(d.msg);
+    } catch(e){}
+  }
+  async function tournamentContinue() {
+    closePubProfile();
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "round" }) });
+      const d = await resp.json();
+      if (d.ok && d.opponent) openTournamentBattle(d.opponent, d.playerHp, d.round);
+    } catch(e){}
+  }
+  async function openTournamentBattle(opp, playerHp, round) {
+    window._lastDuel = { type: "tournament" };
+    let myAbils = {};
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const ad = await resp.json();
+      (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
+    } catch(e){}
+    let spellIds = Object.keys(myAbils);
+    if (spellIds.length === 0) spellIds = ["fireball","lightning","ice_chains","sun_ray"];
+    spellIds = spellIds.slice(0,4);
+    const spellLevels = {}; spellIds.forEach(function(id){ spellLevels[id] = myAbils[id] || 1; });
+    let cloakId = "novice";
+    try { if (window._profileCloak && window._profileCloak.id) cloakId = window._profileCloak.id; } catch(e){}
+    const cloakFx = CLOAK_DUEL_FX[cloakId] || {};
+    let pAtk=10,pDef=5,pLuck=5,pModel="🧙";
+    try { pAtk=window._profileAtk||10; pDef=window._profileDef||5; pLuck=window._profileLuck||5; pModel=window._profileModel||"🧙"; } catch(e){}
+    let duelPotions = [], battleBuffs = [];
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      duelPotions = (await r1.json()).potions || [];
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      battleBuffs = (await r2.json()).potions || [];
+    } catch(e){}
+    duelGrid = opp.grid || 5;
+    const center = Math.floor(duelGrid/2);
+    duelState = {
+      difficulty: "tournament", tournRound: round, bossDmg: opp.dmg, bossMechanic: "none", aiSkill: opp.aiSkill || 0.7,
+      you: { hp: playerHp, maxHp: playerHp, r: duelGrid-1, c: center, burn:0, frozen:0 },
+      foe: { hp: opp.hp, maxHp: opp.maxHp, r: 0, c: center, burn:0, frozen:0 },
+      cloakFx: cloakFx, atk: pAtk, def: pDef, luck: pLuck,
+      youEmoji: pModel, foeEmoji: opp.emoji,
+      potions: duelPotions, potionsUsed: 0, potionLimit: 2,
+      battleBuffs: battleBuffs, activeBuffs: [], buffsUsed: 0, buffLimit: 2,
+      broomDash: (window._profileBroom?window._profileBroom.dash:3)||3, broomDashes: (window._profileBroom?window._profileBroom.dashes:2)||2, dashesUsed: 0, dashMode: false,
+      spellIds: spellIds, spellLevels: spellLevels,
+      selSpell: spellIds[0], selMove: "stay", selAim: null,
+      over: false, phase: "choose",
+    };
+    document.getElementById("duel-foe-name").textContent = opp.roundName + ": " + opp.emoji + " " + opp.name;
+    document.getElementById("duel-overlay").style.display = "flex";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeDuel); } catch(e){} }
+    renderDuel();
+    duelLog("🏆 " + opp.roundName + " против " + opp.name + "! В бой!");
+  }
+  async function tournamentNext() {
+    document.getElementById("duel-overlay").style.display = "none";
+    document.getElementById("duel-result").classList.remove("show");
+    tournamentContinue();
+  }
+
   // ══════════════ ЕЖЕДНЕВНЫЙ ДАНЖ ══════════════
   async function openDungeon() {
     const body = document.getElementById("pubprofile-body");
@@ -7707,6 +7940,60 @@
 
   async function endDuel(won) {
     duelState.over = true;
+    // турнир на выбывание (новый)
+    if (duelState.difficulty === "tournament") {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const round = duelState.tournRound;
+      const rmb = document.getElementById("duel-rematch-btn"); if (rmb) rmb.style.display = "none";
+      if (won) {
+        let rd = {};
+        try {
+          const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "won", hp: Math.max(1, Math.round(duelState.you.hp)) }) });
+          rd = await resp.json();
+        } catch(e){}
+        if (rd.champion) {
+          document.getElementById("duel-result-title").textContent = "🏆 ЧЕМПИОН ТУРНИРА!";
+          document.getElementById("duel-result-title").style.color = "#ffd86b";
+          document.getElementById("duel-result-reward").innerHTML = "👑 Ты выиграл турнир!<br>+" + (rd.gold||1000) + "💰 +" + (rd.xp||500) + " XP<br><span style='color:#ffae3c;'>🎖️ Значок «Чемпион» твой!</span>";
+        } else {
+          document.getElementById("duel-result-title").textContent = "✅ Раунд выигран!";
+          document.getElementById("duel-result-title").style.color = "#9be8c0";
+          const nextName = (round+1===3) ? "ФИНАЛ" : "следующий раунд";
+          document.getElementById("duel-result-reward").innerHTML = 'Соперник повержен!<br><div class="action-btn green" style="width:200px;margin-top:10px;" onclick="tournamentNext()">⬆️ В ' + nextName + '</div>';
+        }
+      } else {
+        try { await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "failed" }) }); } catch(e){}
+        document.getElementById("duel-result-title").textContent = "☠️ ВЫБЫВАНИЕ";
+        document.getElementById("duel-result-title").style.color = "#ff6b6b";
+        document.getElementById("duel-result-reward").innerHTML = "Ты выбыл в раунде " + round + ". Попробуй завтра снова!";
+      }
+      document.getElementById("duel-result").classList.add("show");
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won?"success":"error"); } catch(e){} }
+      duelGrid = 5;
+      inventoryLoaded = false;
+      return;
+    }
+    // турнирный бой
+    if (duelState.difficulty === "cup") {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const rmb = document.getElementById("duel-rematch-btn"); if (rmb) rmb.style.display = "none";
+      let msg = won ? "Победа в турнирном бою!" : "Поражение. Турнир окончен для тебя.";
+      let champ = null;
+      try {
+        const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "result", won: won }) });
+        const d = await resp.json();
+        if (d.msg) msg = d.msg;
+        champ = d.champion;
+      } catch(e){}
+      document.getElementById("duel-result-title").textContent = won ? "🏆 ПОБЕДА!" : "☠️ ВЫБЫЛ";
+      document.getElementById("duel-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
+      let extra = (champ && won) ? '<br><div style="color:#ffd86b;margin-top:8px;">👑 ТЫ ЧЕМПИОН ТУРНИРА!</div>' : '';
+      document.getElementById("duel-result-reward").innerHTML = msg + extra;
+      document.getElementById("duel-result").classList.add("show");
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won?"success":"error"); } catch(e){} }
+      inventoryLoaded = false;
+      return;
+    }
     // ежедневный данж
     if (duelState.difficulty === "dungeon") {
       const initData = (tg && tg.initData) ? tg.initData : "";
@@ -7872,12 +8159,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v32 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v33 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v32 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v33 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v32 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v33 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
