@@ -776,14 +776,13 @@
   @keyframes pvpSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
   /* ── Замок ── */
   .castle-stats { position: relative; z-index: 3; display: block; padding: 8px 16px; font-size: 15px; color: #ffe9a8; }
-  .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; overflow: hidden; min-height: 0; }
+  .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 4px; min-height: 0; }
   .castle-grid-scroll { display: flex; align-items: center; justify-content: center; }
-  :root { --castle-cell-size: 40px; }
-  .castle-grid { display: grid; gap: 2px; width: max-content; margin: 0 auto; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 8px; }
+  :root { --castle-cell-size: 36px; }
+  .castle-grid { display: grid; gap: 2px; margin: 0 auto; padding: 5px; background: rgba(0,0,0,0.25); border-radius: 8px; }
   .castle-cell {
-    width: var(--castle-cell-size); height: var(--castle-cell-size);
     border-radius: 3px; display: flex; align-items: center; justify-content: center;
-    font-size: 22px; background: #2a2342; position: relative;
+    font-size: inherit; background: #2a2342; position: relative;
   }
   .castle-cell.fog { background: #211d35; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5), inset 0 2px 3px rgba(0,0,0,0.4); opacity: 0.85; }
   /* СТЕНЫ — явно тёмные, выпуклые, отличаются от пола */
@@ -1650,7 +1649,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v47 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v48 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6520,12 +6519,19 @@
     const s = castleState; if (!s || !s.grid) return;
     const size = s.size;
     const grid = document.getElementById("castle-grid");
-    // размер клетки: вся карта влезает по ширине экрана
+    // размер клетки: вся карта влезает И по ширине, И по высоте
     const vw = window.innerWidth || 380;
-    const cell = Math.floor((Math.min(vw, 480) - 16 - (size - 1) * 2) / size);
-    const px = Math.max(20, Math.min(46, cell));
-    document.documentElement.style.setProperty("--castle-cell-size", px + "px");
+    const vh = window.innerHeight || 700;
+    const availW = Math.min(vw, 480) - 24;
+    const availH = vh - 360;  // место под topbar+stats+log+dpad
+    const cellW = Math.floor((availW - (size - 1) * 2) / size);
+    const cellH = Math.floor((availH - (size - 1) * 2) / size);
+    const px = Math.max(18, Math.min(44, Math.min(cellW, cellH)));
     grid.style.gridTemplateColumns = "repeat(" + size + ", " + px + "px)";
+    grid.style.gridAutoRows = px + "px";
+    document.documentElement.style.setProperty("--castle-cell-size", px + "px");
+    const fontPx = Math.max(11, Math.round(px * 0.55));
+    grid.style.fontSize = fontPx + "px";
     const monMap = {};
     (s.monsters || []).forEach(function(m){ monMap[m.r+","+m.c] = m; });
     const monstersLeft = (typeof s.monstersTotal === "number") ? s.monstersTotal : (s.monsters || []).length;
@@ -8391,12 +8397,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v47 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v48 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v47 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v48 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v47 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v48 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
