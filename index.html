@@ -776,7 +776,7 @@
   @keyframes pvpSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
   /* ── Замок ── */
   .castle-stats { position: relative; z-index: 3; display: block; padding: 8px 16px; font-size: 15px; color: #ffe9a8; }
-  .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: stretch; justify-content: center; padding: 6px; overflow: hidden; min-height: 0; }
+  .castle-grid-wrap { position: relative; z-index: 2; display: block; padding: 6px; overflow: hidden; }
   .castle-grid-scroll { width: 100%; overflow: auto; border-radius: 8px; background: #0a0813; position: relative; scrollbar-width: none; -ms-overflow-style: none; }
   .castle-grid-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
   :root { --castle-cell-px: 40px; --castle-cell-size: 40px; }
@@ -1651,7 +1651,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v42 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v43 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6565,13 +6565,16 @@
     const wrap = document.getElementById("castle-grid-scroll");
     const grid = document.getElementById("castle-grid");
     if (!wrap || !grid) return;
-    // задать высоту контейнера = доступное место (между статами и логом)
-    const outer = document.querySelector(".castle-grid-wrap");
-    if (outer) {
-      const h = outer.clientHeight - 12;
-      if (h > 100) wrap.style.height = h + "px";
-    }
-    // центрировать после отрисовки (два кадра — чтобы размеры успели примениться)
+    // высота контейнера = экран минус верхние/нижние блоки (надёжнее flex)
+    const vh = window.innerHeight || document.documentElement.clientHeight || 700;
+    const topbar = document.querySelector("#castle-overlay .duel-topbar");
+    const stats = document.getElementById("castle-stats");
+    const log = document.getElementById("castle-log");
+    const ctrls = document.querySelector("#castle-overlay .duel-controls");
+    const used = (topbar?topbar.offsetHeight:50) + (stats?stats.offsetHeight:40) + (log?log.offsetHeight:50) + (ctrls?ctrls.offsetHeight:200) + 30;
+    const h = Math.max(180, vh - used);
+    wrap.style.height = h + "px";
+    // центрировать после отрисовки
     requestAnimationFrame(function(){
       requestAnimationFrame(function(){
         const cellPx = 40, gap = 2;
@@ -8410,12 +8413,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v42 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v43 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v42 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v43 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v42 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v43 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
