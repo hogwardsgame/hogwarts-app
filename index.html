@@ -1654,7 +1654,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v50 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v51 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2509,6 +2509,20 @@
 
   // ── Telegram Web App init ──────────────────────────────────────────────
   const tg = window.Telegram ? window.Telegram.WebApp : null;
+  // данные входа с сайта (Telegram Login Widget) — null если открыто в Telegram
+  window._webAuth = null;
+  try {
+    const saved = localStorage.getItem("hw_web_auth");
+    if (saved) window._webAuth = JSON.parse(saved);
+  } catch(e){}
+  // универсальный объект авторизации для тела запроса
+  function authObj() {
+    if (tg && tg.initData) return { initData: tg.initData };
+    if (window._webAuth) return { webAuth: window._webAuth };
+    return { initData: "" };
+  }
+  // открыто ли в браузере (не в Telegram)
+  function isWebMode() { return !(tg && tg.initData); }
   if (tg) {
     tg.ready(); tg.expand();
     try { tg.setHeaderColor("#1a1033"); } catch(e){}
@@ -2721,7 +2735,7 @@
     let current = "🧙";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/setmodel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const resp = await apiFetch(API_URL + "/api/setmodel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "get" }) });
       const d = await resp.json();
       if (d.models) models = d.models;
       if (d.model) current = d.model;
@@ -2741,7 +2755,7 @@
   async function pickModel(m) {
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/setmodel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "set", model: m }) });
+      const resp = await apiFetch(API_URL + "/api/setmodel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "set", model: m }) });
       const d = await resp.json();
       if (d.ok) {
         window._profileModel = m;
@@ -2760,12 +2774,16 @@
       return;
     }
     try {
-      const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
+      if (resp.status === 401 && isWebMode()) {
+        // вход устарел/невалиден — снова показать экран входа
+        webLogout();
+        return;
+      }
       if (!resp.ok) throw new Error("api " + resp.status);
       const data = await resp.json();
       if (data.registered === false) {
@@ -2782,7 +2800,59 @@
     }
   }
 
-  loadProfile();
+  // ── ВХОД ЧЕРЕЗ TELEGRAM (для сайта) ──
+  function showLoginScreen() {
+    let ov = document.getElementById("login-overlay");
+    if (!ov) {
+      ov = document.createElement("div");
+      ov.id = "login-overlay";
+      ov.style.cssText = "position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#1a1033,#0d0820);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;";
+      ov.innerHTML =
+        '<div style="font-size:52px;margin-bottom:12px;">🏰</div>' +
+        '<div style="font-family:Cinzel,serif;font-size:26px;color:#ffd86b;font-weight:700;margin-bottom:8px;">Hogwarts Legacy RPG</div>' +
+        '<div style="color:#c8bce8;font-size:15px;margin-bottom:28px;max-width:300px;">Магическая ролевая игра. Дуэли, боссы, подземелья, аукцион и многое другое.</div>' +
+        '<div id="tg-login-btn"></div>' +
+        '<div style="color:#8a7db5;font-size:12px;margin-top:24px;max-width:280px;">Вход через Telegram — безопасно. Мы не получаем доступ к твоим перепискам.</div>';
+      document.body.appendChild(ov);
+    }
+    ov.style.display = "flex";
+    // вставляем виджет Telegram Login
+    const holder = document.getElementById("tg-login-btn");
+    if (holder && !holder.querySelector("script")) {
+      const s = document.createElement("script");
+      s.async = true;
+      s.src = "https://telegram.org/js/telegram-widget.js?22";
+      s.setAttribute("data-telegram-login", "hogwarts_legacy_rpg_bot");
+      s.setAttribute("data-size", "large");
+      s.setAttribute("data-radius", "12");
+      s.setAttribute("data-onauth", "onTelegramAuth(user)");
+      s.setAttribute("data-request-access", "write");
+      holder.appendChild(s);
+    }
+  }
+  // callback от Telegram Login Widget
+  window.onTelegramAuth = function(user) {
+    window._webAuth = user;
+    try { localStorage.setItem("hw_web_auth", JSON.stringify(user)); } catch(e){}
+    const ov = document.getElementById("login-overlay");
+    if (ov) ov.style.display = "none";
+    loadProfile();
+  };
+  function webLogout() {
+    try { localStorage.removeItem("hw_web_auth"); } catch(e){}
+    window._webAuth = null;
+    location.reload();
+  }
+
+  // Старт: в Telegram — сразу грузим. В браузере без входа — показываем экран входа.
+  function startApp() {
+    if (isWebMode() && !window._webAuth) {
+      showLoginScreen();
+    } else {
+      loadProfile();
+    }
+  }
+  startApp();
 
   // ── Вкладки ────────────────────────────────────────────────────────────
   let ratingLoaded = false;
@@ -2901,7 +2971,7 @@
     box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const payload = Object.assign({ initData: initData }, opts || {});
+      const payload = Object.assign({ ...authObj() }, opts || {});
       const resp = await apiFetch(API_URL + "/api/pubprofile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
       const d = await resp.json();
       if (!d.found) { box.innerHTML = '<div class="lb-empty">Профиль не найден</div>'; return; }
@@ -3011,7 +3081,7 @@
   const ABILITY_TYPE_LABEL = { damage:"⚔️ Урон", shield:"🛡️ Защита", heal:"💚 Лечение", control:"❄️ Контроль", poison:"☠️ Яд" };
   async function abReq(action, ability) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, ability: ability || "" }) });
+    const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, ability: ability || "" }) });
     return await resp.json();
   }
   function renderAbilitiesScreen(d) {
@@ -3058,7 +3128,7 @@
   const CLOAK_RAR_COLOR = { common:"#9aa0b5", rare:"#5c9dff", epic:"#b56cff", legendary:"#ffae3c" };
   async function cloaksReq(action, cloak) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/cloaks", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, cloak: cloak || "" }) });
+    const resp = await apiFetch(API_URL + "/api/cloaks", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, cloak: cloak || "" }) });
     return await resp.json();
   }
   function renderCloaks(d) {
@@ -3106,7 +3176,7 @@
   async function loadChatFeed(scrollDown) {
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "feed", afterId: 0 }) });
+      const resp = await apiFetch(API_URL + "/api/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "feed", afterId: 0 }) });
       const d = await resp.json();
       renderChatFeed(d.messages || [], scrollDown);
     } catch(e){}
@@ -3136,7 +3206,7 @@
     inp.value = "";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "send", text: text }) });
+      const resp = await apiFetch(API_URL + "/api/chat", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "send", text: text }) });
       const d = await resp.json();
       if (d.isCommand && d.cmdMsg) {
         const hint = document.getElementById("chat-hint");
@@ -3180,7 +3250,7 @@
   const BROOM_RAR_COLOR = { common:"#9aa0b5", rare:"#5c9dff", epic:"#b56cff", legendary:"#ffae3c" };
   async function broomsReq(action, broom) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/brooms", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, broom: broom || "" }) });
+    const resp = await apiFetch(API_URL + "/api/brooms", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, broom: broom || "" }) });
     return await resp.json();
   }
   function renderBrooms(d) {
@@ -3218,7 +3288,7 @@
     box.innerHTML = '<div class="lb-empty">Загрузка...</div>';
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/battlepass", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const resp = await apiFetch(API_URL + "/api/battlepass", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "get" }) });
       const d = await resp.json();
       renderBattlePass(d);
     } catch(e) { box.innerHTML = '<div class="lb-empty">Ошибка загрузки</div>'; }
@@ -3251,7 +3321,7 @@
     if (bpBusy) return; bpBusy = true;
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/battlepass", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "claim", level: level }) });
+      const resp = await apiFetch(API_URL + "/api/battlepass", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "claim", level: level }) });
       const d = await resp.json();
       if (d.ok) { showReward((d.reward&&d.reward.emoji||"🎁") + " " + (d.reward&&d.reward.name||"Награда")); loadBattlePass(); loadProfile(); }
     } catch(e){} finally { bpBusy = false; }
@@ -3287,7 +3357,7 @@
   let aucMode = "buy";
   async function aucReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/auction", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
@@ -3377,7 +3447,7 @@
   let twBusy = false;
   async function twReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/triwizard", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
@@ -3433,7 +3503,7 @@
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/war", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) });
+      const resp = await apiFetch(API_URL + "/api/war", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj() }) });
       const d = await resp.json();
       let html = '<div class="ev-hint">Факультеты соревнуются за очки. Зарабатывай баллы в боях и заданиях — они идут твоему дому.</div>';
       html += '<div class="sec-title">Положение факультетов</div>';
@@ -3456,7 +3526,7 @@
   let hxBusy = false;
   async function hxReq(action, horcrux) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/horcruxes", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, horcrux: horcrux || "" }) });
+    const resp = await apiFetch(API_URL + "/api/horcruxes", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, horcrux: horcrux || "" }) });
     return await resp.json();
   }
   function renderHorcruxes(d) {
@@ -3504,7 +3574,7 @@
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/journal", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) });
+      const resp = await apiFetch(API_URL + "/api/journal", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj() }) });
       const d = await resp.json();
       if (!d.entries || !d.entries.length) { box.innerHTML='<div class="lb-empty">Журнал пуст. Здесь будут появляться твои приключения!</div>'; return; }
       box.innerHTML = d.entries.map(function(e){
@@ -3519,7 +3589,7 @@
   let settingsBusy = false;
   async function settingsReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/settings", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
@@ -3597,7 +3667,7 @@
   let hmBusy = false;
   async function hmReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/hogsmeade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
@@ -3633,7 +3703,7 @@
   let bmBusy = false;
   async function bmReq(action, itemId) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/blackmarket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, item: itemId || "", itemId: itemId || "" }) });
+    const resp = await apiFetch(API_URL + "/api/blackmarket", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, item: itemId || "", itemId: itemId || "" }) });
     return await resp.json();
   }
   function renderBlackmarket(d) {
@@ -3663,7 +3733,7 @@
   let roomBusy = false;
   async function roomReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/room", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
@@ -3709,7 +3779,7 @@
   let exploreBusy = false;
   async function exploreReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/explore", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
@@ -3760,7 +3830,7 @@
   let collBusy = false;
   async function collReq(action, collection) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/collections", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, collection: collection || "" }) });
+    const resp = await apiFetch(API_URL + "/api/collections", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, collection: collection || "" }) });
     return await resp.json();
   }
   async function loadCollections() {
@@ -3791,7 +3861,7 @@
   let titleBusy = false;
   async function titleReq(action, titleId) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/titles", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, titleId: (titleId!==undefined?titleId:"") }) });
+    const resp = await apiFetch(API_URL + "/api/titles", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, titleId: (titleId!==undefined?titleId:"") }) });
     return await resp.json();
   }
   async function loadTitles() {
@@ -3818,7 +3888,7 @@
   let squadBusy = false;
   async function squadReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/squad", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     return await resp.json();
   }
@@ -3880,7 +3950,7 @@
     if (!API_URL || API_URL.indexOf("ВСТАВЬ") === 0) { box.innerHTML='<div class="lb-empty">Недоступно</div>'; return; }
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/trade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "info" }) });
+      const resp = await apiFetch(API_URL + "/api/trade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "info" }) });
       const d = await resp.json();
       box.innerHTML = '<div class="big-num">💰 '+(d.gold||0)+'</div>' +
         '<div class="ev-hint">Переведи золото другому игроку по его ID. Комиссия '+d.taxPercent+'%. Сумма '+d.minAmount+'–'+d.maxAmount+'.</div>' +
@@ -3898,7 +3968,7 @@
     if (!/^\d+$/.test(tid) || !/^\d+$/.test(amt)) { msg.style.color="#ffb0b0"; msg.textContent="Введи корректные ID и сумму"; tradeBusy=false; return; }
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/trade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action:"send", targetId: parseInt(tid), amount: parseInt(amt) }) });
+      const resp = await apiFetch(API_URL + "/api/trade", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action:"send", targetId: parseInt(tid), amount: parseInt(amt) }) });
       const d = await resp.json();
       showMsg("trade-msg", d);
       if (d.ok) loadTrade();
@@ -3909,7 +3979,7 @@
   let wandBusy = false;
   async function wandReq(action, core) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/wandcraft", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, core: core || "" }) });
+    const resp = await apiFetch(API_URL + "/api/wandcraft", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, core: core || "" }) });
     return await resp.json();
   }
   function renderWand(d) {
@@ -3943,7 +4013,7 @@
   let bankBusy = false;
   async function bankReq(action, amount) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/bank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, amount: amount || 0 }) });
+    const resp = await apiFetch(API_URL + "/api/bank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, amount: amount || 0 }) });
     return await resp.json();
   }
   function renderBank(d) {
@@ -3985,7 +4055,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/teambattle", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ initData: initData, action: action, enemyId: enemyId || 0 })
+      body: JSON.stringify({ ...authObj(), action: action, enemyId: enemyId || 0 })
     });
     return await resp.json();
   }
@@ -4051,7 +4121,7 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/events", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
       const d = await resp.json();
       if (!d.active) { box.innerHTML = '<div class="lb-empty">🌙 Сейчас нет активных событий.<br>Следи за анонсами — события появляются регулярно!</div>'; return; }
@@ -4075,7 +4145,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/worldboss", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ initData: initData, action: action, spell: spell || "" })
+      body: JSON.stringify({ ...authObj(), action: action, spell: spell || "" })
     });
     return await resp.json();
   }
@@ -4129,7 +4199,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/tournament", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ initData: initData, action: action })
+      body: JSON.stringify({ ...authObj(), action: action })
     });
     return await resp.json();
   }
@@ -4184,7 +4254,7 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/league", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
       const d = await resp.json();
       if (d.me) {
@@ -4217,7 +4287,7 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/quests", {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
       const d = await resp.json();
       if (!d.quests || !d.quests.length) { box.innerHTML = '<div class="lb-empty">Нет заданий</div>'; return; }
@@ -4237,7 +4307,7 @@
   // ── Уроки ──────────────────────────────────────────────────────────────
   async function lessonReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/lessons", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify(payload)
@@ -4310,7 +4380,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/shop", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: initData, action: action, rowId: rowId || "" })
+      body: JSON.stringify({ ...authObj(), action: action, rowId: rowId || "" })
     });
     return await resp.json();
   }
@@ -4354,7 +4424,7 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/achievements", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
       const d = await resp.json();
       if (!d.achievements || !d.achievements.length) { box.innerHTML='<div class="lb-empty">Нет данных</div>'; return; }
@@ -4380,7 +4450,7 @@
   let buffTab = "battle";
   async function buffReq(action, potion) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: action, potion: potion || "" }) });
+    const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: action, potion: potion || "" }) });
     return await resp.json();
   }
   function buffSwitch(tab) {
@@ -4465,7 +4535,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/pet", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: initData, action: action })
+      body: JSON.stringify({ ...authObj(), action: action })
     });
     return await resp.json();
   }
@@ -4529,7 +4599,7 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/feedpet", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
       const data = await resp.json();
       const m2 = document.getElementById("pet-msg");
@@ -4555,7 +4625,7 @@
       const resp = await apiFetch(API_URL + "/api/" + endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
       const data = await resp.json();
       msg.style.color = data.ok ? "#9be8c0" : "#ffb0b0";
@@ -4611,7 +4681,7 @@
       const resp = await apiFetch(API_URL + "/api/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: initData })
+        body: JSON.stringify({ ...authObj() })
       });
       const data = await resp.json();
       if (!data.items || data.items.length === 0) {
@@ -4673,7 +4743,7 @@
     const resp = await apiFetch(API_URL + "/api/battle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: initData, action: action, spell: spell || "" })
+      body: JSON.stringify({ ...authObj(), action: action, spell: spell || "" })
     });
     return await resp.json();
   }
@@ -4726,7 +4796,7 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/battle", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: initData, action: "start", zone: zoneId })
+        body: JSON.stringify({ ...authObj(), action: "start", zone: zoneId })
       });
       const st = await resp.json();
       renderBattle(st, true);
@@ -4745,7 +4815,7 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/battle", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ initData: initData, action: "start", zone: zoneId, boss: true })
+        body: JSON.stringify({ ...authObj(), action: "start", zone: zoneId, boss: true })
       });
       const st = await resp.json();
       if (st.error === "zone_locked") {
@@ -5001,7 +5071,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/pvp", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: initData, action: action, opponent: opponent || 0 })
+      body: JSON.stringify({ ...authObj(), action: action, opponent: opponent || 0 })
     });
     return await resp.json();
   }
@@ -5021,7 +5091,7 @@
   // ── Живой бой: матчинг (Шаг 1) ─────────────────────────────────────────
   async function liveReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/liveduel", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -5162,7 +5232,7 @@
     const initData = (tg && tg.initData) ? tg.initData : "";
     const resp = await apiFetch(API_URL + "/api/liveduel", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ initData: initData, action: action, roomId: liveRoomId, spell: spell || "" })
+      body: JSON.stringify({ ...authObj(), action: action, roomId: liveRoomId, spell: spell || "" })
     });
     return await resp.json();
   }
@@ -5547,7 +5617,7 @@
     // загружаем уровни умений игрока
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const d = await resp.json();
       myAbilities = {};
       (d.abilities || []).forEach(function(a){ myAbilities[a.id] = a.level; });
@@ -5791,7 +5861,7 @@
     let rewardMsg = "";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, won: won, difficulty: arenaState.difficulty }) });
+      const resp = await apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), won: won, difficulty: arenaState.difficulty }) });
       const d = await resp.json();
       rewardMsg = d.msg || "";
     } catch(e) {}
@@ -5893,7 +5963,7 @@
   async function loadUnlockedCards() {
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/cardcollection", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const resp = await apiFetch(API_URL + "/api/cardcollection", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "get" }) });
       const d = await resp.json();
       unlockedCards = (d.unlocked || []).filter(function(c){ return ALL_CARDS[c]; });
     } catch(e) {
@@ -5913,7 +5983,7 @@
     // загрузить сохранённую колоду
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const resp = await apiFetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "get" }) });
       const d = await resp.json();
       deckDraft = (d.cards || []).filter(function(c){ return ALL_CARDS[c] && isUnlocked(c); });
     } catch(e) { deckDraft = []; }
@@ -5980,7 +6050,7 @@
     }
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "save", cards: deckDraft }) });
+      const resp = await apiFetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "save", cards: deckDraft }) });
       const d = await resp.json();
       if (d.ok) {
         savedDeck = deckDraft.slice();
@@ -6020,7 +6090,7 @@
     // загрузить сохранённую колоду игрока
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "get" }) });
+      const resp = await apiFetch(API_URL + "/api/carddeck", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "get" }) });
       const dd = await resp.json();
       savedDeck = (dd.cards || []).filter(function(c){ return ALL_CARDS[c] && isUnlocked(c); });
     } catch(e) {}
@@ -6356,7 +6426,7 @@
     let unlockedCard = null;
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, won: won, difficulty: cardsState.difficulty }) });
+      const resp = await apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), won: won, difficulty: cardsState.difficulty }) });
       const d = await resp.json();
       rewardMsg = d.msg || "";
       unlockedCard = d.unlockedCard || null;
@@ -6428,7 +6498,7 @@
     let rankHtml = "";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "me" }) });
+      const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "me" }) });
       const d = await resp.json();
       // уведомление о награде прошлого сезона
       if (d.seasonReward && d.seasonReward.reward) {
@@ -6462,7 +6532,7 @@
     body.innerHTML = '<div class="lb-empty">Загрузка...</div>';
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "top" }) });
+      const resp = await apiFetch(API_URL + "/api/duelrank", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "top" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏆 Таблица лидеров</div>';
       if (d.season && d.season.season) html += '<div style="text-align:center;font-size:11px;color:#c9b8f0;margin-bottom:4px;">📅 Сезон '+d.season.season+' • осталось '+d.season.daysLeft+' дн.</div>';
@@ -6495,14 +6565,14 @@
     if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeCastle); } catch(e){} }
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "enter" }) });
+      const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "enter" }) });
       castleState = await resp.json();
       renderCastle();
       // проверка активного ивента
       let eventHint = "";
       try {
         const initData2 = (tg && tg.initData) ? tg.initData : "";
-        const er = await apiFetch(API_URL + "/api/castleevent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData2, action: "status" }) });
+        const er = await apiFetch(API_URL + "/api/castleevent", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "status" }) });
         const ed = await er.json();
         if (ed.active) {
           const h = Math.floor(ed.timeLeft/3600), m = Math.floor((ed.timeLeft%3600)/60);
@@ -6581,7 +6651,7 @@
     castleBusy = true;
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "move", dir: dir }) });
+      const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "move", dir: dir }) });
       const d = await resp.json();
       castleState = d;
       renderCastle();
@@ -6637,7 +6707,7 @@
     let myAbils = {};
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const ad = await resp.json();
       (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e){}
@@ -6653,9 +6723,9 @@
     let duelPotions = [], battleBuffs = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       duelPotions = (await r1.json()).potions || [];
-      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       battleBuffs = (await r2.json()).potions || [];
     } catch(e){}
     let myHp = 100;
@@ -6739,7 +6809,7 @@
     document.getElementById("pubprofile-modal").classList.add("show");
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const d = await resp.json();
       if (!d.bosses || !d.bosses.length) { body.innerHTML = '<div class="lb-empty">Боссы недоступны</div>'; return; }
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🐲 Боссы</div>' +
@@ -6772,7 +6842,7 @@
     document.getElementById("pubprofile-modal").classList.add("show");
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "status" }) });
+      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "status" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏆 Турнир</div>';
       const isAdmin = (window._profileId === 6903827237);
@@ -6814,7 +6884,7 @@
   async function cupRegister() {
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "register" }) });
+      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "register" }) });
       const d = await resp.json();
       if (d.msg) alert(d.msg);
       openCupTournament();
@@ -6823,7 +6893,7 @@
   async function cupPlayMatch() {
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "match" }) });
+      const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "match" }) });
       const d = await resp.json();
       if (!d.match) { alert("Сейчас нет твоего матча. Возможно, ты выбыл или ждёшь следующий раунд."); return; }
       closePubProfile();
@@ -6837,7 +6907,7 @@
     let myAbils = {};
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const ad = await resp.json();
       (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e){}
@@ -6853,9 +6923,9 @@
     let duelPotions = [], battleBuffs = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       duelPotions = (await r1.json()).potions || [];
-      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       battleBuffs = (await r2.json()).potions || [];
     } catch(e){}
     duelGrid = 5;
@@ -6889,7 +6959,7 @@
     document.getElementById("pubprofile-modal").classList.add("show");
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "status" }) });
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "status" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏆 Турнир на выбывание</div>' +
         '<div style="font-size:11px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Пройди сетку: четвертьфинал → полуфинал → финал. 3 победы = чемпион! HP не лечится между боями. Раз в день.</div>';
@@ -6910,7 +6980,7 @@
     body.innerHTML = '<div class="lb-empty">Загрузка...</div>';
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "champions" }) });
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "champions" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:12px;">👑 Зал чемпионов</div>';
       if (!d.top || !d.top.length) html += '<div class="lb-empty">Пока нет чемпионов</div>';
@@ -6926,7 +6996,7 @@
     closePubProfile();
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "start" }) });
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "start" }) });
       const d = await resp.json();
       if (d.ok && d.opponent) openTournamentBattle(d.opponent, d.playerHp, d.round);
       else if (d.msg) alert(d.msg);
@@ -6936,7 +7006,7 @@
     closePubProfile();
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "round" }) });
+      const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "round" }) });
       const d = await resp.json();
       if (d.ok && d.opponent) openTournamentBattle(d.opponent, d.playerHp, d.round);
     } catch(e){}
@@ -6946,7 +7016,7 @@
     let myAbils = {};
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const ad = await resp.json();
       (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e){}
@@ -6962,9 +7032,9 @@
     let duelPotions = [], battleBuffs = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       duelPotions = (await r1.json()).potions || [];
-      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       battleBuffs = (await r2.json()).potions || [];
     } catch(e){}
     duelGrid = opp.grid || 5;
@@ -7003,7 +7073,7 @@
     document.getElementById("pubprofile-modal").classList.add("show");
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "status" }) });
+      const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "status" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🗝️ Ежедневный данж</div>' +
         '<div style="font-size:12px;color:#c9b8f0;text-align:center;margin-bottom:4px;">'+d.themeEmoji+' '+d.theme+'</div>' +
@@ -7022,7 +7092,7 @@
     closePubProfile();
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "start" }) });
+      const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "start" }) });
       const d = await resp.json();
       if (d.ok && d.enemy) openDungeonBattle(d.enemy, d.playerHp, d.wave);
       else if (d.msg) { duelLog && duelLog(d.msg); alert(d.msg); }
@@ -7032,7 +7102,7 @@
     closePubProfile();
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "wave" }) });
+      const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "wave" }) });
       const d = await resp.json();
       if (d.ok && d.enemy) openDungeonBattle(d.enemy, d.playerHp, d.wave);
     } catch(e){}
@@ -7042,7 +7112,7 @@
     let myAbils = {};
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const ad = await resp.json();
       (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e){}
@@ -7058,9 +7128,9 @@
     let duelPotions = [], battleBuffs = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       duelPotions = (await r1.json()).potions || [];
-      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       battleBuffs = (await r2.json()).potions || [];
     } catch(e){}
     duelGrid = enemy.grid || 5;
@@ -7099,7 +7169,7 @@
     document.getElementById("pubprofile-modal").classList.add("show");
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "state" }) });
+      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "state" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:6px;">🏰 Башня испытаний</div>' +
         '<div style="font-size:11px;color:#b0a3d0;text-align:center;margin-bottom:12px;">Поднимайся по этажам. Чем выше — тем сложнее и больше награда. Каждый 5-й этаж — босс 👹. HP не лечится между этажами!</div>';
@@ -7119,7 +7189,7 @@
     body.innerHTML = '<div class="lb-empty">Загрузка...</div>';
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "top" }) });
+      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "top" }) });
       const d = await resp.json();
       let html = '<div style="text-align:center;font-family:Cinzel,serif;font-size:18px;color:#ffe9a8;margin-bottom:12px;">🏆 Рекорды башни</div>';
       if (!d.top || !d.top.length) html += '<div class="lb-empty">Пока никто не поднимался</div>';
@@ -7135,7 +7205,7 @@
     closePubProfile();
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "start" }) });
+      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "start" }) });
       const d = await resp.json();
       if (d.ok && d.enemy) openTowerBattle(d.enemy, d.playerHp, d.floor);
     } catch(e){}
@@ -7144,7 +7214,7 @@
     closePubProfile();
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "floor" }) });
+      const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "floor" }) });
       const d = await resp.json();
       if (d.ok && d.enemy) openTowerBattle(d.enemy, d.playerHp, d.floor);
     } catch(e){}
@@ -7154,7 +7224,7 @@
     let myAbils = {};
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const ad = await resp.json();
       (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e){}
@@ -7170,9 +7240,9 @@
     let duelPotions = [], battleBuffs = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       duelPotions = (await r1.json()).potions || [];
-      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       battleBuffs = (await r2.json()).potions || [];
     } catch(e){}
     duelGrid = enemy.grid || 5;
@@ -7209,7 +7279,7 @@
     let boss = null, playerHp = 130;
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "start", boss: bossId }) });
+      const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "start", boss: bossId }) });
       const d = await resp.json();
       if (!d.ok || !d.boss) { return; }
       boss = d.boss; playerHp = d.playerHp || 130;
@@ -7222,7 +7292,7 @@
     let myAbils = {};
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const ad = await resp.json();
       (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e){}
@@ -7239,14 +7309,14 @@
     let duelPotions = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const pd = await resp.json(); duelPotions = pd.potions || [];
     } catch(e){}
     // боевые зелья-баффы
     let battleBuffs = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       const bd = await resp.json(); battleBuffs = bd.potions || [];
     } catch(e){}
 
@@ -7302,7 +7372,7 @@
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
       // списываем зелье на сервере
-      const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       // применяем эффект локально
       s.activeBuffs.push({ stat: buff.stat, mult: buff.mult, add: buff.add, defMult: buff.defMult, turns: buff.turns || 3 });
       buff.count--;
@@ -7310,7 +7380,7 @@
       duelLog("💪 " + buff.name + " активно! " + buff.desc);
       // помечаем что зелье использовано (на сервере спишется через consume в следующем запросе)
       try {
-        await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "consume", potion: bid }) });
+        await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "consume", potion: bid }) });
       } catch(e){}
       // бафф = ход: враг атакует, игрок не бьёт
       s.phase = "resolve";
@@ -7407,7 +7477,7 @@
     duelBusy = true;
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "use", potion: pid }) });
+      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "use", potion: pid }) });
       const d = await resp.json();
       if (d.ok) {
         const heal = d.heal || 20;
@@ -7454,7 +7524,7 @@
 
   async function pvpReq(action, extra) {
     const initData = (tg && tg.initData) ? tg.initData : "";
-    const payload = Object.assign({ initData: initData, action: action }, extra || {});
+    const payload = Object.assign({ ...authObj(), action: action }, extra || {});
     const resp = await apiFetch(API_URL + "/api/pvpduel", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) }, 12000);
     return await resp.json();
   }
@@ -7702,7 +7772,7 @@
     let myHp = 100, myAbils = {};
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const d = await resp.json();
       (d.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
     } catch(e) {}
@@ -7738,7 +7808,7 @@
     let duelPotions = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const resp = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "list" }) });
       const pd = await resp.json();
       duelPotions = pd.potions || [];
     } catch(e){}
@@ -7746,7 +7816,7 @@
     let battleBuffs = [];
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      const resp = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "battlelist" }) });
       const bd = await resp.json(); battleBuffs = bd.potions || [];
     } catch(e){}
 
@@ -8164,7 +8234,7 @@
       if (won) {
         let res = {};
         try {
-          const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "winfight", key: key }) });
+          const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "winfight", key: key }) });
           res = await resp.json();
         } catch(e){}
         document.getElementById("duel-result-title").textContent = res.wasBoss ? "👑 БОСС ПОВЕРЖЕН!" : "💥 Монстр повержен!";
@@ -8172,7 +8242,7 @@
         document.getElementById("duel-result-reward").innerHTML = "+" + (res.reward||0) + "💰<br><div class=\"action-btn green\" style=\"width:200px;margin-top:10px;\" onclick=\"castleReturnAfterFight()\">⬅️ Назад в подземелье</div>";
         castleState = res;  // обновлённое состояние замка
       } else {
-        try { await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "losefight" }) }); } catch(e){}
+        try { await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "losefight" }) }); } catch(e){}
         document.getElementById("duel-result-title").textContent = "💀 Ты пал в подземелье";
         document.getElementById("duel-result-title").style.color = "#ff6b6b";
         const s = castleState || {};
@@ -8192,7 +8262,7 @@
       if (won) {
         let rd = {};
         try {
-          const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "won", hp: Math.max(1, Math.round(duelState.you.hp)) }) });
+          const resp = await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "won", hp: Math.max(1, Math.round(duelState.you.hp)) }) });
           rd = await resp.json();
         } catch(e){}
         if (rd.champion) {
@@ -8206,7 +8276,7 @@
           document.getElementById("duel-result-reward").innerHTML = 'Соперник повержен!<br><div class="action-btn green" style="width:200px;margin-top:10px;" onclick="tournamentNext()">⬆️ В ' + nextName + '</div>';
         }
       } else {
-        try { await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "failed" }) }); } catch(e){}
+        try { await apiFetch(API_URL + "/api/tournamentsolo", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "failed" }) }); } catch(e){}
         document.getElementById("duel-result-title").textContent = "☠️ ВЫБЫВАНИЕ";
         document.getElementById("duel-result-title").style.color = "#ff6b6b";
         document.getElementById("duel-result-reward").innerHTML = "Ты выбыл в раунде " + round + ". Попробуй завтра снова!";
@@ -8224,7 +8294,7 @@
       let msg = won ? "Победа в турнирном бою!" : "Поражение. Турнир окончен для тебя.";
       let champ = null;
       try {
-        const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "result", won: won }) });
+        const resp = await apiFetch(API_URL + "/api/cuptournament", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "result", won: won }) });
         const d = await resp.json();
         if (d.msg) msg = d.msg;
         champ = d.champion;
@@ -8246,7 +8316,7 @@
       if (won) {
         let resultData = {};
         try {
-          const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "won", hp: Math.max(1, Math.round(duelState.you.hp)) }) });
+          const resp = await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "won", hp: Math.max(1, Math.round(duelState.you.hp)) }) });
           resultData = await resp.json();
         } catch(e){}
         if (resultData.done) {
@@ -8261,7 +8331,7 @@
           document.getElementById("duel-result-reward").innerHTML = 'Волна ' + wave + ' зачищена!<br><div class="action-btn green" style="width:200px;margin-top:10px;" onclick="dungeonNext()">⬇️ Следующая волна</div>';
         }
       } else {
-        try { await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "failed" }) }); } catch(e){}
+        try { await apiFetch(API_URL + "/api/dungeon", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "failed" }) }); } catch(e){}
         document.getElementById("duel-result-title").textContent = "☠️ ПОРАЖЕНИЕ";
         document.getElementById("duel-result-title").style.color = "#ff6b6b";
         document.getElementById("duel-result-reward").innerHTML = "Ты пал на волне " + wave + ". Можешь попробовать данж ещё раз сегодня!";
@@ -8280,7 +8350,7 @@
       if (won) {
         let msg = "🏰 Этаж " + floor + " пройден!";
         try {
-          const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "won", hp: Math.max(1, Math.round(duelState.you.hp)) }) });
+          const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "won", hp: Math.max(1, Math.round(duelState.you.hp)) }) });
           const d = await resp.json();
           if (d.ok) msg = "🏰 Этаж " + d.cleared + " пройден! +" + d.gold + "💰 +" + d.xp + " XP";
         } catch(e){}
@@ -8290,7 +8360,7 @@
       } else {
         let reached = floor;
         try {
-          const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "failed" }) });
+          const resp = await apiFetch(API_URL + "/api/tower", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "failed" }) });
           const d = await resp.json();
           if (d.ok) reached = d.reached;
         } catch(e){}
@@ -8309,7 +8379,7 @@
       let msg = "", dropHtml = "";
       try {
         const initData = (tg && tg.initData) ? tg.initData : "";
-        const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "reward", boss: duelState.bossId, won: won }) });
+        const resp = await apiFetch(API_URL + "/api/duelboss", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), action: "reward", boss: duelState.bossId, won: won }) });
         const d = await resp.json();
         msg = d.msg || "";
         if (d.drop) dropHtml = '<div style="margin-top:10px;font-size:15px;color:#ffae3c;">🎁 '+d.drop.emoji+' '+d.drop.name+'</div>';
@@ -8327,7 +8397,7 @@
     let rewardMsg = "", ratingHtml = "";
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, won: won, difficulty: duelState.difficulty }) });
+      const resp = await apiFetch(API_URL + "/api/arena_reward", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj(), won: won, difficulty: duelState.difficulty }) });
       const d = await resp.json();
       rewardMsg = d.msg || "";
       if (d.rating != null) {
@@ -8401,14 +8471,14 @@
     const el = document.getElementById("server-status");
     try {
       const initData = (tg && tg.initData) ? tg.initData : "";
-      const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
+      const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj() }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v50 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v51 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v50 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v51 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v50 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v51 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
