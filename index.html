@@ -779,15 +779,13 @@
   .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; overflow: hidden; min-height: 0; }
   .castle-grid-scroll { display: flex; align-items: center; justify-content: center; }
   :root { --castle-cell-size: 40px; }
-  .castle-grid { display: grid; gap: 2px; width: max-content; margin: 0 auto; }
-  :root { --castle-cell-px: 40px; --castle-cell-size: 40px; }
-  .castle-grid { display: grid; gap: 2px; width: max-content; margin: 0; }
+  .castle-grid { display: grid; gap: 2px; width: max-content; margin: 0 auto; padding: 6px; background: rgba(0,0,0,0.25); border-radius: 8px; }
   .castle-cell {
     width: var(--castle-cell-size); height: var(--castle-cell-size);
     border-radius: 3px; display: flex; align-items: center; justify-content: center;
     font-size: 22px; background: #2a2342; position: relative;
   }
-  .castle-cell.fog { background: #0a0813; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4); }
+  .castle-cell.fog { background: #211d35; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5), inset 0 2px 3px rgba(0,0,0,0.4); opacity: 0.85; }
   /* СТЕНЫ — явно тёмные, выпуклые, отличаются от пола */
   .castle-cell.wall {
     background: #161228;
@@ -1652,7 +1650,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v46 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v47 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -8393,12 +8391,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v46 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v47 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v46 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v47 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v46 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v47 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
