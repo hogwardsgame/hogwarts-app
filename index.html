@@ -783,24 +783,16 @@
     font-size: 14px; background: #2a2342; position: relative;
   }
   .castle-cell.fog { background: #0d0a18; }
-  /* каменные стены — тёмные с объёмом */
+  /* СТЕНЫ — явно тёмные, выпуклые, отличаются от пола */
   .castle-cell.wall {
-    background: linear-gradient(145deg, #3a3358 0%, #292340 100%);
-    box-shadow: inset 0 2px 3px rgba(0,0,0,0.5), inset 0 -2px 0 rgba(0,0,0,0.4), inset 2px 0 0 rgba(255,255,255,0.04);
+    background: #161228;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.7), inset 0 -2px 0 rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.5);
     border-radius: 3px;
   }
-  /* каменный пол подземелья */
+  /* ПОЛ — светлее, чтобы было видно куда идти */
   .castle-cell.empty {
-    background: #4a4566;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.05);
-  }
-  /* трава — зелёные вкрапления на полу */
-  .castle-cell.grass {
-    background: #3a5540;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 0 6px rgba(106,232,138,0.25);
-  }
-  .castle-cell.grass::after {
-    content: "🌿"; font-size: 11px; opacity: 0.7; position: absolute; bottom: 1px; right: 1px;
+    background: #4a4570;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.06);
   }
   .castle-cell.loot {
     background: #5a4a20;
@@ -812,13 +804,19 @@
     background: #5a2530;
     box-shadow: inset 0 0 8px rgba(255,80,80,0.4);
   }
-  /* лестница вниз — светится зелёным */
+  /* лестница вниз — светится зелёным (путь свободен) */
   .castle-cell.stairs {
     background: #1f4a3a;
     box-shadow: inset 0 0 12px rgba(92,255,180,0.6), inset 0 0 0 1px rgba(92,255,180,0.4);
     animation: castleStairsGlow 1.5s ease-in-out infinite;
   }
   @keyframes castleStairsGlow { 0%,100%{box-shadow:inset 0 0 12px rgba(92,255,180,0.5);} 50%{box-shadow:inset 0 0 20px rgba(92,255,180,0.9);} }
+  /* лестница заблокирована — серая с замком */
+  .castle-cell.stairs-locked {
+    background: #3a3550;
+    box-shadow: inset 0 0 8px rgba(150,150,170,0.3), inset 0 0 0 1px rgba(150,150,170,0.25);
+    opacity: 0.7;
+  }
   /* монстры — красноватая клетка с пульсацией */
   .castle-cell.monster {
     background: #5a2838;
@@ -1649,7 +1647,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v39 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v40 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6502,7 +6500,7 @@
           eventHint = "🎪 ИВЕНТ! Найди 🎁 " + ed.prizeEmoji + " " + ed.prizeName + " (осталось " + h + "ч " + m + "м)";
         }
       } catch(e){}
-      castleLog(eventHint || "🧙 ты • 👹 монстр (иди на него — бой) • 📦 лут • ⚠️ ловушка • 🪜 вниз на этаж");
+      castleLog(eventHint || "🧙 ты • 👹 монстр (бой) • 📦 лут • ⚠️ ловушка • 🪜 вниз (только убив всех монстров!)");
     } catch(e) { document.getElementById("castle-grid").innerHTML = '<div class="lb-empty" style="grid-column:1/-1;">Ошибка входа</div>'; }
   }
   function closeCastle() {
@@ -6521,6 +6519,7 @@
     // карта монстров по координатам
     const monMap = {};
     (s.monsters || []).forEach(function(m){ monMap[m.r+","+m.c] = m; });
+    const monstersLeft = (s.monsters || []).length;
     let html = "";
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
@@ -6532,23 +6531,25 @@
         else if (v === 1) { cls += " wall"; }
         else if (v === 2) { cls += " loot"; content = "📦"; }
         else if (v === 3) { cls += " trap"; content = "⚠️"; }
-        else if (v === 4) { cls += " stairs"; content = "🪜"; }
+        else if (v === 4) { cls += (monstersLeft > 0 ? " stairs-locked" : " stairs"); content = (monstersLeft > 0 ? "🔒" : "🪜"); }
         else if (v === 6) { cls += " loot"; content = "🎁"; }
-        else if (v === 7) { cls += " grass"; content = ""; }
-        else if (v === 5) { cls += " empty"; }
         else cls += " empty";
         html += '<div class="'+cls+'">'+content+'</div>';
       }
     }
     grid.innerHTML = html;
-    // статы: этаж + золото + добыча (HP теперь в дуэли, не в замке)
+    // статы: этаж + золото + добыча + монстры
     const st = document.getElementById("castle-stats");
     if (st) {
+      const monTag = monstersLeft > 0
+        ? '<span style="font-size:14px;color:#ff8a8a;">👹 ' + monstersLeft + '</span>'
+        : '<span style="font-size:14px;color:#6be88a;">✅ путь свободен</span>';
       st.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;">' +
         '<span style="font-size:15px;color:#ffd86b;font-weight:700;">🏰 Этаж ' + s.depth + '</span>' +
         '<span style="font-size:14px;color:#ffe9a8;">💰 ' + s.goldFound + '</span>' +
-        '<span style="font-size:14px;color:#ffe9a8;">📦 ' + (s.itemsFound ? s.itemsFound.length : 0) + '</span></div>';
+        '<span style="font-size:14px;color:#ffe9a8;">📦 ' + (s.itemsFound ? s.itemsFound.length : 0) + '</span>' +
+        monTag + '</div>';
     }
   }
   async function castleMove(dir) {
@@ -6573,6 +6574,10 @@
         castleFlash();
         if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
       }
+      else if (ev === "stairsBlocked") {
+        castleLog("🔒 Лестница закрыта! Сначала победи всех монстров (осталось: " + d.monstersLeft + " 👹)");
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("error"); } catch(e){} }
+      }
       // ── ЛУТ ──
       else if (ev === "loot" && d.loot) {
         if (d.loot.type === "heal") castleLog("❤️ " + d.loot.name + "!");
@@ -6596,7 +6601,7 @@
         castleState.done = true;
       }
       else if (ev === "eventTaken") { castleLog("Приз уже забрали 😔"); }
-      else { castleLog("🧙 ты • 👹 монстр (иди на него — бой) • 📦 лут • ⚠️ ловушка • 🪜 вниз"); }
+      else { castleLog("🧙 ты • 👹 монстр (бой) • 📦 лут • ⚠️ ловушка • 🪜 вниз (убей всех монстров!)"); }
     } catch(e){} finally { castleBusy = false; }
   }
   // Бой с монстром замка через магдуэль (HP полный, отдельный бой)
@@ -8373,12 +8378,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v39 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v40 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v39 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v40 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v39 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v40 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
