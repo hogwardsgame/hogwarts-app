@@ -775,12 +775,12 @@
   .pvp-spin { display: inline-block; animation: pvpSpin 1.5s linear infinite; }
   @keyframes pvpSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
   /* ── Замок ── */
-  .castle-stats { position: relative; z-index: 3; display: flex; justify-content: center; gap: 16px; padding: 8px 16px; font-size: 15px; color: #ffe9a8; }
+  .castle-stats { position: relative; z-index: 3; display: block; padding: 8px 16px; font-size: 15px; color: #ffe9a8; }
   .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; }
-  .castle-grid { display: grid; gap: 2px; width: min(94vw, 440px); }
+  .castle-grid { display: grid; gap: 1px; width: min(98vw, 560px); }
   .castle-cell {
     aspect-ratio: 1; border-radius: 2px; display: flex; align-items: center; justify-content: center;
-    font-size: 17px; background: #2a2342; position: relative;
+    font-size: 14px; background: #2a2342; position: relative;
   }
   .castle-cell.fog { background: #0d0a18; }
   /* каменные стены — тёмные с объёмом */
@@ -1649,7 +1649,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v38 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v39 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6541,18 +6541,14 @@
       }
     }
     grid.innerHTML = html;
-    // статы: этаж + HP-бар + золото
+    // статы: этаж + золото + добыча (HP теперь в дуэли, не в замке)
     const st = document.getElementById("castle-stats");
     if (st) {
-      const hpPct = Math.max(0, Math.round(s.hp / s.maxHp * 100));
-      const hpColor = hpPct > 50 ? "#6be88a" : (hpPct > 25 ? "#ffd86b" : "#ff6b6b");
       st.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
-        '<span style="font-size:13px;color:#ffd86b;font-weight:700;">🏰 Этаж ' + s.depth + '</span>' +
-        '<span style="font-size:12px;color:#d8cdf0;">💰 ' + s.goldFound + ' &nbsp; 📦 ' + (s.itemsFound ? s.itemsFound.length : 0) + '</span></div>' +
-        '<div style="margin-top:5px;background:rgba(0,0,0,0.35);border-radius:6px;height:14px;overflow:hidden;position:relative;">' +
-        '<div style="background:' + hpColor + ';height:100%;width:' + hpPct + '%;transition:width 0.3s;"></div>' +
-        '<div style="position:absolute;top:0;left:0;right:0;text-align:center;font-size:10px;line-height:14px;color:#fff;text-shadow:0 1px 2px #000;">❤️ ' + s.hp + ' / ' + s.maxHp + '</div></div>';
+        '<div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;">' +
+        '<span style="font-size:15px;color:#ffd86b;font-weight:700;">🏰 Этаж ' + s.depth + '</span>' +
+        '<span style="font-size:14px;color:#ffe9a8;">💰 ' + s.goldFound + '</span>' +
+        '<span style="font-size:14px;color:#ffe9a8;">📦 ' + (s.itemsFound ? s.itemsFound.length : 0) + '</span></div>';
     }
   }
   async function castleMove(dir) {
@@ -6565,19 +6561,11 @@
       castleState = d;
       renderCastle();
       const ev = d.event;
-      // ── БОЙ ──
-      if (ev === "fight") {
-        castleLog("⚔️ " + d.emoji + " " + d.monster + ": ты −" + d.playerDmg + " ему (HP " + d.monsterHp + "/" + d.monsterMaxHp + "), он −" + d.monsterDmg + " тебе!");
-        castleShake();
-        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("medium"); } catch(e){} }
-      }
-      else if (ev === "kill") {
-        castleLog("💥 Ты победил " + d.emoji + " " + d.monster + "! (−" + d.dmg + ")");
-        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
-      }
-      else if (ev === "dead") {
-        castleLog("💀 Ты пал" + (d.monster ? " от " + d.monster : "") + "...");
-        endCastle(false);
+      // ── ВСТРЕЧА С МОНСТРОМ → магдуэль ──
+      if (ev === "encounter" && d.monster) {
+        castleLog("⚔️ " + d.monster.emoji + " " + d.monster.name + (d.monster.isBoss ? " — БОСС!" : "") + " Бой!");
+        openCastleDuel(d.monster);
+        return;
       }
       // ── СПУСК НА ЭТАЖ ──
       else if (ev === "descend") {
@@ -6610,6 +6598,76 @@
       else if (ev === "eventTaken") { castleLog("Приз уже забрали 😔"); }
       else { castleLog("🧙 ты • 👹 монстр (иди на него — бой) • 📦 лут • ⚠️ ловушка • 🪜 вниз"); }
     } catch(e){} finally { castleBusy = false; }
+  }
+  // Бой с монстром замка через магдуэль (HP полный, отдельный бой)
+  async function openCastleDuel(monster) {
+    window._castleMonsterKey = monster.key;
+    window._lastDuel = { type: "castle" };
+    document.getElementById("castle-overlay").style.display = "none";
+    let myAbils = {};
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const resp = await apiFetch(API_URL + "/api/abilities", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      const ad = await resp.json();
+      (ad.abilities || []).forEach(function(a){ if (DUEL_SPELLS[a.id]) myAbils[a.id] = a.level; });
+    } catch(e){}
+    let spellIds = Object.keys(myAbils);
+    if (spellIds.length === 0) spellIds = ["fireball","lightning","ice_chains","sun_ray"];
+    spellIds = spellIds.slice(0,4);
+    const spellLevels = {}; spellIds.forEach(function(id){ spellLevels[id] = myAbils[id] || 1; });
+    let cloakId = "novice";
+    try { if (window._profileCloak && window._profileCloak.id) cloakId = window._profileCloak.id; } catch(e){}
+    const cloakFx = CLOAK_DUEL_FX[cloakId] || {};
+    let pAtk=10,pDef=5,pLuck=5,pModel="🧙";
+    try { pAtk=window._profileAtk||10; pDef=window._profileDef||5; pLuck=window._profileLuck||5; pModel=window._profileModel||"🧙"; } catch(e){}
+    let duelPotions = [], battleBuffs = [];
+    try {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const r1 = await apiFetch(API_URL + "/api/duelpotion", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "list" }) });
+      duelPotions = (await r1.json()).potions || [];
+      const r2 = await apiFetch(API_URL + "/api/buffpotions", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "battlelist" }) });
+      battleBuffs = (await r2.json()).potions || [];
+    } catch(e){}
+    let myHp = 100;
+    try { const mh = window._profileMaxHp || 100; myHp = Math.round(100 + Math.min(100, (mh-100)*0.2)); if (myHp < 100) myHp = 100; } catch(e){}
+    const isBoss = monster.isBoss;
+    duelGrid = isBoss ? 6 : 5;
+    const center = Math.floor(duelGrid/2);
+    duelState = {
+      difficulty: "castle", castleKey: monster.key, bossDmg: monster.dmg,
+      bossMechanic: isBoss ? "rage" : "none", aiSkill: 0.6 + Math.min(0.3, (monster.depth||1)*0.02),
+      you: { hp: myHp, maxHp: myHp, r: duelGrid-1, c: center, burn:0, frozen:0 },
+      foe: { hp: monster.hp, maxHp: monster.hp, r: 0, c: center, burn:0, frozen:0 },
+      cloakFx: cloakFx, atk: pAtk, def: pDef, luck: pLuck,
+      youEmoji: pModel, foeEmoji: monster.emoji,
+      potions: duelPotions, potionsUsed: 0, potionLimit: 2,
+      battleBuffs: battleBuffs, activeBuffs: [], buffsUsed: 0, buffLimit: 2,
+      broomDash: (window._profileBroom?window._profileBroom.dash:3)||3, broomDashes: (window._profileBroom?window._profileBroom.dashes:2)||2, dashesUsed: 0, dashMode: false,
+      spellIds: spellIds, spellLevels: spellLevels,
+      selSpell: spellIds[0], selMove: "stay", selAim: null,
+      over: false, phase: "choose",
+    };
+    document.getElementById("duel-foe-name").textContent = (isBoss?"👑 БОСС: ":"") + monster.emoji + " " + monster.name;
+    document.getElementById("duel-overlay").style.display = "flex";
+    document.getElementById("duel-result").classList.remove("show");
+    if (tg && tg.BackButton) { try { tg.BackButton.show(); tg.BackButton.onClick(closeDuel); } catch(e){} }
+    renderDuel();
+    duelLog("⚔️ " + monster.name + (isBoss?" — БОСС! 👹":"") + ". В бой!");
+  }
+  function castleReturnAfterFight() {
+    // закрыть дуэль, вернуть оверлей замка с обновлённой картой
+    document.getElementById("duel-overlay").style.display = "none";
+    document.getElementById("duel-result").classList.remove("show");
+    duelState = null;
+    document.getElementById("castle-overlay").style.display = "flex";
+    renderCastle();
+    castleLog("Иди дальше! 🪜 — спуск, 📦 — лут");
+  }
+  function castleGiveUp() {
+    document.getElementById("duel-overlay").style.display = "none";
+    document.getElementById("duel-result").classList.remove("show");
+    duelState = null;
+    closeCastle();
   }
   function castleShake() {
     const g = document.getElementById("castle-grid");
@@ -8068,6 +8126,34 @@
 
   async function endDuel(won) {
     duelState.over = true;
+    // бой с монстром замка
+    if (duelState.difficulty === "castle") {
+      const initData = (tg && tg.initData) ? tg.initData : "";
+      const key = duelState.castleKey;
+      const rmb = document.getElementById("duel-rematch-btn"); if (rmb) rmb.style.display = "none";
+      if (won) {
+        let res = {};
+        try {
+          const resp = await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "winfight", key: key }) });
+          res = await resp.json();
+        } catch(e){}
+        document.getElementById("duel-result-title").textContent = res.wasBoss ? "👑 БОСС ПОВЕРЖЕН!" : "💥 Монстр повержен!";
+        document.getElementById("duel-result-title").style.color = "#ffd86b";
+        document.getElementById("duel-result-reward").innerHTML = "+" + (res.reward||0) + "💰<br><div class=\"action-btn green\" style=\"width:200px;margin-top:10px;\" onclick=\"castleReturnAfterFight()\">⬅️ Назад в подземелье</div>";
+        castleState = res;  // обновлённое состояние замка
+      } else {
+        try { await apiFetch(API_URL + "/api/castle", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData, action: "losefight" }) }); } catch(e){}
+        document.getElementById("duel-result-title").textContent = "💀 Ты пал в подземелье";
+        document.getElementById("duel-result-title").style.color = "#ff6b6b";
+        const s = castleState || {};
+        document.getElementById("duel-result-reward").innerHTML = "Ты добрался до этажа " + (s.depth||1) + ".<br>💰 Собрано: " + (s.goldFound||0) + '<br><div class="action-btn" style="width:200px;margin-top:10px;" onclick="castleGiveUp()">Выйти</div>';
+      }
+      document.getElementById("duel-result").classList.add("show");
+      if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred(won?"success":"error"); } catch(e){} }
+      duelGrid = 5;
+      inventoryLoaded = false;
+      return;
+    }
     // турнир на выбывание (новый)
     if (duelState.difficulty === "tournament") {
       const initData = (tg && tg.initData) ? tg.initData : "";
@@ -8287,12 +8373,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v38 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v39 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v38 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v39 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v38 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v39 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
