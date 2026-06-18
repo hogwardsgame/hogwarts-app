@@ -776,10 +776,11 @@
   @keyframes pvpSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
   /* ── Замок ── */
   .castle-stats { position: relative; z-index: 3; display: block; padding: 8px 16px; font-size: 15px; color: #ffe9a8; }
-  .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; overflow: hidden; }
-  .castle-grid-scroll { width: 100%; height: 100%; max-height: 56vh; overflow: hidden; border-radius: 8px; }
-  :root { --castle-cell-px: 42px; --castle-cell-size: 42px; }
-  .castle-grid { display: grid; gap: 2px; }
+  .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: stretch; justify-content: center; padding: 6px; overflow: hidden; min-height: 0; }
+  .castle-grid-scroll { width: 100%; overflow: auto; border-radius: 8px; background: #0a0813; position: relative; scrollbar-width: none; -ms-overflow-style: none; }
+  .castle-grid-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  :root { --castle-cell-px: 40px; --castle-cell-size: 40px; }
+  .castle-grid { display: grid; gap: 2px; width: max-content; margin: 0; }
   .castle-cell {
     width: var(--castle-cell-size); height: var(--castle-cell-size);
     border-radius: 3px; display: flex; align-items: center; justify-content: center;
@@ -1650,7 +1651,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v41 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v42 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6564,14 +6565,24 @@
     const wrap = document.getElementById("castle-grid-scroll");
     const grid = document.getElementById("castle-grid");
     if (!wrap || !grid) return;
-    // размер клетки из CSS-переменной
-    const cellPx = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--castle-cell-px")) || 42;
-    const gap = 2;
-    const playerX = s.pc * (cellPx + gap) + cellPx / 2;
-    const playerY = s.pr * (cellPx + gap) + cellPx / 2;
-    const targetLeft = playerX - wrap.clientWidth / 2;
-    const targetTop = playerY - wrap.clientHeight / 2;
-    wrap.scrollTo({ left: targetLeft, top: targetTop, behavior: "smooth" });
+    // задать высоту контейнера = доступное место (между статами и логом)
+    const outer = document.querySelector(".castle-grid-wrap");
+    if (outer) {
+      const h = outer.clientHeight - 12;
+      if (h > 100) wrap.style.height = h + "px";
+    }
+    // центрировать после отрисовки (два кадра — чтобы размеры успели примениться)
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        const cellPx = 40, gap = 2;
+        const playerX = s.pc * (cellPx + gap) + cellPx / 2;
+        const playerY = s.pr * (cellPx + gap) + cellPx / 2;
+        const targetLeft = Math.max(0, playerX - wrap.clientWidth / 2);
+        const targetTop = Math.max(0, playerY - wrap.clientHeight / 2);
+        try { wrap.scrollTo({ left: targetLeft, top: targetTop, behavior: "smooth" }); }
+        catch(e){ wrap.scrollLeft = targetLeft; wrap.scrollTop = targetTop; }
+      });
+    });
   }
   async function castleMove(dir) {
     if (!castleState || castleBusy || castleState.done) return;
@@ -8399,12 +8410,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v41 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v42 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v41 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v42 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v41 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v42 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
