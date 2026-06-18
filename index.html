@@ -779,16 +779,60 @@
   .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; }
   .castle-grid { display: grid; gap: 2px; width: min(94vw, 440px); }
   .castle-cell {
-    aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center;
-    font-size: 17px; background: #2a2342;
+    aspect-ratio: 1; border-radius: 2px; display: flex; align-items: center; justify-content: center;
+    font-size: 17px; background: #2a2342; position: relative;
   }
   .castle-cell.fog { background: #0d0a18; }
-  .castle-cell.wall { background: #4a3d6e; box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.08); }
-  .castle-cell.empty { background: #38305a; }
-  .castle-cell.loot { background: #4a4020; box-shadow: inset 0 0 8px rgba(255,216,107,0.4); }
-  .castle-cell.trap { background: #4a2530; }
-  .castle-cell.exit { background: #1f4a2e; box-shadow: inset 0 0 8px rgba(92,255,138,0.4); }
-  .castle-cell.player { background: #2d5a8a; box-shadow: inset 0 0 0 2px #6cb4ff, 0 0 10px rgba(108,180,255,0.5); }
+  /* каменные стены — тёмные с объёмом */
+  .castle-cell.wall {
+    background: linear-gradient(145deg, #3a3358 0%, #292340 100%);
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.5), inset 0 -2px 0 rgba(0,0,0,0.4), inset 2px 0 0 rgba(255,255,255,0.04);
+    border-radius: 3px;
+  }
+  /* каменный пол подземелья */
+  .castle-cell.empty {
+    background: #4a4566;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.05);
+  }
+  /* трава — зелёные вкрапления на полу */
+  .castle-cell.grass {
+    background: #3a5540;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 0 6px rgba(106,232,138,0.25);
+  }
+  .castle-cell.grass::after {
+    content: "🌿"; font-size: 11px; opacity: 0.7; position: absolute; bottom: 1px; right: 1px;
+  }
+  .castle-cell.loot {
+    background: #5a4a20;
+    box-shadow: inset 0 0 10px rgba(255,216,107,0.5), inset 0 0 0 1px rgba(255,216,107,0.3);
+    animation: castleLootGlow 1.8s ease-in-out infinite;
+  }
+  @keyframes castleLootGlow { 0%,100%{box-shadow:inset 0 0 10px rgba(255,216,107,0.5);} 50%{box-shadow:inset 0 0 16px rgba(255,216,107,0.8);} }
+  .castle-cell.trap {
+    background: #5a2530;
+    box-shadow: inset 0 0 8px rgba(255,80,80,0.4);
+  }
+  /* лестница вниз — светится зелёным */
+  .castle-cell.stairs {
+    background: #1f4a3a;
+    box-shadow: inset 0 0 12px rgba(92,255,180,0.6), inset 0 0 0 1px rgba(92,255,180,0.4);
+    animation: castleStairsGlow 1.5s ease-in-out infinite;
+  }
+  @keyframes castleStairsGlow { 0%,100%{box-shadow:inset 0 0 12px rgba(92,255,180,0.5);} 50%{box-shadow:inset 0 0 20px rgba(92,255,180,0.9);} }
+  /* монстры — красноватая клетка с пульсацией */
+  .castle-cell.monster {
+    background: #5a2838;
+    box-shadow: inset 0 0 10px rgba(255,80,100,0.5), inset 0 0 0 1px rgba(255,100,120,0.4);
+  }
+  .castle-cell.monster .cc-mon { animation: castleMonBob 1.2s ease-in-out infinite; display:inline-block; }
+  @keyframes castleMonBob { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-2px);} }
+  .castle-cell.player {
+    background: #2d5a8a;
+    box-shadow: inset 0 0 0 2px #6cb4ff, 0 0 12px rgba(108,180,255,0.6);
+    z-index: 2;
+  }
+  .castle-cell.player .cc-player { animation: castlePlayerPulse 1.4s ease-in-out infinite; display:inline-block; }
+  @keyframes castlePlayerPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.12);} }
   .castle-log { position: relative; z-index: 3; text-align: center; min-height: 24px; font-size: 14px; color: #d8cdf0; font-family:"Cinzel",serif; padding: 6px 16px; }
   /* ── Чат ── */
   .chat-feed { height: 56vh; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 6px; padding: 8px 4px; margin: 8px 0; }
@@ -1605,7 +1649,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v37 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v38 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2015,7 +2059,7 @@
 <div id="castle-overlay" class="duel-overlay" style="display:none;">
   <div class="duel-bg"></div>
   <div class="duel-topbar">
-    <div class="duel-phase" id="castle-title">🏰 Замок</div>
+    <div class="duel-phase" id="castle-title">🏰 Подземелье замка</div>
     <div class="arena-close" onclick="closeCastle()">✕</div>
   </div>
   <div class="castle-stats" id="castle-stats"></div>
@@ -6458,7 +6502,7 @@
           eventHint = "🎪 ИВЕНТ! Найди 🎁 " + ed.prizeEmoji + " " + ed.prizeName + " (осталось " + h + "ч " + m + "м)";
         }
       } catch(e){}
-      castleLog(eventHint || "🧙 ты • 📦 сундук • ⚠️ ловушка • 🚪 выход. Ходи стрелочками!");
+      castleLog(eventHint || "🧙 ты • 👹 монстр (иди на него — бой) • 📦 лут • ⚠️ ловушка • 🪜 вниз на этаж");
     } catch(e) { document.getElementById("castle-grid").innerHTML = '<div class="lb-empty" style="grid-column:1/-1;">Ошибка входа</div>'; }
   }
   function closeCastle() {
@@ -6474,25 +6518,42 @@
     const size = s.size;
     const grid = document.getElementById("castle-grid");
     grid.style.gridTemplateColumns = "repeat(" + size + ", 1fr)";
+    // карта монстров по координатам
+    const monMap = {};
+    (s.monsters || []).forEach(function(m){ monMap[m.r+","+m.c] = m; });
     let html = "";
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         const v = s.grid[r][c];
         let cls = "castle-cell", content = "";
-        if (s.pr === r && s.pc === c) { cls += " player"; content = "🧙"; }
-        else if (v === -1) cls += " fog";
+        const mon = monMap[r+","+c];
+        if (s.pr === r && s.pc === c) { cls += " player"; content = '<span class="cc-player">🧙</span>'; }
+        else if (mon) { cls += " monster"; content = '<span class="cc-mon">'+mon.emoji+'</span>'; }
         else if (v === 1) { cls += " wall"; }
         else if (v === 2) { cls += " loot"; content = "📦"; }
         else if (v === 3) { cls += " trap"; content = "⚠️"; }
-        else if (v === 4) { cls += " exit"; content = "🚪"; }
+        else if (v === 4) { cls += " stairs"; content = "🪜"; }
         else if (v === 6) { cls += " loot"; content = "🎁"; }
+        else if (v === 7) { cls += " grass"; content = ""; }
+        else if (v === 5) { cls += " empty"; }
         else cls += " empty";
         html += '<div class="'+cls+'">'+content+'</div>';
       }
     }
     grid.innerHTML = html;
+    // статы: этаж + HP-бар + золото
     const st = document.getElementById("castle-stats");
-    if (st) st.innerHTML = '❤️ ' + s.hp + ' &nbsp; 💰 ' + s.goldFound + ' &nbsp; 📦 ' + (s.itemsFound ? s.itemsFound.length : 0);
+    if (st) {
+      const hpPct = Math.max(0, Math.round(s.hp / s.maxHp * 100));
+      const hpColor = hpPct > 50 ? "#6be88a" : (hpPct > 25 ? "#ffd86b" : "#ff6b6b");
+      st.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
+        '<span style="font-size:13px;color:#ffd86b;font-weight:700;">🏰 Этаж ' + s.depth + '</span>' +
+        '<span style="font-size:12px;color:#d8cdf0;">💰 ' + s.goldFound + ' &nbsp; 📦 ' + (s.itemsFound ? s.itemsFound.length : 0) + '</span></div>' +
+        '<div style="margin-top:5px;background:rgba(0,0,0,0.35);border-radius:6px;height:14px;overflow:hidden;position:relative;">' +
+        '<div style="background:' + hpColor + ';height:100%;width:' + hpPct + '%;transition:width 0.3s;"></div>' +
+        '<div style="position:absolute;top:0;left:0;right:0;text-align:center;font-size:10px;line-height:14px;color:#fff;text-shadow:0 1px 2px #000;">❤️ ' + s.hp + ' / ' + s.maxHp + '</div></div>';
+    }
   }
   async function castleMove(dir) {
     if (!castleState || castleBusy || castleState.done) return;
@@ -6503,18 +6564,41 @@
       const d = await resp.json();
       castleState = d;
       renderCastle();
-      // события
-      if (d.event === "wall") { castleLog("🧱 Стена!"); }
-      else if (d.event === "loot" && d.loot) {
-        castleLog("📦 Нашёл: " + d.loot.emoji + " " + d.loot.name + "!");
-        showReward("📦 " + d.loot.name);
+      const ev = d.event;
+      // ── БОЙ ──
+      if (ev === "fight") {
+        castleLog("⚔️ " + d.emoji + " " + d.monster + ": ты −" + d.playerDmg + " ему (HP " + d.monsterHp + "/" + d.monsterMaxHp + "), он −" + d.monsterDmg + " тебе!");
+        castleShake();
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("medium"); } catch(e){} }
+      }
+      else if (ev === "kill") {
+        castleLog("💥 Ты победил " + d.emoji + " " + d.monster + "! (−" + d.dmg + ")");
         if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
       }
-      else if (d.event === "trap") { castleLog("⚠️ Ловушка! −" + d.damage + " HP"); if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("heavy"); } catch(e){} } }
-      else if (d.event === "dead") { castleLog("💀 Ловушка добила тебя!"); endCastle(false); }
-      else if (d.event === "exit") { castleLog("🚪 Выход! +" + d.bonus + " 💰"); endCastle(true); }
-      else if (d.event === "eventWin" && d.prize) {
-        castleLog("👑 ТЫ НАШЁЛ ПРИЗ ИВЕНТА: " + d.prize.emoji + " " + d.prize.name + "!");
+      else if (ev === "dead") {
+        castleLog("💀 Ты пал" + (d.monster ? " от " + d.monster : "") + "...");
+        endCastle(false);
+      }
+      // ── СПУСК НА ЭТАЖ ──
+      else if (ev === "descend") {
+        castleLog("🪜 Спуск на этаж " + d.depth + "! +" + d.bonus + "💰. Враги стали сильнее...");
+        castleFlash();
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+      }
+      // ── ЛУТ ──
+      else if (ev === "loot" && d.loot) {
+        if (d.loot.type === "heal") castleLog("❤️ " + d.loot.name + "!");
+        else { castleLog("📦 Нашёл: " + d.loot.emoji + " " + d.loot.name + "!"); showReward("📦 " + d.loot.name); }
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
+      }
+      else if (ev === "trap") {
+        castleLog("⚠️ Ловушка! −" + d.damage + " HP");
+        castleShake();
+        if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.impactOccurred("heavy"); } catch(e){} }
+      }
+      else if (ev === "wall") { castleLog("🧱 Стена!"); }
+      else if (ev === "eventWin" && d.prize) {
+        castleLog("👑 ПРИЗ ИВЕНТА: " + d.prize.emoji + " " + d.prize.name + "!");
         showReward("👑 " + d.prize.emoji + " " + d.prize.name);
         if (tg && tg.HapticFeedback) { try { tg.HapticFeedback.notificationOccurred("success"); } catch(e){} }
         document.getElementById("castle-result-title").textContent = "👑 ПРИЗ ИВЕНТА ТВОЙ!";
@@ -6523,20 +6607,38 @@
         document.getElementById("castle-result").classList.add("show");
         castleState.done = true;
       }
-      else if (d.event === "eventTaken") { castleLog("Приз уже забрали 😔"); }
-      else castleLog("");
+      else if (ev === "eventTaken") { castleLog("Приз уже забрали 😔"); }
+      else { castleLog("🧙 ты • 👹 монстр (иди на него — бой) • 📦 лут • ⚠️ ловушка • 🪜 вниз"); }
     } catch(e){} finally { castleBusy = false; }
+  }
+  function castleShake() {
+    const g = document.getElementById("castle-grid");
+    if (!g) return;
+    g.style.transition = "transform 0.06s";
+    g.style.transform = "translateX(-4px)";
+    setTimeout(function(){ g.style.transform = "translateX(4px)"; }, 60);
+    setTimeout(function(){ g.style.transform = "translateX(0)"; }, 120);
+  }
+  function castleFlash() {
+    const w = document.querySelector(".castle-grid-wrap");
+    if (!w) return;
+    w.style.transition = "opacity 0.15s";
+    w.style.opacity = "0.3";
+    setTimeout(function(){ w.style.opacity = "1"; }, 150);
   }
   function endCastle(won) {
     castleState.done = true;
     const s = castleState;
-    document.getElementById("castle-result-title").textContent = won ? "🏆 Замок пройден!" : "💀 Поражение";
+    document.getElementById("castle-result-title").textContent = won ? "🏆 Замок пройден!" : "💀 Ты пал в подземелье";
     document.getElementById("castle-result-title").style.color = won ? "#ffd86b" : "#ff6b6b";
     let itemsHtml = "";
     if (s.itemsFound && s.itemsFound.length) {
-      itemsHtml = '<div style="margin-top:8px;font-size:13px;color:#ffe9a8;">Найдено: ' + s.itemsFound.map(function(i){ return i.emoji+' '+i.name; }).join(", ") + '</div>';
+      itemsHtml = '<div style="margin-top:8px;font-size:13px;color:#ffe9a8;">Добыча: ' + s.itemsFound.map(function(i){ return i.emoji+' '+i.name; }).join(", ") + '</div>';
     }
-    document.getElementById("castle-result-reward").innerHTML = '💰 Золота собрано: ' + s.goldFound + itemsHtml;
+    document.getElementById("castle-result-reward").innerHTML =
+      '<div style="font-size:15px;color:#ffd86b;">🏰 Глубина: этаж ' + s.depth + '</div>' +
+      '<div style="margin-top:4px;">💰 Золота собрано: ' + s.goldFound + '</div>' + itemsHtml +
+      '<div style="font-size:11px;color:#9d8fc0;margin-top:8px;">Чем глубже спустишься — тем больше добычи!</div>';
     document.getElementById("castle-result").classList.add("show");
     inventoryLoaded = false;
   }
@@ -8185,12 +8287,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v37 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v38 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v37 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v38 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v37 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v38 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
