@@ -778,7 +778,7 @@
   .castle-stats { position: relative; z-index: 3; display: block; padding: 8px 16px; font-size: 15px; color: #ffe9a8; }
   .castle-grid-wrap { position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center; padding: 6px; overflow: hidden; min-height: 0; }
   .castle-grid-scroll { display: flex; align-items: center; justify-content: center; }
-  :root { --castle-cell-px: 40px; --castle-cell-size: 40px; }
+  :root { --castle-cell-size: 40px; }
   .castle-grid { display: grid; gap: 2px; width: max-content; margin: 0 auto; }
   :root { --castle-cell-px: 40px; --castle-cell-size: 40px; }
   .castle-grid { display: grid; gap: 2px; width: max-content; margin: 0; }
@@ -1652,7 +1652,7 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v45 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v46 • проверка связи...</div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -6520,46 +6520,36 @@
   function castleLog(t) { const el = document.getElementById("castle-log"); if (el) el.textContent = t; }
   function renderCastle() {
     const s = castleState; if (!s || !s.grid) return;
-    castleFitCellSize();
     const size = s.size;
     const grid = document.getElementById("castle-grid");
+    // размер клетки: вся карта влезает по ширине экрана
+    const vw = window.innerWidth || 380;
+    const cell = Math.floor((Math.min(vw, 480) - 16 - (size - 1) * 2) / size);
+    const px = Math.max(20, Math.min(46, cell));
+    document.documentElement.style.setProperty("--castle-cell-size", px + "px");
+    grid.style.gridTemplateColumns = "repeat(" + size + ", " + px + "px)";
     const monMap = {};
     (s.monsters || []).forEach(function(m){ monMap[m.r+","+m.c] = m; });
     const monstersLeft = (typeof s.monstersTotal === "number") ? s.monstersTotal : (s.monsters || []).length;
-    // ОКНО ВОКРУГ ИГРОКА: рисуем только видимую область, игрок в центре
-    const viewW = castleViewCols();   // сколько колонок видно
-    const viewH = castleViewRows();   // сколько рядов видно
-    const half_w = Math.floor(viewW / 2);
-    const half_h = Math.floor(viewH / 2);
-    let startC = s.pc - half_w;
-    let startR = s.pr - half_h;
-    grid.style.gridTemplateColumns = "repeat(" + viewW + ", var(--castle-cell-size))";
     let html = "";
-    for (let vr = 0; vr < viewH; vr++) {
-      for (let vc = 0; vc < viewW; vc++) {
-        const r = startR + vr;
-        const c = startC + vc;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const v = s.grid[r][c];
         let cls = "castle-cell", content = "";
-        if (r < 0 || r >= size || c < 0 || c >= size) {
-          cls += " fog";  // за границами карты
-        } else {
-          const v = s.grid[r][c];
-          const mon = monMap[r+","+c];
-          if (v === -1) { cls += " fog"; }
-          else if (s.pr === r && s.pc === c) { cls += " player"; content = '<span class="cc-player">🧙</span>'; }
-          else if (mon) { cls += " monster"; content = '<span class="cc-mon">'+mon.emoji+'</span>'; }
-          else if (v === 1) { cls += " wall"; }
-          else if (v === 2) { cls += " loot"; content = "📦"; }
-          else if (v === 3) { cls += " trap"; content = "⚠️"; }
-          else if (v === 4) { cls += (monstersLeft > 0 ? " stairs-locked" : " stairs"); content = (monstersLeft > 0 ? "🔒" : "🪜"); }
-          else if (v === 6) { cls += " loot"; content = "🎁"; }
-          else cls += " empty";
-        }
+        const mon = monMap[r+","+c];
+        if (v === -1) { cls += " fog"; }
+        else if (s.pr === r && s.pc === c) { cls += " player"; content = '<span class="cc-player">🧙</span>'; }
+        else if (mon) { cls += " monster"; content = '<span class="cc-mon">'+mon.emoji+'</span>'; }
+        else if (v === 1) { cls += " wall"; }
+        else if (v === 2) { cls += " loot"; content = "📦"; }
+        else if (v === 3) { cls += " trap"; content = "⚠️"; }
+        else if (v === 4) { cls += (monstersLeft > 0 ? " stairs-locked" : " stairs"); content = (monstersLeft > 0 ? "🔒" : "🪜"); }
+        else if (v === 6) { cls += " loot"; content = "🎁"; }
+        else cls += " empty";
         html += '<div class="'+cls+'">'+content+'</div>';
       }
     }
     grid.innerHTML = html;
-    // статы
     const st = document.getElementById("castle-stats");
     if (st) {
       const monTag = monstersLeft > 0
@@ -6573,18 +6563,10 @@
         monTag + '</div>';
     }
   }
-  // фиксированное окно 9×9 вокруг игрока, клетки подгоняются под ширину экрана
-  function castleViewCols() { return 9; }
-  function castleViewRows() { return 9; }
-  function castleFitCellSize() {
-    const vw = window.innerWidth || 380;
-    // 9 клеток + 8 зазоров(2px) + поля(16px) должны влезть по ширине
-    const cell = Math.floor((Math.min(vw, 460) - 16 - 8 * 2) / 9);
-    const px = Math.max(28, Math.min(48, cell));
-    document.documentElement.style.setProperty("--castle-cell-size", px + "px");
-    return px;
-  }
-  function castleCenterOnPlayer() { /* окно само центрирует игрока */ }
+  function castleViewCols() { return 11; }
+  function castleViewRows() { return 11; }
+  function castleFitCellSize() {}
+  function castleCenterOnPlayer() {}
   async function castleMove(dir) {
     if (!castleState || castleBusy || castleState.done) return;
     castleBusy = true;
@@ -8411,12 +8393,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ initData: initData }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v45 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v46 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v45 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v46 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v45 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v46 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
