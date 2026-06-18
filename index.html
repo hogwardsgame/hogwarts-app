@@ -1654,7 +1654,10 @@
   <div class="name" id="name">Волшебник</div>
   <div class="house" id="house">Хогвартс</div>
   <div class="rank" id="rank">🐣 Первокурсник</div>
-  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v51 • проверка связи...</div>
+  <div id="server-status" style="font-size:10px;color:#6a5d8a;margin-top:2px;">v52 • проверка связи...</div>
+  <div id="web-logout-row" style="display:none;margin-top:6px;">
+    <span onclick="webLogout()" style="font-size:11px;color:#9d8fc0;cursor:pointer;text-decoration:underline;">🚪 Выйти из аккаунта</span>
+  </div>
   <div class="title-badge" id="title-badge" style="display:none;"></div>
 
   <div class="divider"></div>
@@ -2844,8 +2847,45 @@
     location.reload();
   }
 
+  // Кнопка «Назад» браузера закрывает открытый оверлей вместо выхода с сайта
+  function anyOverlayOpen() {
+    const ids = ["duel-overlay","castle-overlay","battle-overlay"];
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== "none" && el.style.display !== "") return id;
+    }
+    const pm = document.getElementById("pubprofile-modal");
+    if (pm && pm.classList.contains("show")) return "pubprofile-modal";
+    const sb = document.getElementById("submenu-backdrop");
+    if (sb && sb.classList.contains("show")) return "submenu";
+    return null;
+  }
+  function closeTopOverlay(id) {
+    if (id === "duel-overlay") { try { closeDuel(); } catch(e){} }
+    else if (id === "castle-overlay") { try { closeCastle(); } catch(e){} }
+    else if (id === "battle-overlay") { try { if (typeof closeBattle==="function") closeBattle(); else document.getElementById("battle-overlay").style.display="none"; } catch(e){} }
+    else if (id === "pubprofile-modal") { try { document.getElementById("pubprofile-modal").classList.remove("show"); } catch(e){} }
+    else if (id === "submenu") { try { closeSubmenu(); } catch(e){} }
+  }
+  if (isWebMode()) {
+    history.pushState({ hw: true }, "");
+    window.addEventListener("popstate", function(){
+      const open = anyOverlayOpen();
+      if (open) {
+        closeTopOverlay(open);
+        history.pushState({ hw: true }, "");  // остаёмся на сайте
+      } else {
+        history.pushState({ hw: true }, "");  // не даём случайно выйти
+      }
+    });
+  }
+
   // Старт: в Telegram — сразу грузим. В браузере без входа — показываем экран входа.
   function startApp() {
+    if (isWebMode()) {
+      const lr = document.getElementById("web-logout-row");
+      if (lr) lr.style.display = "block";
+    }
     if (isWebMode() && !window._webAuth) {
       showLoginScreen();
     } else {
@@ -8473,12 +8513,12 @@
       const initData = (tg && tg.initData) ? tg.initData : "";
       const resp = await apiFetch(API_URL + "/api/profile", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ...authObj() }) }, 10000);
       if (resp.ok || resp.status === 401 || resp.status === 400) {
-        if (el) { el.textContent = "v51 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
+        if (el) { el.textContent = "v52 • 🟢 сервер на связи"; el.style.color = "#6a8a6a"; }
       } else {
-        if (el) { el.textContent = "v51 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
+        if (el) { el.textContent = "v52 • 🟡 сервер: " + resp.status; el.style.color = "#8a8a6a"; }
       }
     } catch (e) {
-      if (el) { el.textContent = "v51 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
+      if (el) { el.textContent = "v52 • 🔴 нет связи (" + (e && e.name ? e.name : "ошибка") + ")"; el.style.color = "#8a6a6a"; }
     }
   })();
 
